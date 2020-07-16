@@ -71,42 +71,36 @@ Maps to a WDL Task.
 
 #### [`inputs`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter)
 
-Maps to WDL task [`input {}`](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#task-input-declaration) section.
+Maps to WDL task [`input {}`](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#task-input-declaration) section. Each entry is equivalent to a WDL `input` declaration. The actual value of the input id determined by its [`inputBinding`](#inputBinding).
 
 | CWL | WDL | Notes |
 |-----|-----|-------|
-| `id` | parameter name | |
+| `id` | parameter name | CWL compact form uses a `?` suffix on the pattern to indicate optionality. |
 |`label` | Could go into `parameter_meta {}` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `parameter_meta.id.label`. |
 | `doc` | Could go into `parameter_meta {}` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.id.description`. |
 | `streamable` | NA* | * Maps to `localizationOptional` in Cromwell and WDL 2.0, and to dxWDL’s [`stream`](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#streaming) hint via `parameter_meta`. |
 | `format` | NA* | The user provided vocabulary can be referenced to discover common filename extensions for recording in dxWDL style `parameter_meta.id.types` and/or `parameter_meta.id.patterns`. |
-| `loadContents` | `read_string` | |
+| `loadContents` | `read_string()` | |
 | `loadListing` | NA | A similar function should be added to WDL 2.0 |
 | `default` | An input paramter can be assigned a default value. The `default` expression placeholder options can be used, but is deprecated and removed in WDL 2.0. | |
+| `secondaryFiles` | NA | A [secondary file](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SecondaryFileSchema) is a file that accompanies a main file (e.g. a .bai index file that accompanies a BAM) and is not referenced explicitly in the command line. The WDL spec [mandates](https://github.com/openwdl/wdl/blob/main/versions/development/SPEC.md#task-input-localization) that "two input files which originated in the same storage directory must also be localized into the same directory for task execution". Therefore, the secondary file has to be provided as an input and it will "just work". Structs can also be used to put main and secondary files in the same logical container. |
 
-##### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter">`inputs`</a>`.inputBinding`
+##### [`inputBinding`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter)
 
-(a.k.a <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineBinding">CommandLineBinding</a> ; not relevant if using cwltool or other CWL aware code to render the command line)
+(a.k.a [CommandLineBinding](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineBinding); not relevant if using cwltool or other CWL aware code to render the command line).
 
-`position`: not a concept in WDL, but can be used to order the resultant items in the WDL `command` section.
+This section describes how to determine the value of an argument and where to place it in the generated command line. In WDL, this is all done within expressions, either as definitions or within the `command {}` block.
 
-`valueFrom`: if not present, then use the <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineBinding">chart</a> to represent the linked input textually. If present, then evaluate any CWL expressions embedded and use the result in conjunction with the following modifiers
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `position` | implicit | Used to order the command arguments |
+| `valueFrom` | implicit | If not present, then use the [table](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineBinding) to represent the linked input textually. If present, then evaluate any CWL expressions embedded and use the result in conjunction with the following modifiers. |
+| `prefix`, `separate`, `itemSeparator` | implicit - supported by `sep` and `prefix` functions/placeholder options | if `separate` is `true` (or missing) then the `prefix` goes directly as a standalone item in WDL command section prior to the result of the `valueFrom`. If `separate` is `false` then the prefix is prepended to the result of the `valueFrom`. |
+| `shellQuote` | NA* | A value of `false` with `ShellCommandRequirement` in the requirements section allows for shell metacharacters to survive unquoted. If this is absent, then shell-quote the result of the remaining CommandLineBinding elements. * WDL 2.0 has the `quote` and `squote` functions, but these aren't aware of shell metacharacters. |
 
-`prefix` & `separate`: if `separate` is `true` (or missing) then the `prefix` goes directly as a standalone item in WDL command section prior to the result of the `valueFrom`. If `separate` is `false` then the prefix is prepended to the result of the `valueFrom`.
+#### [`outputs`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputParameter)
 
-`itemSeparator` -> WDL’s ‘<a href="https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#sep">`sep`</a>’
-
-`shellQuote: false` with `ShellCommandRequirement` in the requirements section allows for shell metacharacters to survive unquoted. If this is absent, then shell-quote the result of the remaining CommandLineBinding elements.
-
-<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SecondaryFileSchema">`secondaryFile`</a>s: additional WDL File input(s), but it has no identifier/name (so generate a random identifier/name if need be), stored in the same directory as the main File. Note that the CWL compact form uses a `?` suffix on the pattern to indicate optionality.
-
-#### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputParameter">`outputs`</a>
-
--> https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#outputs-section
-
-`CommandOutputParameter.id`: the name after the WDL type identifier (the type `name` in the Hermes grammar).
-
-See the inputs section for a discussion about `CommanLineTool.outputs.id.{label,secondaryFiles,streamable,doc,format}`.
+Maps to a WDL task [`output {}`](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#outputs-section) section. Nothing new here vs [input](#input).
 
 ##### `ComandLineTool.outputs.id.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputBinding">`outputBinding`</a>
 
