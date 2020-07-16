@@ -35,21 +35,22 @@ This document maps the concepts from the draft CWL standards v1.2.0-dev4 to the 
 | [`CommandInputRecordSchema`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputRecordSchema) | WDL Struct | |
 | `?` type postfix | `?` type postfix | |
 
-# Document metadata
+## Document metadata
 
-CWL documents allow unlimited metadata using user-referenced vocabularies. <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Extensions_and_metadata">For generic metadata the schema.org ontology is recommended by the CWL standards</a>.
+CWL documents allow unlimited metadata using user-referenced vocabularies. For generic metadata the schema.org ontology is recommended by the [CWL standards](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Extensions_and_metadata).
 
 A mapping of schema.org annotations that are commonly found in CWL documents to dxWDL `meta.details` could be written.
 
-# CWL common Process attributes
+## CWL common Process attributes
 
-Here are elements common to CWL `Workflow`, `CommandLineTool`, and `ExpressionTool`s:
+Elements common to CWL `Workflow`, `CommandLineTool`, and `ExpressionTool`s:
 
-`id`: the string after the WDL keyword `workflow` or `task` (the workflow/task `name` in the WDL Hermes grammar).
-
-`label` and `doc`: could go into WDL’s <a href="https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#metadata-section">`meta`</a>data section. For <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section">dxWDL</a> `label` would map to `meta.summary` and `doc` to `meta.description`.
-
-`intent`: metadata, can be ignored. Could be represented in WDL under `meta.intent` (but that is not a standardized key for WDL v1.0, dxWDL, Cromwell, nor the proposed WDL 2.0).
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `id` | `workflow` or `task` name | |
+|`label` | Could go into `Meta | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.summary`. |
+| `doc` | Could go into `Meta` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.description`. |
+| `intent` | NA | Can be ignored or could be represented in WDL under `meta.intent` (but that is not a standardized key for WDL v1.0, dxWDL, Cromwell, nor the proposed WDL 2.0) |
 
 # CWL <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineTool">`CommandLineTool`</a>
 
