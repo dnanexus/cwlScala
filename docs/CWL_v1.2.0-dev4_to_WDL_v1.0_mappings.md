@@ -1,48 +1,35 @@
-CWL v1.2.0-dev4 to WDL v1.0 mapping
+# CWL v1.2.0-dev4 to WDL v1.0 mapping
 
-Author: Michael R. Crusoe on behalf of DNAnexus, Inc.
+* Author: Michael R. Crusoe on behalf of DNAnexus, Inc.
+* Copyright: 2020 DNAnexus, Inc.
+* Date: 2020-07-06
 
-Copyright: 2020 DNAnexus, Inc.
+## Introduction
 
-Date: 2020-07-06
+This document maps the concepts from the draft CWL standards v1.2.0-dev4 to the OpenWDL v1.0 specification. Implementation hints with regards to the Cromwell and dxWDL engines and their conventions are also provided. If the implementation could be simplified by using part of the CWL reference implementation ("cwltool") for command line rendering and Docker invocation, then this is indicated along with non-cwltool-based suggestions.
 
-# Introduction
+## Sources
 
-This document maps the concepts from the draft CWL standards v1.2.0-dev4 to the OpenWDL v1.0 specification. Implementation hints with regards to the Cromwell and dxWDL engines and their conventions are also provided. If implementation could be simplified by using part of the CWL reference implementation ("cwltool") for command line rendering and Docker invocation then this is indicated along with non-cwltool-based suggestions.
+* [CWL v1.2.0-dev4 CommandLineTool specification](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html)
+* [CWL v1.2.0-dev4 Workflow specification](https://www.commonwl.org/v1.2.0-dev4/Workflow.html)
+* [WDL 1.0 specification](https://github.com/openwdl/wdl/blob/9049a884b56aebb84bce5b9a164e84584cc573ac/versions/1.0/SPEC.md) (2020-06-23)
+* [WDL 2.0 (development) specification](https://github.com/openwdl/wdl/blob/main/versions/development/SPEC.md)
+* [Cromwell-supported runtime attributes](https://cromwell.readthedocs.io/en/stable/RuntimeAttributes/)
+* [dxWDL extensions](https://github.com/dnanexus/dxWDL/blob/41f7ee24961fdd782a519f3459d06c7780376f3b/doc/ExpertOptions.md#extensions) (2020-06-23)
 
-# Sources
+## CWL to WDL type mappings
 
-https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html
-
-https://www.commonwl.org/v1.2.0-dev4/Workflow.html
-
-https://github.com/openwdl/wdl/blob/9049a884b56aebb84bce5b9a164e84584cc573ac/versions/1.0/SPEC.md (2020-06-23)
-
-https://cromwell.readthedocs.io/en/stable/RuntimeAttributes/
-
-https://github.com/dnanexus/dxWDL/blob/41f7ee24961fdd782a519f3459d06c7780376f3b/doc/ExpertOptions.md#extensions (2020-06-23)
-
-https://github.com/openwdl/wdl/blob/main/versions/development/SPEC.md
-
-# CWL to WDL type mappings
-
-`'null'`: in type definitions can be mapped to "`?`" or “`+`” (optionality) in WDL. In user objects it maps to WDL’s `null`.
-
-`boolean`: -> WDL `Boolean`.
-
-`float`: WDL `Float`.
-
-`int`: WDL `Int`.
-
-`long`: WDL `Int`.
-
-`double`: WDL `Float`.
-
-`string`: WDL `String`.
-
-`File` -> WDL `File` except that there is no direct analogue in WDL for most of the CWL `File` properties: `dirname`, `nameroot`, `nameext`, `checksum`, `secondaryFiles`, `format`, or `contents`. CWL `File.basename` property -> WDL `basename(File)` function. CWL’s `File.size` property -> WDL `size(File)` function.
-
-`Directory`: no WDL v1.0 analogue.
+| CWL type | WDL type | Notes |
+|----------|----------|-------|
+|`null` | NA* | In type definitions can be mapped to "`?`" or “`+`” (optionality) in WDL. In user objects it maps to WDL’s `null`. * In WDL 2.0 there is a `None` type that directly maps to CWL `null`. |
+| `boolean` | `Boolean` | |
+| `int` | `Int` | In wdlTools, Int is implemented as Scala Long |
+| `long` | `Int` | |
+| `float` | `Float` | In wdlTools, Float is implemented as Scala Double |
+| `double` | `Float` | |
+| `string` | `String` | |
+| `File` | `File` | There is no direct analogue in WDL for most of the CWL `File` properties: `dirname`, `nameroot`, `nameext`, `checksum`, `secondaryFiles`, `format`, or `contents`. * CWL `File.basename` property -> WDL `basename(File)` function. * CWL’s `File.size` property -> WDL `size(File)` function. |
+| `Directory` | NA* | * The `Directory` type is added in WDL 2.0 |
 
 <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputArraySchema">`CommandInputArraySchema`</a> -> WDL `Array`, though CWL arrays can have multiple item types and it appears that WDL arrays cannot. The CWL parameter reference `$(array.length)` is equivalent to WDL the `length(array)` function call.
 
@@ -232,7 +219,8 @@ scatter(cwl_scatter_list[0] as scatter0, .. cwl_scatter_list(N) as scatterN) {
 
   call step_id { input: non_scattered_inputs_spec, cwl_scatter_list[0] = scatter0, .. 
 
-                         cwl_scatter_list[N] = scatterN}}
+                         cwl_scatter_list[N] = scatterN}
+}
 
 ```
 
