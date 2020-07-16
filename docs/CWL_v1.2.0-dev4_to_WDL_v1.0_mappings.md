@@ -48,8 +48,8 @@ Elements common to CWL `Workflow`, `CommandLineTool`, and `ExpressionTool`s:
 | CWL | WDL | Notes |
 |-----|-----|-------|
 | `id` | `workflow` or `task` name | |
-|`label` | Could go into `Meta` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.summary`. |
-| `doc` | Could go into `Meta` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.description`. |
+|`label` | Could go into `meta {}` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.summary`. |
+| `doc` | Could go into `meta {}` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.description`. |
 | `intent` | NA | Can be ignored or could be represented in WDL under `meta.intent` (but that is not a standardized key for WDL v1.0, dxWDL, Cromwell, nor the proposed WDL 2.0) |
 
 ### CWL [`CommandLineTool`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineTool)
@@ -69,21 +69,20 @@ Maps to a WDL Task.
 | `successCodes` | NA* | * Cromwell uses [`runtime.continueOnReturnCode`](https://cromwell.readthedocs.io/en/stable/RuntimeAttributes/#continueonreturncode), WDL 2.0 specifies `runtime.returnCodes` * If not using cwltool for execution, can also be expressed as an addition to the WDL command section (basically: capture the exit code with `$?` and if it isn’t one of the `successCodes` then exit non-zero). |
 | `temporaryFailCodes` and `permanentFailCodes` | NA* | * WDL 2.0 adds `maxRetries`, but that applies to all failures. DNAnexus converts return codes to different error types, and different retry behavior can be specified for each error type. Like `successCodes` they could be expressed as an addition to the WDL `command` section, if cwltool is not used for execution. |
 
-#### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter">`inputs`</a>
+#### [`inputs`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter)
 
--> <a href="https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#task-input-declaration">WDL's `task` input declaration</a>
+Maps to WDL task [`input {}`](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#task-input-declaration) section.
 
-`id`: the name after the WDL type identifier (the type `name` in the WDL Hermes grammar).
-
-`label` and `doc`: could become `help` values in WDL’s <a href="https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#parameter-metadata-section">`parameter_meta`</a>data section. In a dxWDL context `doc` can be mapped to `parameter_meta.id.description` and `label` to `parameter_meta.id.label`.
-
-`streamable`, `format`, `loadContents`, `loadListing`: appears to have no WDL v1.0 analogues.
-
-`streamable: true` can be mapped to dxWDL’s <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#streaming">`stream`</a> hint via `parameter_meta`.
-
-`format`: here the user provided vocabulary can be referenced to discover common filename extensions for recording in dxWDL style `parameter_meta.id.patterns`. 
-
-`default`: ‘default’ in WDL’s Expression Placeholder Options or as the expression in a WDL input declaration.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `id` | parameter name | |
+|`label` | Could go into `parameter_meta {}` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `parameter_meta.id.label`. |
+| `doc` | Could go into `parameter_meta {}` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.id.description`. |
+| `streamable` | NA* | * Maps to `localizationOptional` in Cromwell and WDL 2.0, and to dxWDL’s [`stream`](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#streaming) hint via `parameter_meta`. |
+| `format` | NA* | The user provided vocabulary can be referenced to discover common filename extensions for recording in dxWDL style `parameter_meta.id.types` and/or `parameter_meta.id.patterns`. |
+| `loadContents` | `read_string` | |
+| `loadListing` | NA | A similar function should be added to WDL 2.0 |
+| `default` | An input paramter can be assigned a default value. The `default` expression placeholder options can be used, but is deprecated and removed in WDL 2.0. | |
 
 ##### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter">`inputs`</a>`.inputBinding`
 
