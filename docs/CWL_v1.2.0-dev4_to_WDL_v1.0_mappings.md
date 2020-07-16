@@ -41,38 +41,35 @@ CWL documents allow unlimited metadata using user-referenced vocabularies. For g
 
 A mapping of schema.org annotations that are commonly found in CWL documents to dxWDL `meta.details` could be written.
 
-## CWL common Process attributes
+### CWL common Process attributes
 
 Elements common to CWL `Workflow`, `CommandLineTool`, and `ExpressionTool`s:
 
 | CWL | WDL | Notes |
 |-----|-----|-------|
 | `id` | `workflow` or `task` name | |
-|`label` | Could go into `Meta | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.summary`. |
+|`label` | Could go into `Meta` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.summary`. |
 | `doc` | Could go into `Meta` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `meta.description`. |
 | `intent` | NA | Can be ignored or could be represented in WDL under `meta.intent` (but that is not a standardized key for WDL v1.0, dxWDL, Cromwell, nor the proposed WDL 2.0) |
 
-# CWL <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineTool">`CommandLineTool`</a>
+### CWL [`CommandLineTool`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineTool)
 
--> <a href="https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#task-definition">WDL `task`</a>
+Maps to a WDL Task.
 
-`class`: always `CommandLineTool`; not needed for WDL.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `class` | NA | always "CommandLineTool" |
+| `hints` | ? | (@mr-c I think there's something missing here) |
+| `requirements` | | [See below](#CommandLineTool_requirements) |
+| `baseCommand` | The `command {}` section (along with `arguments`) | Note that a CWL tool represents a call to a single executable, where as WDL can have any number of commands in the `command {}` block; i.e. for a command block longer than a single statement, you'd have to put it into a bash script within the Docker image to call it from CWL. |
+| `arguments` | see above | An array of entries to be added to the WDL `command` section. Be careful - the result of `inputBinding`s from the inputs section may insert themselves into this list. See the `inputBinding` section below for more details. |
+| `stdin` | Done in `command {}` block e.g. using `cat` or a redirect |The path of a file to pipe into the tool being described. If not using cwltool for execution then `stdin`’ could be represented in the WDL command section by adding `< ` and the value of this field to the end of the main command block. |
+| `stdout` | `stdout()` | The path of a stdout file. See the `outputBinding` section for more information. |
+| `stderr` | `stderr()` | The path of a stderr file. See the `outputBinding` section for more information. |
+| `successCodes` | NA* | * Cromwell uses [`runtime.continueOnReturnCode`](https://cromwell.readthedocs.io/en/stable/RuntimeAttributes/#continueonreturncode), WDL 2.0 specifies `runtime.returnCodes` * If not using cwltool for execution, can also be expressed as an addition to the WDL command section (basically: capture the exit code with `$?` and if it isn’t one of the `successCodes` then exit non-zero). |
+| `temporaryFailCodes` and `permanentFailCodes` | NA* | * WDL 2.0 adds `maxRetries`, but that applies to all failures. DNAnexus converts return codes to different error types, and different retry behavior can be specified for each error type. Like `successCodes` they could be expressed as an addition to the WDL `command` section, if cwltool is not used for execution. |
 
-`CommandLineTool.hints`: see `CommandLineTool.requirements` below.
-
-`baseCommand`: the first entry/entries in the WDL `command` section.
-
-`arguments`: an array of entries to be added to the WDL `command` section. Be careful, the result of `inputBinding`s from the inputs section may insert themselves into this list. See the `inputBinding` section below for more details.
-
-`stdin`: indicates the path of a file to pipe into the tool being described. No direct equivalent in WDL v1.0. If not using cwltool for execution then `stdin`’ could be represented in the WDL command section by adding `< ` and the value of this field to the end of the main command block.
-
-`stdout` and `stderr`: sets the name of the stdout/stderr files; similar to WDL’s `stdout()` and `stderr()` functions. See the `outputBinding` section for more information.
-
-`successCodes`: no WDL v1.0 equivalent but can be mapped to Cromwell’s usage of `runtime.`<a href="https://cromwell.readthedocs.io/en/stable/RuntimeAttributes/#continueonreturncode">`continueOnReturnCode`</a> . If not using cwltool for execution, can also be expressed as an addition to the WDL command section (basically: capture the exit code with `$?` and if it isn’t one of the `successCodes` then exit non-zero).
-
-`temporaryFailCodes` and `permanentFailCodes`: no WDL v1.0 equivalent. Like `successCodes` they could be expressed as an addition to the WDL `command` section, if cwltool is not used for execution.
-
-## `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter">`inputs`</a>
+#### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter">`inputs`</a>
 
 -> <a href="https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#task-input-declaration">WDL's `task` input declaration</a>
 
@@ -88,7 +85,7 @@ Elements common to CWL `Workflow`, `CommandLineTool`, and `ExpressionTool`s:
 
 `default`: ‘default’ in WDL’s Expression Placeholder Options or as the expression in a WDL input declaration.
 
-### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter">`inputs`</a>`.inputBinding`
+##### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter">`inputs`</a>`.inputBinding`
 
 (a.k.a <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineBinding">CommandLineBinding</a> ; not relevant if using cwltool or other CWL aware code to render the command line)
 
@@ -104,7 +101,7 @@ Elements common to CWL `Workflow`, `CommandLineTool`, and `ExpressionTool`s:
 
 <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SecondaryFileSchema">`secondaryFile`</a>s: additional WDL File input(s), but it has no identifier/name (so generate a random identifier/name if need be), stored in the same directory as the main File. Note that the CWL compact form uses a `?` suffix on the pattern to indicate optionality.
 
-## `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputParameter">`outputs`</a>
+#### `CommandLineTool.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputParameter">`outputs`</a>
 
 -> https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#outputs-section
 
@@ -112,7 +109,7 @@ Elements common to CWL `Workflow`, `CommandLineTool`, and `ExpressionTool`s:
 
 See the inputs section for a discussion about `CommanLineTool.outputs.id.{label,secondaryFiles,streamable,doc,format}`.
 
-### `ComandLineTool.outputs.id.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputBinding">`outputBinding`</a>
+##### `ComandLineTool.outputs.id.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputBinding">`outputBinding`</a>
 
 `outputBinding.glob`: WDL `glob()` ; note that CWL does not require that `bash` be a part of the Docker format software container. In CWL, `glob` is defined as "using POSIX glob(3) pathname matching", so this may require changes to your execution scripts if not using cwltool or other CWL aware code.
 
@@ -120,17 +117,17 @@ See the inputs section for a discussion about `CommanLineTool.outputs.id.{label,
 
 In this `outputs` section only, two more CWL types are allowed (as a shortcut). `stdout` corresponding to WDL’s `stdout()` function. And likewise for `stderr` and WDL’s `stderr()` function. If the stdout/stdin names have been set in the CommandLineTool definition then the resulting CWL File objects will inherit those values as the `basename`. Otherwise the `basename` is random.
 
-## `CommandLineTool.requirements`
+#### `CommandLineTool.requirements`
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InlineJavascriptRequirement">`InlineJavascriptRequirement`</a> 
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InlineJavascriptRequirement">`InlineJavascriptRequirement`</a> 
 
 required for CWL Expressions (but not required for CWL Parameter References). No WDL analogue.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SchemaDefRequirement">`SchemaDefRequirement`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SchemaDefRequirement">`SchemaDefRequirement`</a>
 
 defines custom named array, enum, or record types; see the above section on CWL to WDL type mapping.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#DockerRequirement">`DockerRequirement`</a>
+##/J### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#DockerRequirement">`DockerRequirement`</a>
 
 `dockerPull` or `dockerImageId`: WDL’s `runtime.docker`.
 
@@ -140,23 +137,23 @@ Likewise a `dockerFile` could be built and also uploaded.
 
 If cwltool is not used then `dockerOutputDirectory` can be realized by ensuring that the specified directory is mounted from a writable path outside the container that has as much space available as required by `ResourceRequirements.outdirMin`.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SoftwareRequirement">`SoftwareRequirement`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SoftwareRequirement">`SoftwareRequirement`</a>
 
 Can be turned into a WDL `runtime.docker` by using http://biocontainers.pro or http://bio.tools to do a lookup. Almost always accompanied by a `DockerRequirement`, so it can be ignored. However it can be used to generate <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section">dxWDL style entries</a> in `meta.details.citations`
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InitialWorkDirRequirement">`InitialWorkDirRequirement`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InitialWorkDirRequirement">`InitialWorkDirRequirement`</a>
 
 Specifies how the working directory is to be populated. Possibly synthesizes files on its own or via values from the `inputs` section. No WDL analogue, and may not be needed if using cwltool or another CWL aware codebase.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#EnvVarRequirement">`EnvVarRequirement`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#EnvVarRequirement">`EnvVarRequirement`</a>
 
 No equivalent in WDL v1.0 to specify custom environment variables. If cwltool is not used, then this can be implemented by adding `export ${envName}=${envValue}` to the beginning of the WDL `command` section.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ShellCommandRequirement">`ShellCommandRequirement`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ShellCommandRequirement">`ShellCommandRequirement`</a>
 
 See the entry in `inputBinding`.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ResourceRequirement">`ResourceRequirement`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ResourceRequirement">`ResourceRequirement`</a>
 
 `ram{Min,Max}`: WDL’s `runtime.memory` with a `MiB` suffix.
 
@@ -164,25 +161,25 @@ See the entry in `inputBinding`.
 
 `{tmp,out}dir{Min,Max}`: can be mapped to Cromwell’s usage of `runtime.disks` as `local-disk` though the values will need to be converted from MiB to GiB.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#WorkReuse">`WorkReuse`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#WorkReuse">`WorkReuse`</a>
 
 Signal to allow cached results; no WDL v1.0 equivalent. Can be mapped to <a href="dx_ignore_reuse">dxWDL’s `runtime.dx_ignore_reuse`</a> with the logic flipped.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#NetworkAccess">`NetworkAccess`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#NetworkAccess">`NetworkAccess`</a>
 
 No WDL v1.0 equivalent. Can be mapped to <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#runtime-hints">dxWDL’s `runtime.dx_access`</a> as `{"network": “*”}`.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InplaceUpdateRequirement">InplaceUpdateRequirement</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InplaceUpdateRequirement">InplaceUpdateRequirement</a>
 
 No WDL equivalent. Means that files are allowed to be modified in place if marked with `writable: true` via `InitialWorkDirRequirement`; therefore they cannot be mounted read-only nor can they be streamed.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ToolTimeLimit">`ToolTimeLimit`</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ToolTimeLimit">`ToolTimeLimit`</a>
 
 No WDL v1.0 equivalent. Can be mapped to <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#runtime-hints">dxWDL’s runtime.dx_timeout</a> as `{"minutes": value/60}`.
 
-# CWL <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Workflow">`Workflow`</a>
+### CWL [`Workflow`](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Workflow)
 
--> <a href="https://github.com/openwdl/wdl/blob/9049a884b56aebb84bce5b9a164e84584cc573ac/versions/1.0/SPEC.md#workflow-definition">WDL `workflow`</a>
+Maps to a WDL `workflow`.
 
 `class`: always `Workflow`, not needed for WDL.
 
@@ -194,7 +191,7 @@ No WDL v1.0 equivalent. Can be mapped to <a href="https://github.com/dnanexus/dx
 
 `hints`: like `requirements` but not required. If a step, sub-`Workflow`, or `CommandLineTool`/`ExpressionTool` has the same class of requirement then the class listed in the workflow `hints` is ignored in that context; otherwise the hint flows down to all sub-`Process`es (unless it isn’t applicable to that type of `Process`).
 
-## <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStep">CWL Workflow `steps`</a>
+#### <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStep">CWL Workflow `steps`</a>
 
 The `steps` field of a CWL `Workflow`, a list of references to other CWL `CommandLineTool`s, sub-`Workflow`s, and `ExpressionTool`s to be run; where their inputs come from; if they are scattered; and if they are run only conditionally.
 
@@ -231,7 +228,7 @@ where `non_scattered_inputs_spec` is replaced with the regular variable mappings
 
 `label` / `doc`: while there is some place for this in WDL task meta data, WDL doesn’t have a place for step level metadata, though this could be added as `Workflow.meta.step_id.{label,description}` as non-standardized metadata.
 
-### <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStepInput">CWL `Workflow` Step input mapping</a>
+##### <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStepInput">CWL `Workflow` Step input mapping</a>
 
 The `in` field of CWL `Workflow.steps.id`: maps the inputs of the CWL Process in the `run` field to both CWL `Workflow` level inputs and the outputs of other CWL steps.
 
