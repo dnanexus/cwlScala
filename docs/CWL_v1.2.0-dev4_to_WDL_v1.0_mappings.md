@@ -30,16 +30,10 @@ This document maps the concepts from the draft CWL standards v1.2.0-dev4 to the 
 | `string` | `String` | |
 | `File` | `File` | There is no direct analogue in WDL for most of the CWL `File` properties: `dirname`, `nameroot`, `nameext`, `checksum`, `secondaryFiles`, `format`, or `contents`. * CWL `File.basename` property -> WDL `basename(File)` function. * CWL’s `File.size` property -> WDL `size(File)` function. |
 | `Directory` | NA* | * The `Directory` type is added in WDL 2.0 |
-
-<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputArraySchema">`CommandInputArraySchema`</a> -> WDL `Array`, though CWL arrays can have multiple item types and it appears that WDL arrays cannot. The CWL parameter reference `$(array.length)` is equivalent to WDL the `length(array)` function call.
-
-The `inputBinding` for a CWL array can be rewritten as part of the command line rendering, but it must not be lost.
-
-<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputEnumSchema">CommandInputEnumSchema</a> does not have a WDL analogue, but could be reduced to a WDL `String` if you want to throw away the value constraint and GUI hint. For dxWDL the choice constraint can be represented by <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#parameter_meta-section">`parameter_meta.choices`</a>.
-
-<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputRecordSchema">CommandInputRecordSchema</a> -> <a href="https://github.com/openwdl/wdl/blob/9049a884b56aebb84bce5b9a164e84584cc573ac/versions/1.0/SPEC.md#struct-definition">WDL Struct</a>
-
-"`?`" type postfix: WDL "`?`" type postfix.
+| [`CommandInputArraySchema`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputArraySchema) | WDL `Array` | CWL arrays can have multiple item types, but WDL arrays cannot. * The CWL parameter reference `$(array.length)` is equivalent to WDL the `length(array)` function call. * The `inputBinding` for a CWL array can be rewritten as part of the command line rendering, but it must not be lost. |
+| [`CommandInputEnumSchema`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputEnumSchema) | NA | Could be reduced to a WDL `String` by throwing away the value constraint and GUI hint. Could also be represented using a WDL `Struct`. * For dxWDL the choice constraint can be represented by [`parameter_meta.choices`](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#parameter_meta-section). |
+| [`CommandInputRecordSchema`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputRecordSchema) | WDL Struct | |
+| `?` type postfix | `?` type postfix | |
 
 # Document metadata
 
