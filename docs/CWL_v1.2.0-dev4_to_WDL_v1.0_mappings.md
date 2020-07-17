@@ -59,8 +59,8 @@ Maps to a WDL Task.
 | CWL | WDL | Notes |
 |-----|-----|-------|
 | `class` | NA | always "CommandLineTool" |
-| `hints` | ? | (@mr-c I think there's something missing here) |
-| `requirements` | | [See below](#CommandLineTool_requirements) |
+| `requirements` | Some map to WDL runtime keys, some don't apply to WDL, others don't have direct mapping | [See below](#CommandLineTool_requirements) |
+| `hints` | " | Same as `requirements`, but the tool can still run if these aren't satisfied |
 | `baseCommand` | The `command {}` section (along with `arguments`) | Note that a CWL tool represents a call to a single executable, where as WDL can have any number of commands in the `command {}` block; i.e. for a command block longer than a single statement, you'd have to put it into a bash script within the Docker image to call it from CWL. |
 | `arguments` | see above | An array of entries to be added to the WDL `command` section. Be careful - the result of `inputBinding`s from the inputs section may insert themselves into this list. See the `inputBinding` section below for more details. |
 | `stdin` | Done in `command {}` block e.g. using `cat` or a redirect |The path of a file to pipe into the tool being described. If not using cwltool for execution then `stdin`’ could be represented in the WDL command section by adding `< ` and the value of this field to the end of the main command block. |
@@ -85,7 +85,7 @@ Maps to WDL task [`input {}`](https://github.com/openwdl/wdl/blob/main/versions/
 | `default` | An input paramter can be assigned a default value. The `default` expression placeholder options can be used, but is deprecated and removed in WDL 2.0. | |
 | `secondaryFiles` | NA | A [secondary file](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SecondaryFileSchema) is a file that accompanies a main file (e.g. a .bai index file that accompanies a BAM) and is not referenced explicitly in the command line. The WDL spec [mandates](https://github.com/openwdl/wdl/blob/main/versions/development/SPEC.md#task-input-localization) that "two input files which originated in the same storage directory must also be localized into the same directory for task execution". Therefore, the secondary file has to be provided as an input and it will "just work". Structs can also be used to put main and secondary files in the same logical container. |
 
-##### [`inputBinding`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter)
+#### [`inputBinding`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandInputParameter)
 
 (a.k.a [CommandLineBinding](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandLineBinding); not relevant if using cwltool or other CWL aware code to render the command line).
 
@@ -102,73 +102,33 @@ This section describes how to determine the value of an argument and where to pl
 
 Maps to a WDL task [`output {}`](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#outputs-section) section. Nothing new here vs [input](#input).
 
-##### `ComandLineTool.outputs.id.`<a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputBinding">`outputBinding`</a>
+#### [`outputBinding`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#CommandOutputBinding)
 
-`outputBinding.glob`: WDL `glob()` ; note that CWL does not require that `bash` be a part of the Docker format software container. In CWL, `glob` is defined as "using POSIX glob(3) pathname matching", so this may require changes to your execution scripts if not using cwltool or other CWL aware code.
-
-`outputBinding.{outputEval,loadListing,loadContest}`: no direct WDL analogues. It may be possible to match some CWL Expressions to WDL’s `read_int()`, `read_lines()`, `read_float()`, `read_boolean()`. No implementation needed if using cwltool.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `glob` | `glob()` | CWL does not require that `bash` be a part of the Docker format software container. In CWL, `glob` is defined as "using POSIX glob(3) pathname matching", so this may require changes to your execution scripts if not using cwltool or other CWL aware code. |
+| `loadContents` | `read_string` | |
+| `loadListing` | NA | WDL should add a function for this |
+| `outputEval` | WDL expression | It may be possible to match some CWL Expressions to WDL’s `read_int()`, `read_lines()`, `read_float()`, `read_boolean()`. No implementation needed if using cwltool. |
 
 In this `outputs` section only, two more CWL types are allowed (as a shortcut). `stdout` corresponding to WDL’s `stdout()` function. And likewise for `stderr` and WDL’s `stderr()` function. If the stdout/stdin names have been set in the CommandLineTool definition then the resulting CWL File objects will inherit those values as the `basename`. Otherwise the `basename` is random.
 
-#### `CommandLineTool.requirements`
+#### `requirements`
 
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InlineJavascriptRequirement">`InlineJavascriptRequirement`</a> 
-
-required for CWL Expressions (but not required for CWL Parameter References). No WDL analogue.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SchemaDefRequirement">`SchemaDefRequirement`</a>
-
-defines custom named array, enum, or record types; see the above section on CWL to WDL type mapping.
-
-##/J### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#DockerRequirement">`DockerRequirement`</a>
-
-`dockerPull` or `dockerImageId`: WDL’s `runtime.docker`.
-
-The remaining elements (`dockerLoad`, `dockerFile`, `dockerImport`, `dockerOutputDirectory`) do not have WDL analogues. In a dxWDL context, the image referenced by `dockerLoad`/`dockerImport` could be uploaded to DNAnexus and <a href="https://github.com/dnanexus/dxWDL/blob/41f7ee24961fdd782a519f3459d06c7780376f3b/doc/ExpertOptions.md#storing-a-docker-image-as-a-file">referenced via a dx:// URI</a>. 
-
-Likewise a `dockerFile` could be built and also uploaded. 
-
-If cwltool is not used then `dockerOutputDirectory` can be realized by ensuring that the specified directory is mounted from a writable path outside the container that has as much space available as required by `ResourceRequirements.outdirMin`.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SoftwareRequirement">`SoftwareRequirement`</a>
-
-Can be turned into a WDL `runtime.docker` by using http://biocontainers.pro or http://bio.tools to do a lookup. Almost always accompanied by a `DockerRequirement`, so it can be ignored. However it can be used to generate <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section">dxWDL style entries</a> in `meta.details.citations`
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InitialWorkDirRequirement">`InitialWorkDirRequirement`</a>
-
-Specifies how the working directory is to be populated. Possibly synthesizes files on its own or via values from the `inputs` section. No WDL analogue, and may not be needed if using cwltool or another CWL aware codebase.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#EnvVarRequirement">`EnvVarRequirement`</a>
-
-No equivalent in WDL v1.0 to specify custom environment variables. If cwltool is not used, then this can be implemented by adding `export ${envName}=${envValue}` to the beginning of the WDL `command` section.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ShellCommandRequirement">`ShellCommandRequirement`</a>
-
-See the entry in `inputBinding`.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ResourceRequirement">`ResourceRequirement`</a>
-
-`ram{Min,Max}`: WDL’s `runtime.memory` with a `MiB` suffix.
-
-`cores{Min,Max}` and `{tmp,out}dir{Min,Max}`: no WDL v1.0 equivalent. `cores{Min,Max}` can be mapped to Cromwell’s usage of `runtime.cpu`.
-
-`{tmp,out}dir{Min,Max}`: can be mapped to Cromwell’s usage of `runtime.disks` as `local-disk` though the values will need to be converted from MiB to GiB.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#WorkReuse">`WorkReuse`</a>
-
-Signal to allow cached results; no WDL v1.0 equivalent. Can be mapped to <a href="dx_ignore_reuse">dxWDL’s `runtime.dx_ignore_reuse`</a> with the logic flipped.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#NetworkAccess">`NetworkAccess`</a>
-
-No WDL v1.0 equivalent. Can be mapped to <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#runtime-hints">dxWDL’s `runtime.dx_access`</a> as `{"network": “*”}`.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InplaceUpdateRequirement">InplaceUpdateRequirement</a>
-
-No WDL equivalent. Means that files are allowed to be modified in place if marked with `writable: true` via `InitialWorkDirRequirement`; therefore they cannot be mounted read-only nor can they be streamed.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ToolTimeLimit">`ToolTimeLimit`</a>
-
-No WDL v1.0 equivalent. Can be mapped to <a href="https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#runtime-hints">dxWDL’s runtime.dx_timeout</a> as `{"minutes": value/60}`.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| [`InlineJavascriptRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InlineJavascriptRequirement) | NA | Required for CWL Expressions (but not required for CWL Parameter References). |
+| [`SchemaDefRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SchemaDefRequirement) | It should be possible to map (most) CWL schemas to WDL structs |: Defines custom named array, enum, or record types; see the above section on CWL to WDL type mapping. |
+| [`DockerRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#DockerRequirement) | `runtime.docker` | `dockerPull` or `dockerImageId`; dxWDL also supports `dockerLoad`+`dockerFile` using dx:// URLs. WDL does not specify how inputs and outputs are staged, so `dockerOutputDirectory` has no equivalent. If cwltool is not used then `dockerOutputDirectory` can be realized by ensuring that the specified directory is mounted from a writable path outside the container that has as much space available as required by `ResourceRequirements.outdirMin`. |
+| [`SoftwareRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#SoftwareRequirement) | NA | Can be turned into a WDL `runtime.docker` by using http://biocontainers.pro or http://bio.tools to do a lookup. Almost always accompanied by a `DockerRequirement` (and dxWDL will mandate a `DockerRequirement`), so it can be ignored; however, it can be used to generate [dxWDL style entries](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section) in `meta.details.citations`.  |
+| [`InitialWorkDirRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InitialWorkDirRequirement) | Most of these requriements can be re-written as commands in the `command {}` section, and/or using `write_*` functions. `File` and `Directory` requirements can be re-written as WDL inputs with default values. | Specifies how the working directory is to be populated. Possibly synthesizes files on its own or via values from the `inputs` section. May not be needed if using cwltool or another CWL aware codebase. |
+| [`EnvVarRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#EnvVarRequirement) | NA | If cwltool is not used, then this can be implemented by adding `export ${envName}=${envValue}` to the beginning of the WDL `command` section. |
+| [`ShellCommandRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ShellCommandRequirement) | | See the entry in `inputBinding`. |
+| [`ResourceRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ResourceRequirement) | `ramMin` -> `runtime.memory` with a `MiB` suffix; `coresMin` -> `cpu`; `{tmp,out}dir{Min,Max}` -> `runtime.disks` as `local-disk`, though the values will need to be converted from MiB to GiB (the latter two are conventions in WDL 1.0 and specifications in 2.0) | Generally, WDL `runtime` requirements are minimums that must be satisfied by the runtime environment. In 2.0, WDL `hints` can also provide max values for some resources (e.g. `maxCpu`, `maxMemory`). |
+| [`WorkReuse`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#WorkReuse) | NA | Signal to allow cached results; no WDL equivalent, but can be mapped to dxWDL’s `runtime.dx_ignore_reuse` with the logic flipped. |
+| [`NetworkAccess`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#NetworkAccess) | NA | Can be mapped to [dxWDL’s `runtime.dx_access`](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#runtime-hints) as `{"network": “*”}`. |
+| [`InplaceUpdateRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InplaceUpdateRequirement) | NA | Means that files are allowed to be modified in place if marked with `writable: true` via `InitialWorkDirRequirement`; therefore they cannot be mounted read-only nor can they be streamed. WDL does not specify whether input files/directories are writable; the convention is that they should be read-only and copied if they need to be modified. |
+| [`ToolTimeLimit`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ToolTimeLimit) | NA | Can be mapped to [dxWDL’s `runtime.dx_timeout`](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#runtime-hints) as `{"minutes": value/60}`. |
 
 ### CWL [`Workflow`](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Workflow)
 
