@@ -130,64 +130,53 @@ In this `outputs` section only, two more CWL types are allowed (as a shortcut). 
 | [`InplaceUpdateRequirement`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#InplaceUpdateRequirement) | NA | Means that files are allowed to be modified in place if marked with `writable: true` via `InitialWorkDirRequirement`; therefore they cannot be mounted read-only nor can they be streamed. WDL does not specify whether input files/directories are writable; the convention is that they should be read-only and copied if they need to be modified. |
 | [`ToolTimeLimit`](https://www.commonwl.org/v1.2.0-dev4/CommandLineTool.html#ToolTimeLimit) | NA | Can be mapped to [dxWDL’s `runtime.dx_timeout`](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#runtime-hints) as `{"minutes": value/60}`. |
 
-### CWL [`Workflow`](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Workflow)
+### [`Workflow`](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Workflow)
 
 Maps to a WDL `workflow`.
 
-`class`: always `Workflow`, not needed for WDL.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `class` | NA | always `Workflow` |
+| `inputs` | `input {}` | Same as `CommandLineTool.inputs`, except that there is no `inputBinding`. |
+| `outputs` | `output {}` | Same as `CommandLineTool.outputs`, except there is no `outputBinding`. Additionally, there are `outputSource` -> WDL’s output expression where the slash between the CWL step name and the step output is replaced with a period; `linkMerge` merges multiple outputs into an array -> WDL array possibly with `flatten()` function; and `pickValue` (see the discussion in `WorkflowStep.in`). |
+| `requirements` | See [requirements](#requirements) | List of additional requirements for this workflow; flows down to the `CommandLineTool`s and `ExpressionTool`s within, unless there is an intervening requirement at the step level, or the `CommandLineTool`/`ExpressionTool` has the same class of requirement already. |
+| `hints` | Same as task hints | If a step, sub-`Workflow`, or `CommandLineTool`/`ExpressionTool` has the same class of requirement then the class listed in the workflow `hints` is ignored in that context; otherwise the hint flows down to all sub-`Process`es (unless it isn’t applicable to that type of `Process`). |
 
-`inputs`: See `CommandLineTool.inputs` above, except that there is no `inputBinding`.
+#### Workflow `requirements`
 
-`outputs`: See `CommandLineTool.outputs` above, except there is no `outputBinding` but there is `outputSource`, `linkMerge`, and `pickValue`. `outputSource` -> WDL’s output expression where the slash between the CWL step name and the step output is replaced with a period. For `linkMerge` and `pickValue` see the discussion in `WorkflowStep.in`.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `ScatterFeatureRequriement` | implicit | `zip()` and `cross()` functions can be used to satisfy most of the CWL multi-input cases. |
+| `SubworkflowFeatureRequirement` | implicit | WDL subworkflows are called the same as tasks, by importing them. |
+| `MultipleInputFeatureRequirement` | implicit/NA | Enables merging of workflow/step inputs. |
+| `StepInputExpressionRequirement` | implicit | Enables expressions to be used to define step inputs. |
 
-<a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Requirements_and_hints">`requirements`</a>: list of additional requirements for this workflow, and it flows down to the `CommandLineTool`s and `ExpressionTool`s within, unless there is an intervening requirement at the step level, or the `CommandLineTool`/`ExpressionTool` has the same class of requirement already.
-
-`hints`: like `requirements` but not required. If a step, sub-`Workflow`, or `CommandLineTool`/`ExpressionTool` has the same class of requirement then the class listed in the workflow `hints` is ignored in that context; otherwise the hint flows down to all sub-`Process`es (unless it isn’t applicable to that type of `Process`).
-
-#### <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStep">CWL Workflow `steps`</a>
+#### Workflow [`steps`](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStep)
 
 The `steps` field of a CWL `Workflow`, a list of references to other CWL `CommandLineTool`s, sub-`Workflow`s, and `ExpressionTool`s to be run; where their inputs come from; if they are scattered; and if they are run only conditionally.
 
-`run`: either includes the CWL Process as the value or a URI to it. That URI could be a relative path to the CWL description to include, or a remote HTTP(s) URI to fetch.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `run` | the task/subworkflow name | The CWL Process, either as the value or a URI to it. That URI could be a relative path to the CWL description to include, or a remote HTTP(s) URI to fetch. A WDL workflow can reference an external task via imports. |
+| `id` | the call name (which is either the task name or the alias) | |
+| `requirements`, `hints` | NA | Additional requirements/hints can be added at the step level; WDL does not support this. If the Process already has the same type of requirements under "hints" it will be replaced with this one. 
+| `when` | WDL `if result_of_when_expression then call cwl_workflow_step_id` | Note: the CWL Expression can include references to any of the inputs defined in the `in` section as `$(inputs.id)`. |
+| `label`, `doc` | | While there is some place for this in WDL task meta data, WDL doesn’t have a place for step level metadata, though this could be added as `Workflow.meta.step_id.{label,description}` as non-standardized metadata. |
+| `in` | call inputs | See details below. |
+| `out` | All of a tasks outputs are exposed to the caller and can be referenced using dot notation | A list of output specified in the underlying Process from the `run` field to make available to other steps. Can be used as an engine optimization; if an output isn’t listed here it can be discarded (or only made available on demand by the user later). | 
 
-`id`: the `task_identifier` from WDL’s `call task_name as task_identifier`.
+##### Workflow step [input mapping](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStepInput)
 
-<a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#Requirements_and_hints">`requirements`</a>: list of additional requirements for the underlying CWL Process. If the Process already has the same type of requirements under "hints" it will be replaced with this one.
+The `in` field of CWL `Workflow.steps.id` maps the inputs of the CWL Process in the `run` field to both CWL `Workflow` level inputs and the outputs of other CWL steps.
 
-`when`: WDL `if result_of_when_expression then call cwl_workflow_step_id`. Note: the CWL Expression can include references to any of the inputs defined in the `in` section as `$(inputs.id)`.
-
-`scatter`: here is some pseudo WDL code
-
-```wdl
-
-scatter(cwl_scatter_list[0] as scatter0, .. cwl_scatter_list(N) as scatterN) {
-
-  call step_id { input: non_scattered_inputs_spec, cwl_scatter_list[0] = scatter0, .. 
-
-                         cwl_scatter_list[N] = scatterN}
-}
-
-```
-
-where `non_scattered_inputs_spec` is replaced with the regular variable mappings that don’t involve scattering.
-
-<a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStep">`scatterMethod`</a>, for `dotProduct`, see the plain scatter example above
-
-`scatterMethod` = `nested_crossproduct` then produce cartesian cross products with no flattening. I’m not sure if WDL has this capability as zip only works with two arrays.
-
-`scatterMethod` = `flat_crossproduct` is the same as `nested_crossproduct` but then flattened.
-
-`out`: a list of output specified in the underlying Process from the `run` field to make available to other steps. Can be used as an engine optimization; if an output isn’t listed here it can be discarded (or only made available on demand by the user later).
-
-`label` / `doc`: while there is some place for this in WDL task meta data, WDL doesn’t have a place for step level metadata, though this could be added as `Workflow.meta.step_id.{label,description}` as non-standardized metadata.
-
-##### <a href="https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStepInput">CWL `Workflow` Step input mapping</a>
-
-The `in` field of CWL `Workflow.steps.id`: maps the inputs of the CWL Process in the `run` field to both CWL `Workflow` level inputs and the outputs of other CWL steps.
-
-`id`: the identifier we want to provide a value for. Almost always it is an identifier from the underlying Process from the `run` field, but sometimes it isn’t so we can bring a value into scope for other reasons.
-
-`source`: either a workflow level input id, or `step_id/output_id` -> WDL `task_identifier.output_id`.
+| CWL | WDL | Notes |
+|-----|-----|-------|
+| `source` | `callee_identifier.output_id` | Either a workflow level input id, or `step_id/output_id` |
+|`id` | same as above | The identifier we want to provide a value for. Almost always it is an identifier from the underlying Process from the `run` field, but sometimes it isn’t so we can bring a value into scope for other reasons. |
+| `default` | Use a `select_first()` expression. | The default value for this parameter to use if either there is no ‘source’ field, or the value produced by the ‘source’ is null. The default must be applied prior to scattering or evaluating ‘valueFrom’. |
+| `valueFrom` | A WDL expression | either a CWL expression to evaluate in the context specified in the standard, or a constant string. If a constant string, then it is equivalent to the WDL `String self = valueFrom_value`. |
+| `loadContents` | `read_string()` | Makes the first 64KiB of contents of the specified File object available to ‘valueFrom’. dxWDL imposes limitations on the file size, but this is implementation-specific. |
+| `linkMerge` and `pickValue` | | see below |
 
 A simple example:
 
@@ -227,22 +216,33 @@ workflow my_workflow {
 }
 ```
 
-`linkMerge`: if `merge_flattened` then equivalent to WDL `Array[type_of_destination] self = flatten([source])`. If `merge_nested` then equivalent to WDL `Array[type_of_destination] self = [ source[0], .. source[N])`.
+* `linkMerge`
+    * If `merge_flattened` then equivalent to WDL `Array[type_of_destination] self = flatten([source])`.
+    * If `merge_nested` then equivalent to WDL `Array[type_of_destination] self = [ source[0], .. source[N])`.
+* `pickValue`
+    * Evaluated
+        1. Once all source values from upstream step or parameters are available.
+        2. After linkMerge.
+        3. Before scatter or valueFrom.
+    * If `pickValue = first_non_null` then WDL `target_type self = select_first(self)`.
+    * If `pickValue = the_only_non_null` then WDL `target_type self = if length(select_all(self)) != 1 then null else select_first(self)` but really should fail instead of null.
+    * If `pickValue = all_non_null` then WDL `target_type self = select_all(self)`.
 
-`pickValue`: pickValue is evaluated
+#### `scatter`
 
-  1. Once all source values from upstream step or parameters are available.
-  2. After linkMerge.
-  3. Before scatter or valueFrom.
+```wdl
 
-If `pickValue = first_non_null` then WDL `target_type self = select_first(self)`.
+scatter(cwl_scatter_list[0] as scatter0, .. cwl_scatter_list(N) as scatterN) {
 
-If `pickValue = the_only_non_null` then WDL `target_type self = if length(select_all(self)) != 1 then null else select_first(self)` but really should fail instead of null.
+  call step_id { input: non_scattered_inputs_spec, cwl_scatter_list[0] = scatter0, .. 
 
-If `pickValue = all_non_null` then WDL `target_type self = select_all(self)`.
+                         cwl_scatter_list[N] = scatterN}
+}
 
-`default`: "The default value for this parameter to use if either there is no ‘source’ field, or the value produced by the ‘source’ is null. The default must be applied prior to scattering or evaluating ‘valueFrom’."
+```
 
-`valueFrom`: either a CWL expression to evaluate in the context specified in the standard, or a constant string. If a constant string, then it is equivalent to the WDL `String self = valueFrom_value`.
+where `non_scattered_inputs_spec` is replaced with the regular variable mappings that don’t involve scattering.
 
-`loadContents`: makes the first 64KiB of contents of the specified File object available to ‘valueFrom’. Similar to WDL `String self_contents = read_string(source)` if that could be safely limited to the first 64KiB.
+[`scatterMethod`](https://www.commonwl.org/v1.2.0-dev4/Workflow.html#WorkflowStep) for `dotProduct`, see the plain scatter example above:
+* `scatterMethod` = `nested_crossproduct` then produce cartesian cross products with no flattening. I’m not sure if WDL has this capability as zip only works with two arrays.
+* `scatterMethod` = `flat_crossproduct` is the same as `nested_crossproduct` but then flattened.
