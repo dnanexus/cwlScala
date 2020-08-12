@@ -35,6 +35,35 @@ This document maps the concepts from the CWL standards v1.2.0 to the OpenWDL v1.
 | [`CommandInputRecordSchema`](https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputRecordSchema) | WDL Struct | |
 | `?` type postfix | `?` type postfix | |
 
+## CWL Record to WDL Struct
+
+https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputRecordSchema & https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputRecordSchema
+
+CWL Record type declaration
+
+| CWL Record field name | WDL representation | Notes |
+|-----------------------|--------------------|-------|
+| `type`                | NA                 | Always `type: record` |
+| `fields`              | struct declarations | |
+| `label`               | Could go into `parameter_meta {}` | For [dxWDL](https://github.com/dnanexus/dxWDL/blob/master/doc/ExpertOptions.md#meta-section), would map to `parameter_meta.id.label`. | Note that a record type definition might be used for multiple inputs and/or outputs |
+| `doc`                 | Could go into `parameter_meta {}` | |
+| `name`                | the WDL `struct` name | Not all CWL records have a name, so generate a reproducible hash based name. The CWL type system does not have a global namespace, so you will need to rename CWL Records as they are converted to WDL; you could have multiple CWL records with the same name (but different structure) in the same CWL workflow DAG (as inputs or outputs of different steps).  |
+| `inputBinding`        | transformed into entries in the `command {}` block | The inputBinding for a CWL record can be rewritten as part of the command line rendering, but it must not be lost. Note that the `self` is the entire record object. |
+| `outputBinding`       | varies | Uncommon. see the [`outputBinding`](#outputbinding) section |
+
+CWL Record field declaration (from `fields` in the CWL Record type declaration)
+
+https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputRecordField & https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputRecordField
+
+| CWL Record Field field name | WDL representation | Notes |
+|-----------------------------|--------------------|-------|
+| `name`                      | the name of the WDL struct declaration | |
+| `type`                      | varies | see the [table](#cwl-to-wdl-type-mappings) |
+| `doc` and `label`           | none available     | WDL appears to lack a place to document the members of a WDL struct |
+| `secondaryFiles`, `streamable`, `format`, `loadContents`, `loadListing` | varies | See the guidance in the [inputs](#inputs) section |
+| `inputBinding`              | transformed into entries in the `command {}` block | The inputBinding for a CWL record can be rewritten as part of the command line rendering, but it must not be lost. Note that the `self` is this particular field of the CWL record object. |
+| `outputBinding`             | varies | Uncommon. See the [`outputBinding`](#outputbinding) section |
+
 ## Document metadata
 
 CWL documents allow unlimited metadata using user-referenced vocabularies. For generic metadata the schema.org ontology is recommended by the [CWL standards](https://www.commonwl.org/v1.2/Workflow.html#Extensions_and_metadata).
