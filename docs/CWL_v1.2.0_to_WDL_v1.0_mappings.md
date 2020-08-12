@@ -286,3 +286,7 @@ All CWL ExpressionTools can be transformed to regular CommandLineTools using the
 Likewise, almost all CWL expressions (`$( self / 42 )` or `${ return self / 42; }`) can be factored out as standalone CWL `ExpressionTool`s or `CommandLineTool`s using the same script linked above.
 
 Some things that look like CWL expression in the `$( ... )` form are actually [CWL Parameter References](https://www.commonwl.org/v1.2/Workflow.html#Parameter_references) and can be converted into WDL syntax without the need for a javascript interpreter. However, it is not wrong one still uses a full javascript interpreter, just likely slower.
+
+## [`Operation`](https://www.commonwl.org/v1.2/Workflow.html#Operation)
+
+Part of the new abstract CWL capability. Represents a CWL Process without providing its implementation; specifically not executable. Users still might accidently try to run workflows containing one or more steps that have an `Operation` instead of another `CommandLineTool`, (sub-)`Workflow`, or `ExpressionTool`; so please check for `class: Operation` early.
