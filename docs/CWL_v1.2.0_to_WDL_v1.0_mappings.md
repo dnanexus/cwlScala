@@ -275,3 +275,14 @@ where `non_scattered_inputs_spec` is replaced with the regular variable mappings
 [`scatterMethod`](https://www.commonwl.org/v1.2/Workflow.html#WorkflowStep) for `dotProduct`, see the plain scatter example above:
 * `scatterMethod` = `nested_crossproduct` then produce cartesian cross products with no flattening. I’m not sure if WDL has this capability as zip only works with two arrays.
 * `scatterMethod` = `flat_crossproduct` is the same as `nested_crossproduct` but then flattened.
+
+
+## [`ExpressionTool`](https://www.commonwl.org/v1.2/Workflow.html#ExpressionTool) and CWL Expressions
+
+`ExpressionTool` is a CWL process that is dedicated to manipulating the intermediate object graph using ECMAScript 5.1.
+
+All CWL ExpressionTools can be transformed to regular CommandLineTools using the script at https://github.com/common-workflow-language/cwl-utils/blob/main/cwl_utils/etools_to_clt.py
+
+Likewise, almost all CWL expressions (`$( self / 42 )` or `${ return self / 42; }`) can be factored out as standalone CWL `ExpressionTool`s or `CommandLineTool`s using the same script linked above.
+
+Some things that look like CWL expression in the `$( ... )` form are actually [CWL Parameter References](https://www.commonwl.org/v1.2/Workflow.html#Parameter_references) and can be converted into WDL syntax without the need for a javascript interpreter. However, it is not wrong one still uses a full javascript interpreter, just likely slower.
