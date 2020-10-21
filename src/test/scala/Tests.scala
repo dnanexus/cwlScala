@@ -1,16 +1,16 @@
-import java.nio.file.{Path, Paths}
+import java.nio.file.Paths
 
-import cwl.Parser
-import org.scalatest.flatspec.AnyFlatSpec
+import cwl.CommandLineTool
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class Tests extends AnyFlatSpec with Matchers {
-  def getCwlPath(name: String): Path = {
-    Paths.get(getClass.getResource(s"/${name}").getPath)
-  }
-
-  it should "parse a simple CWL file" in {
-    val tool = Parser.parseTool(getCwlPath("simple.cwl"))
-    tool.doc shouldBe Some("hello\nworld")
+class Tests extends AnyWordSpec with Matchers {
+  "parser" should {
+    val toolsPath = Paths.get(getClass.getResource(s"/tools/pass").getPath)
+    toolsPath.toFile.listFiles().toVector.foreach { toolPath =>
+      s"parse tool ${toolPath}" in {
+        CommandLineTool.parse(toolPath.toPath)
+      }
+    }
   }
 }
