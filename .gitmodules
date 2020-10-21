@@ -1,0 +1,3 @@
+[submodule "cwljava"]
+	path = cwljava
+	url = https://github.com/common-workflow-lab/cwljava
