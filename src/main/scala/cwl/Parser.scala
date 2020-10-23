@@ -428,7 +428,14 @@ object CwlExpr {
     * An expression that requires evaluation by a Javascript engine.
     * @param value the expression
     */
-  case class JavascriptExpr(value: String) extends CwlExpr
+  case class EcmaScriptExpr(value: String) extends CwlExpr
+
+  /**
+    * A code fragment that must be evaluated as the body of
+    * an anonymous, zero-argument Javascript function.
+    * @param value the code fragment
+    */
+  case class EcmaScriptFunctionBody(value: String) extends CwlExpr
 
   /**
     * A string that includes placeholders.
@@ -541,10 +548,12 @@ object CwlExpr {
         translatePathMap(m)
       case s: String =>
         val parts = s
-          .split("((?=\\$\\{.+}))")
+          .split("((?=\\$\\{.+})|(?=\\$\\(.+\\)))")
           .collect {
             case s if s.startsWith("${") && s.endsWith("}") =>
-              CwlExpr.JavascriptExpr(s.substring(2, s.length - 1))
+              CwlExpr.EcmaScriptExpr(s.substring(2, s.length - 1))
+            case s if s.startsWith("$(") && s.endsWith(")") =>
+              CwlExpr.EcmaScriptFunctionBody(s.substring(2, s.length - 1))
             case s => CwlExpr.StringValue(s)
           }
           .toVector
