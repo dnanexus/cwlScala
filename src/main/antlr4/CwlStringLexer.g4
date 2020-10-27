@@ -6,34 +6,41 @@ RBRACKET: ']';
 DOLLARPAREN: '$(' -> pushMode(ParenExpr);
 RPAREN: ')';
 DOLLARPARENESC: '\\$(';
+BACKSLASH: '\\';
 BACKSLASHESC: '\\\\';
 ANYCHAR: .;
+LBRACKETSINGLEQ: '[\'';
+LBRACKETDOUBLEQ: '["';
+SINGLEQRBRACKET: '\']';
+DOUBLEQRBRACKET: '"]';
 
 mode ParenExpr;
 
 ExprDot: DOT;
 ExprSymbol: CompleteSymbol;
-ExprSingleQ: '[\'' -> pushMode(SingleQString);
-ExprDoubleQ: '["' -> pushMode(DoubleQString);
-ExprIndex: '[' -> pushMode(Index);
+ExprSingleQ: LBRACKETSINGLEQ -> pushMode(SingleQString);
+ExprDoubleQ: LBRACKETDOUBLEQ -> pushMode(DoubleQString);
+ExprIntIndex: LBRACKET -> pushMode(IntIndex);
 EndParenExpr: RPAREN -> popMode;
 
 mode SingleQString;
 
-SingleQEscapedChar: '\\' . -> type(StringPart);
-EndSingleQ: '\']' -> popMode, type(ExprSingleQ);
-StringPart: ~[']+;
+StringIndexEscPart: BACKSLASH ANYCHAR;
+EndSingleQ: SINGLEQRBRACKET -> popMode, type(ExprSingleQ);
+StringIndexPart: ~[\\']+;
+LiteralBackslash: BACKSLASH -> type(StringIndexPart);
 
 mode DoubleQString;
 
-DoubleQEscapedChar: '\\' . -> type(StringPart);
-EndDoubleQ: '"]' ->  popMode, type(ExprDoubleQ);
-DoubleQStringPart: ~["]+ -> type(StringPart);
+DoubleQEscapedChar: BACKSLASH ANYCHAR -> type(StringIndexEscPart);
+EndDoubleQ: DOUBLEQRBRACKET ->  popMode, type(ExprDoubleQ);
+DoubleQStringIndexPart: ~[\\"]+ -> type(StringIndexPart);
+DoubleQLiteralBackslash: BACKSLASH -> type(StringIndexPart);
 
-mode Index;
+mode IntIndex;
 
-EndIndex: ']' -> popMode, type(ExprIndex);
-IndexPart: DecimalNumber;
+EndIndex: RBRACKET -> popMode, type(ExprIntIndex);
+IntIndexPart: DecimalNumber;
 
 fragment CompleteSymbol
 	: SymbolStart SymbolFollow*

@@ -1,4 +1,4 @@
-package cwl
+package dx.cwl
 
 import java.nio.file.Paths
 

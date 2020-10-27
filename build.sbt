@@ -88,35 +88,31 @@ val sprayVersion = "1.3.5"
 val scalacticVersion = "3.1.1"
 val scalatestVersion = "3.1.1"
 val yamlVersion = "1.24"
+val rhinoVersion = "1.7.13"
 val antlr4Version = "4.8"
 val junitVersion = "4.12"
 
 libraryDependencies ++= Seq(
     "com.typesafe" % "config" % typesafeVersion,
     "io.spray" %% "spray-json" % sprayVersion,
-    "org.antlr" % "antlr4" % antlr4Version,
     // cwljava dependencies
     "org.yaml" % "snakeyaml" % yamlVersion,
-    "junit" % "junit" % junitVersion,
+    // rhino dependencies
+    "org.mozilla" % "rhino" % rhinoVersion,
+    // antlr4 dependencies
+    "org.antlr" % "antlr4" % antlr4Version,
     //---------- Test libraries -------------------//
-    "org.scalactic" % "scalactic_2.13" % scalacticVersion,
-    "org.scalatest" % "scalatest_2.13" % scalatestVersion % "test"
+    "junit" % "junit" % junitVersion % Test,
+    "org.scalatest" % "scalatest_2.13" % scalatestVersion % Test
 )
 
 // Add Java sources
-Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src"
+Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java"
 
 // If an exception is thrown during tests, show the full
 // stack trace, by adding the "-oF" option to the list.
 //
 
-// exclude the native tests, they are slow.
-// to do this from the command line:
-// sbt testOnly -- -l native
-//
-// comment out this line in order to allow native
-// tests
-// Test / testOptions += Tests.Argument("-l", "native")
 Test / testOptions += Tests.Argument("-oF")
 
 Test / parallelExecution := false

@@ -1,8 +1,8 @@
-package cwl
+package dx.cwl
 
 import java.nio.file.Path
 
-import cwl.ParserUtils._
+import dx.cwl.ParserUtils._
 import org.w3id.cwl.cwl1_2.{
   CWLType,
   CWLVersion,

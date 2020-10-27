@@ -1,8 +1,8 @@
-package cwl
+package dx.cwl
 
 import java.nio.ByteBuffer
 
-import cwl.CwlValue.StringValue
+import dx.cwl.CwlValue.StringValue
 import org.antlr.v4.runtime.{CodePointBuffer, CodePointCharStream, CommonTokenStream}
 import org.commonwl.cwl.stringparser.v1_2.{
   CwlStringLexer,
@@ -40,15 +40,32 @@ case class ParameterReference(rootSymbol: Symbol, segments: Vector[ParameterRefe
     extends CwlExpr
 
 class CwlStringParserVisitorImpl extends CwlStringParserBaseVisitor[CwlExpr] {
+
+  private def visitStringIndexPart(ctx: CwlStringParser.String_index_partContext): String = {
+    if (ctx.StringIndexPart() != null) {
+      ctx.StringIndexPart().toString
+    } else if (ctx.StringIndexEscPart() != null) {
+      val escapedStr = ctx.StringIndexEscPart().toString
+      if (!escapedStr.startsWith("\\")) {
+        throw new Exception(s"invalid escaped string ${escapedStr}")
+      }
+      escapedStr.drop(1)
+    } else {
+      throw new Exception(s"unexpected string index part ${ctx}")
+    }
+  }
+
   private def visitSegment(
       ctx: CwlStringParser.Expr_segmentContext
   ): ParameterReferencePart = {
     if (ctx.expr_dot_symbol() != null) {
       Symbol(ctx.expr_dot_symbol().ExprSymbol().toString)
-    } else if (ctx.IndexPart() != null) {
-      IntIndex(ctx.IndexPart().toString.toInt)
-    } else if (ctx.StringPart() != null) {
-      StringIndex(ctx.StringPart().toString)
+    } else if (ctx.int_index() != null) {
+      IntIndex(ctx.int_index().IntIndexPart().toString.toInt)
+    } else if (ctx.string_index() != null) {
+      StringIndex(
+          ctx.string_index().string_index_part().asScala.map(visitStringIndexPart).mkString("")
+      )
     } else {
       throw new Exception("invalid expression segment")
     }
@@ -102,10 +119,10 @@ class CwlStringParserVisitorImpl extends CwlStringParserBaseVisitor[CwlExpr] {
     } else {
       parts
     }
-    if (hasExpr) {
-      CompoundString(allParts)
-    } else if (parts.size == 1) {
+    if (parts.size == 1) {
       allParts.head
+    } else if (hasExpr) {
+      CompoundString(allParts)
     } else {
       CwlValueExpr(StringValue(allParts.map(_.toString).mkString("")))
     }

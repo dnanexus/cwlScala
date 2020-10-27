@@ -1,4 +1,4 @@
-package cwl
+package dx.cwl
 
 import java.io.FileInputStream
 import java.nio.file.Paths
@@ -31,14 +31,15 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
         val outputBinding =
           testCase("outputBinding").asInstanceOf[java.util.Map[String, Any]].asScala
         val expr = getString(outputBinding("outputEval"))
-        Evaluator.default(expr) match {
-          case _: CompoundString     => ()
-          case _: ParameterReference => ()
+        val cwlExpr = Evaluator.default(expr) match {
+          case expr: CompoundString     => expr
+          case expr: ParameterReference => expr
           case other =>
             throw new Exception(
                 s"failed to correctly parse ${expr} - expected a CompoundString or ParameterReference, got ${other}"
             )
         }
+        println(cwlExpr)
       }
     }
   }

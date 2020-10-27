@@ -1,6 +1,6 @@
 # Scala CWL library
 
-cwlScala is a Scala wrapper around [cwljava v1.2](https://github.com/common-workflow-lab/cwljava/issues), the Java parser for the [Common Workflow Langauge](https://www.commonwl.org/).
+cwlScala is a Scala wrapper around [cwljava v1.2](https://github.com/common-workflow-lab/cwljava/issues), the Java parser for the [Common Workflow Langauge](https://www.commonwl.org/). Also included is an evaluation engine for CWL expressions (which are ECMAscript 5.1), which is based on the [rhinos](https://github.com/agemooij/rhinos) wrapper of the [Mozilla Rhino](https://github.com/mozilla/rhino) JavaScript engine.
 
 ## Requirements
 
