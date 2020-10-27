@@ -88,11 +88,13 @@ val sprayVersion = "1.3.5"
 val scalacticVersion = "3.1.1"
 val scalatestVersion = "3.1.1"
 val yamlVersion = "1.24"
+val antlr4Version = "4.8"
 val junitVersion = "4.12"
 
 libraryDependencies ++= Seq(
     "com.typesafe" % "config" % typesafeVersion,
     "io.spray" %% "spray-json" % sprayVersion,
+    "org.antlr" % "antlr4" % antlr4Version,
     // cwljava dependencies
     "org.yaml" % "snakeyaml" % yamlVersion,
     "junit" % "junit" % junitVersion,

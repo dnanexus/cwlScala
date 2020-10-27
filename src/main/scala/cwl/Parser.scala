@@ -40,9 +40,9 @@ import org.w3id.cwl.cwl1_2.{
   ToolTimeLimitImpl,
   WorkReuseImpl,
   WorkflowImpl,
+  stderr => CWLStderr,
   stdin => CWLStdin,
-  stdout => CWLStdout,
-  stderr => CWLStderr
+  stdout => CWLStdout
 }
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 
@@ -155,6 +155,8 @@ object CwlType {
   case object T_Directory extends CwlType
   case object T_Null extends CwlType
 
+  case class T_Optional(t: CwlType) extends CwlType
+
   sealed trait CwlSchemaType extends CwlType {
     val name: Option[String]
     val label: Option[String]
@@ -175,7 +177,7 @@ object CwlType {
                          types: Vector[CwlType],
                          inputBinding: Option[CommandInputBinding],
                          secondaryFiles: Vector[SecondaryFile],
-                         format: Vector[CwlExpr],
+                         format: Vector[CwlValue],
                          streamable: Option[Boolean],
                          loadContents: Option[Boolean],
                          loadListing: Option[LoadListing.LoadListing])
@@ -230,7 +232,7 @@ object CwlType {
           case other =>
             throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
         },
-        translateOptionalArray(field.getFormat).map(CwlExpr.apply),
+        translateOptionalArray(field.getFormat).map(CwlValue.apply),
         translateOptional(field.getStreamable).map(_.booleanValue()),
         translateOptional(field.getLoadContents).map(_.booleanValue()),
         translateOptional(field.getLoadListing).map(LoadListing.from)
@@ -303,7 +305,7 @@ object CwlType {
           case other =>
             throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
         },
-        translateOptionalArray(field.getFormat).map(CwlExpr.apply),
+        translateOptionalArray(field.getFormat).map(CwlValue.apply),
         translateOptional(field.getStreamable).map(_.booleanValue()),
         None,
         None
@@ -385,17 +387,17 @@ object CwlType {
   }
 }
 
-sealed trait CwlExpr
+sealed trait CwlValue
 
-object CwlExpr {
-  case object NullValue extends CwlExpr
-  case class StringValue(value: String) extends CwlExpr
-  case class BooleanValue(value: Boolean) extends CwlExpr
-  case class IntValue(value: Int) extends CwlExpr
-  case class LongValue(value: Long) extends CwlExpr
-  case class FloatValue(value: Float) extends CwlExpr
-  case class DoubleValue(value: Double) extends CwlExpr
-  sealed trait PathValue extends CwlExpr {
+object CwlValue {
+  case object NullValue extends CwlValue
+  case class StringValue(value: String) extends CwlValue
+  case class BooleanValue(value: Boolean) extends CwlValue
+  case class IntValue(value: Int) extends CwlValue
+  case class LongValue(value: Long) extends CwlValue
+  case class FloatValue(value: Float) extends CwlValue
+  case class DoubleValue(value: Double) extends CwlValue
+  sealed trait PathValue extends CwlValue {
     val location: Option[String]
     val path: Option[String]
     val basename: Option[String]
@@ -422,28 +424,7 @@ object CwlExpr {
     * Indicates that a random filename should be generated to store the
     * contents of stdout/stderr.
     */
-  case class RandomFile(stdfile: StdFile.StdFile) extends CwlExpr
-
-  /**
-    * An expression that requires evaluation by a Javascript engine.
-    * @param value the expression
-    */
-  case class EcmaScriptExpr(value: String) extends CwlExpr
-
-  /**
-    * A code fragment that must be evaluated as the body of
-    * an anonymous, zero-argument Javascript function.
-    * @param value the code fragment
-    */
-  case class EcmaScriptFunctionBody(value: String) extends CwlExpr
-
-  /**
-    * A string that includes placeholders.
-    * @param parts the parts of the string - alternating `StringValue` and `CwlExpr` objects.
-    * @example
-    * "my name is ${name}" -> CompoundString(StringValue("my name is "), JavascriptExpr("name"))
-    */
-  case class CompoundString(parts: Vector[CwlExpr]) extends CwlExpr
+  case class RandomFile(stdfile: StdFile.StdFile) extends CwlValue
 
   private def translatePathValue(expr: java.lang.Object): PathValue = {
     expr match {
@@ -542,36 +523,18 @@ object CwlExpr {
     )
   }
 
-  def apply(expr: java.lang.Object): CwlExpr = {
+  def apply(expr: java.lang.Object): CwlValue = {
     expr match {
-      case m: java.util.Map[_, _] =>
-        translatePathMap(m)
-      case s: String =>
-        val parts = s
-          .split("((?=\\$\\{.+})|(?=\\$\\(.+\\)))")
-          .collect {
-            case s if s.startsWith("${") && s.endsWith("}") =>
-              CwlExpr.EcmaScriptExpr(s.substring(2, s.length - 1))
-            case s if s.startsWith("$(") && s.endsWith(")") =>
-              CwlExpr.EcmaScriptFunctionBody(s.substring(2, s.length - 1))
-            case s => CwlExpr.StringValue(s)
-          }
-          .toVector
-        if (parts.size > 1) {
-          CompoundString(parts)
-        } else {
-          parts.head
-        }
-      case b: java.lang.Boolean =>
-        BooleanValue(b.booleanValue())
-      case i: java.lang.Integer =>
-        IntValue(i.toInt)
-      case l: java.lang.Long =>
-        LongValue(l.toLong)
-      case f: java.lang.Float =>
-        FloatValue(f.toFloat)
-      case d: java.lang.Double =>
-        DoubleValue(d.toDouble)
+      case m: java.util.Map[_, _]   => translatePathMap(m)
+      case s: String                => StringValue(s)
+      case b: java.lang.Boolean     => BooleanValue(b.booleanValue())
+      case i: java.lang.Integer     => IntValue(i.toInt)
+      case l: java.lang.Long        => LongValue(l.toLong)
+      case f: java.lang.Float       => FloatValue(f.toFloat)
+      case d: java.lang.Double      => DoubleValue(d.toDouble)
+      case file: FileImpl           => apply(file)
+      case directory: DirectoryImpl => apply(directory)
+      case bd: java.math.BigDecimal => DoubleValue(bd.doubleValue())
       case bi: java.math.BigInteger =>
         try {
           LongValue(bi.longValueExact())
@@ -579,42 +542,36 @@ object CwlExpr {
           case ex: ArithmeticException =>
             throw new RuntimeException(s"invalid long value ${bi.toString}", ex)
         }
-      case bd: java.math.BigDecimal =>
-        DoubleValue(bd.doubleValue())
-      case file: FileImpl =>
-        apply(file)
-      case directory: DirectoryImpl =>
-        apply(directory)
       case _ =>
         throw new RuntimeException(s"unexpected expression value ${expr}")
     }
   }
 }
 
-case class SecondaryFile(pattern: CwlExpr, required: CwlExpr)
+case class SecondaryFile(pattern: CwlValue, required: CwlValue)
 
 object SecondaryFile {
   def apply(secondaryFile: SecondaryFileSchemaImpl): SecondaryFile = {
-    SecondaryFile(CwlExpr(secondaryFile.getPattern), CwlExpr.apply(secondaryFile.getRequired))
+    SecondaryFile(CwlValue(secondaryFile.getPattern), CwlValue.apply(secondaryFile.getRequired))
   }
 }
 
-case class CommandInputBinding(position: Option[CwlExpr],
+case class CommandInputBinding(position: Option[CwlValue],
                                prefix: Option[String],
                                separate: Option[Boolean],
                                itemSeparator: Option[String],
                                shellQuote: Option[Boolean],
-                               valueFrom: Option[CwlExpr])
+                               valueFrom: Option[CwlValue])
 
 object CommandInputBinding {
   def apply(binding: CommandLineBindingImpl): CommandInputBinding = {
     CommandInputBinding(
-        translateOptionalObject(binding.getPosition).map(CwlExpr.apply),
+        translateOptionalObject(binding.getPosition).map(CwlValue.apply),
         translateOptional(binding.getPrefix),
         translateOptional(binding.getSeparate).map(_.booleanValue()),
         translateOptional(binding.getItemSeparator),
         translateOptional(binding.getShellQuote).map(_.booleanValue()),
-        translateOptionalObject(binding.getValueFrom).map(CwlExpr.apply)
+        translateOptionalObject(binding.getValueFrom).map(CwlValue.apply)
     )
   }
 }
@@ -623,10 +580,10 @@ case class CommandInputParameter(id: Option[String],
                                  label: Option[String],
                                  doc: Option[String],
                                  types: Vector[CwlType],
-                                 default: Option[CwlExpr],
+                                 default: Option[CwlValue],
                                  inputBinding: Option[CommandInputBinding],
                                  secondaryFiles: Vector[SecondaryFile],
-                                 format: Vector[CwlExpr],
+                                 format: Vector[CwlValue],
                                  streamable: Option[Boolean],
                                  loadContents: Option[Boolean],
                                  loadListing: Option[LoadListing.LoadListing])
@@ -642,7 +599,7 @@ object CommandInputParameter {
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
-        translateOptional(param.getDefault).map(CwlExpr.apply),
+        translateOptional(param.getDefault).map(CwlValue.apply),
         translateOptional(param.getInputBinding).map {
           case binding: CommandLineBindingImpl => CommandInputBinding(binding)
           case other =>
@@ -653,7 +610,7 @@ object CommandInputParameter {
           case other =>
             throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
         },
-        translateOptionalArray(param.getFormat).map(CwlExpr.apply),
+        translateOptionalArray(param.getFormat).map(CwlValue.apply),
         translateOptional(param.getStreamable).map(_.booleanValue()),
         translateOptional(param.getLoadContents).map(_.booleanValue()),
         translateOptional(param.getLoadListing).map(LoadListing.from)
@@ -662,16 +619,16 @@ object CommandInputParameter {
   }
 }
 
-case class CommandOutputBinding(glob: Vector[CwlExpr],
-                                outputEval: Option[CwlExpr],
+case class CommandOutputBinding(glob: Vector[CwlValue],
+                                outputEval: Option[CwlValue],
                                 loadContents: Option[Boolean],
                                 loadListing: Option[LoadListing.LoadListing])
 
 object CommandOutputBinding {
   def apply(binding: CommandOutputBindingImpl): CommandOutputBinding = {
     CommandOutputBinding(
-        translateOptionalArray(binding.getGlob).map(CwlExpr.apply),
-        translateOptional(binding.getOutputEval).map(CwlExpr.apply),
+        translateOptionalArray(binding.getGlob).map(CwlValue.apply),
+        translateOptional(binding.getOutputEval).map(CwlValue.apply),
         translateOptional(binding.getLoadContents).map(_.booleanValue()),
         translateOptional(binding.getLoadListing).map(LoadListing.from)
     )
@@ -684,7 +641,7 @@ case class CommandOutputParameter(id: Option[String],
                                   types: Vector[CwlType],
                                   outputBinding: Option[CommandOutputBinding],
                                   secondaryFiles: Vector[SecondaryFile],
-                                  format: Vector[CwlExpr],
+                                  format: Vector[CwlValue],
                                   streamable: Option[Boolean])
 
 object CommandOutputParameter {
@@ -699,7 +656,7 @@ object CommandOutputParameter {
       case Some(binding: CommandOutputBindingImpl) =>
         Some(CommandOutputBinding(binding))
       case None if stdfile.nonEmpty =>
-        Some(CommandOutputBinding(Vector(CwlExpr.RandomFile(stdfile.get)), None, None, None))
+        Some(CommandOutputBinding(Vector(CwlValue.RandomFile(stdfile.get)), None, None, None))
       case None =>
         None
       case other =>
@@ -721,7 +678,7 @@ object CommandOutputParameter {
           case other =>
             throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
         },
-        translateOptionalArray(param.getFormat).map(CwlExpr.apply),
+        translateOptionalArray(param.getFormat).map(CwlValue.apply),
         streamable
     )
     (outparam, stdfile)
@@ -809,19 +766,19 @@ object SoftwareRequirement {
   }
 }
 
-case class InitialWorkDirRequirement(listing: Vector[CwlExpr]) extends Requirement
+case class InitialWorkDirRequirement(listing: Vector[CwlValue]) extends Requirement
 
 object InitialWorkDirRequirement {
   def apply(req: InitialWorkDirRequirementImpl): InitialWorkDirRequirement = {
-    InitialWorkDirRequirement(translateArray(req.getListing).map(CwlExpr.apply))
+    InitialWorkDirRequirement(translateArray(req.getListing).map(CwlValue.apply))
   }
 }
 
-case class EnvironmentDefinition(name: String, value: CwlExpr)
+case class EnvironmentDefinition(name: String, value: CwlValue)
 
 object EnvironmentDefinition {
   def apply(env: EnvironmentDefImpl): EnvironmentDefinition = {
-    EnvironmentDefinition(env.getEnvName, CwlExpr(env.getEnvValue))
+    EnvironmentDefinition(env.getEnvName, CwlValue(env.getEnvValue))
   }
 }
 
@@ -840,44 +797,44 @@ object EnvVarRequirement {
 
 case object ShellCommandRequirement extends Requirement
 
-case class ResourceRequirement(coresMin: Option[CwlExpr],
-                               coresMax: Option[CwlExpr],
-                               ramMin: Option[CwlExpr],
-                               ramMax: Option[CwlExpr],
-                               tmpdirMin: Option[CwlExpr],
-                               tmpdirMax: Option[CwlExpr],
-                               outdirMin: Option[CwlExpr],
-                               outdirMax: Option[CwlExpr])
+case class ResourceRequirement(coresMin: Option[CwlValue],
+                               coresMax: Option[CwlValue],
+                               ramMin: Option[CwlValue],
+                               ramMax: Option[CwlValue],
+                               tmpdirMin: Option[CwlValue],
+                               tmpdirMax: Option[CwlValue],
+                               outdirMin: Option[CwlValue],
+                               outdirMax: Option[CwlValue])
     extends Requirement
 
 object ResourceRequirement {
   def apply(req: ResourceRequirementImpl): ResourceRequirement = {
     ResourceRequirement(
-        translateOptionalObject(req.getCoresMin).map(CwlExpr.apply),
-        translateOptionalObject(req.getCoresMax).map(CwlExpr.apply),
-        translateOptionalObject(req.getRamMin).map(CwlExpr.apply),
-        translateOptionalObject(req.getRamMax).map(CwlExpr.apply),
-        translateOptionalObject(req.getTmpdirMin).map(CwlExpr.apply),
-        translateOptionalObject(req.getTmpdirMax).map(CwlExpr.apply),
-        translateOptionalObject(req.getOutdirMin).map(CwlExpr.apply),
-        translateOptionalObject(req.getOutdirMax).map(CwlExpr.apply)
+        translateOptionalObject(req.getCoresMin).map(CwlValue.apply),
+        translateOptionalObject(req.getCoresMax).map(CwlValue.apply),
+        translateOptionalObject(req.getRamMin).map(CwlValue.apply),
+        translateOptionalObject(req.getRamMax).map(CwlValue.apply),
+        translateOptionalObject(req.getTmpdirMin).map(CwlValue.apply),
+        translateOptionalObject(req.getTmpdirMax).map(CwlValue.apply),
+        translateOptionalObject(req.getOutdirMin).map(CwlValue.apply),
+        translateOptionalObject(req.getOutdirMax).map(CwlValue.apply)
     )
   }
 }
 
-case class WorkReuseRequirement(enable: CwlExpr) extends Requirement
+case class WorkReuseRequirement(enable: CwlValue) extends Requirement
 
 object WorkReuseRequirement {
   def apply(req: WorkReuseImpl): WorkReuseRequirement = {
-    WorkReuseRequirement(CwlExpr.apply(req.getEnableReuse))
+    WorkReuseRequirement(CwlValue.apply(req.getEnableReuse))
   }
 }
 
-case class NetworkAccessRequirement(allow: CwlExpr) extends Requirement
+case class NetworkAccessRequirement(allow: CwlValue) extends Requirement
 
 object NetworkAccessRequirement {
   def apply(req: NetworkAccessImpl): NetworkAccessRequirement = {
-    NetworkAccessRequirement(CwlExpr.apply(req.getNetworkAccess))
+    NetworkAccessRequirement(CwlValue.apply(req.getNetworkAccess))
   }
 }
 
@@ -889,16 +846,16 @@ object InplaceUpdateRequirement {
   }
 }
 
-case class ToolTimeLimitRequirement(timeLimit: CwlExpr) extends Requirement
+case class ToolTimeLimitRequirement(timeLimit: CwlValue) extends Requirement
 
 object ToolTimeLimitRequirement {
   def apply(req: ToolTimeLimitImpl): ToolTimeLimitRequirement = {
-    ToolTimeLimitRequirement(CwlExpr.apply(req.getTimelimit))
+    ToolTimeLimitRequirement(CwlValue.apply(req.getTimelimit))
   }
 }
 
 sealed trait Argument
-case class ExprArgument(expr: CwlExpr) extends Argument
+case class ExprArgument(expr: CwlValue) extends Argument
 case class BindingArgument(binding: CommandInputBinding) extends Argument
 
 object Requirement {
@@ -937,9 +894,9 @@ case class CommandLineTool(source: Option[String],
                            outputs: Vector[CommandOutputParameter],
                            baseCommand: Vector[String],
                            arguments: Vector[Argument],
-                           stdin: Option[CwlExpr],
-                           stdout: Option[CwlExpr],
-                           stderr: Option[CwlExpr],
+                           stdin: Option[CwlValue],
+                           stdout: Option[CwlValue],
+                           stderr: Option[CwlValue],
                            requirements: Vector[Requirement],
                            hints: Vector[Requirement],
                            successCodes: Set[Int],
@@ -978,7 +935,7 @@ object CommandLineTool {
       throw new RuntimeException("more than one parameter specified 'stdin'")
     }
     val paramStdin: Option[CommandInputParameter] = stdinIndexes.headOption.map(inputParams(_))
-    val toolStdin: Option[CwlExpr] = translateOptionalObject(tool.getStdin).map(CwlExpr.apply)
+    val toolStdin: Option[CwlValue] = translateOptionalObject(tool.getStdin).map(CwlValue.apply)
     if (paramStdin.isDefined && toolStdin.isDefined) {
       throw new RuntimeException(
           s"'stdin' specified at both the tool level and by parameter ${paramStdin.get}"
@@ -986,7 +943,7 @@ object CommandLineTool {
     }
     val stdin = paramStdin
       .map { param =>
-        CwlExpr(s"$${inputs.${param.id}.path}")
+        CwlValue(s"$${inputs.${param.id}.path}")
       }
       .orElse(toolStdin)
 
@@ -999,22 +956,22 @@ object CommandLineTool {
       .toVector
       .unzip
 
-    val stdout: Option[CwlExpr] =
-      translateOptionalObject(tool.getStdout).map(CwlExpr.apply) match {
+    val stdout: Option[CwlValue] =
+      translateOptionalObject(tool.getStdout).map(CwlValue.apply) match {
         case None if stdfile.contains(Some(StdFile.Stdout)) =>
-          Some(CwlExpr.RandomFile(StdFile.Stdout))
+          Some(CwlValue.RandomFile(StdFile.Stdout))
         case other => other
       }
-    val stderr: Option[CwlExpr] =
-      translateOptionalObject(tool.getStderr).map(CwlExpr.apply) match {
+    val stderr: Option[CwlValue] =
+      translateOptionalObject(tool.getStderr).map(CwlValue.apply) match {
         case None if stdfile.contains(Some(StdFile.Stderr)) =>
-          Some(CwlExpr.RandomFile(StdFile.Stderr))
+          Some(CwlValue.RandomFile(StdFile.Stderr))
         case other => other
       }
 
     val arguments = translateOptionalArray(tool.getArguments).map {
       case binding: CommandLineBindingImpl => BindingArgument(CommandInputBinding(binding))
-      case expr                            => ExprArgument(CwlExpr.apply(expr))
+      case expr                            => ExprArgument(CwlValue.apply(expr))
     }
 
     CommandLineTool(
