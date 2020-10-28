@@ -4,6 +4,7 @@ import java.io._
 import java.nio.file.Path
 
 import org.mozilla.javascript.ScriptableObject
+import org.mozilla.javascript.json.{JsonParser => RhinoJsonParser}
 import spray.json._
 
 import scala.language.{implicitConversions, reflectiveCalls}
@@ -14,11 +15,37 @@ case class Scope(wrapped: ScriptableObject) {}
 
 object Scope {
   implicit def objToScope(scope: ScriptableObject): Scope = Scope(scope)
-  implicit def scopeToObj(rhinosScope: Scope): ScriptableObject = rhinosScope.wrapped
+  implicit def scopeToObj(scope: Scope): ScriptableObject = scope.wrapped
+
+  lazy val standard: Scope = {
+    withContext[Scope](_.initStandardObjects()).get
+  }
+
+  def create(jsValues: Map[String, JsValue] = Map.empty): Scope = {
+    withContext[Scope] { ctx =>
+      val newScope = ctx.newObject(standard.wrapped)
+      newScope.setPrototype(standard.wrapped)
+      newScope.setParentScope(null)
+      if (jsValues.nonEmpty) {
+        val parser = new RhinoJsonParser(ctx, newScope)
+        jsValues.foreach {
+          case (name, jsValue) =>
+            newScope.put(name, newScope, parser.parseValue(jsValue.prettyPrint))
+        }
+      }
+      Scope(newScope.asInstanceOf[ScriptableObject])
+    }.get
+  }
 }
 
 trait EvaluationSupport { self: JsonSupport =>
   protected val scope: Scope
+
+  def evalToJson(javascriptCode: String): Option[JsValue] = {
+    withContext[Any] { context =>
+      context.evaluateString(scope, javascriptCode, "RhinoContext.eval(String)", 1, null)
+    }.flatMap(value => toJsValueOption(value))
+  }
 
   def eval[T: JsonReader](javascriptCode: String)(implicit tag: ClassTag[T]): Option[T] = {
     withContext[Any] { context =>

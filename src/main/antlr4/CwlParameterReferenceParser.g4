@@ -1,7 +1,7 @@
-parser grammar CwlStringParser;
+parser grammar CwlParameterReferenceParser;
 
 options {
-  tokenVocab=CwlStringLexer;
+  tokenVocab=CwlParameterReferenceLexer;
 }
 
 expr_dot_symbol

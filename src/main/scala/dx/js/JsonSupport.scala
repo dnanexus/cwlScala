@@ -15,23 +15,27 @@ object NativeJavaObj {
 }
 
 trait JsonSupport {
-  def toScala[T: JsonReader](input: Any)(implicit tag: ClassTag[T]): Option[T] = input match {
-    case NativeJavaObj(x: T) => Some(x)
-    case o =>
-      toJsValueOption(o).flatMap { jsValue =>
-        try {
-          val converted = jsValue.convertTo[T]
-          Some(converted)
-        } catch {
-          case _: DeserializationException => None
-          case e: Throwable                => throw e
+  def toScala[T: JsonReader](input: Any)(implicit tag: ClassTag[T]): Option[T] = {
+    input match {
+      case NativeJavaObj(x: T) => Some(x)
+      case o =>
+        toJsValueOption(o).flatMap { jsValue =>
+          try {
+            val converted = jsValue.convertTo[T]
+            Some(converted)
+          } catch {
+            case _: DeserializationException => None
+            case e: Throwable                => throw e
+          }
         }
-      }
+    }
   }
 
-  private def toJsValueOption(input: Any): Option[JsValue] = toJsValue(input) match {
-    case value if value == JsNull => None
-    case jsValue @ _              => Some(jsValue)
+  def toJsValueOption(input: Any): Option[JsValue] = {
+    toJsValue(input) match {
+      case value if value == JsNull => None
+      case jsValue @ _              => Some(jsValue)
+    }
   }
 
   @tailrec

@@ -32,7 +32,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
           testCase("outputBinding").asInstanceOf[java.util.Map[String, Any]].asScala
         val expr = getString(outputBinding("outputEval"))
         val cwlExpr = Evaluator.default(expr) match {
-          case expr: CompoundString     => expr
+          case expr: CompoundExpr       => expr
           case expr: ParameterReference => expr
           case other =>
             throw new Exception(
@@ -40,6 +40,27 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
             )
         }
         println(cwlExpr)
+      }
+    }
+  }
+
+  private case class SplitTest(s: String, expected: EcmaString)
+  private val splitTestCases: Vector[SplitTest] = Vector(
+      SplitTest("a $(b) c ${d}",
+                CompoundString(
+                    Vector(StringLiteral("a "),
+                           EcmaExpr("b"),
+                           StringLiteral(" c "),
+                           EcmaFunctionBody("d"))
+                )),
+      SplitTest("a \\$(b)\\${c}$(d)",
+                CompoundString(Vector(StringLiteral("a $(b)${c}"), EcmaExpr("d"))))
+  )
+
+  "string splitter" should {
+    splitTestCases.foreach { testCase =>
+      s"parse ${testCase.s}" in {
+        EcmaStringParser(testCase.s) shouldBe testCase.expected
       }
     }
   }

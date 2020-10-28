@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import spray.json.DefaultJsonProtocol._
 
 class JsTest extends AnyFlatSpec with Matchers {
-  private val runtime = Runtime()
+  private val runtime = Engine()
 
   it should "evaluate a javascript file" in {
     val path = Paths.get(getClass.getResource(s"/js/test-functions.js").getPath)

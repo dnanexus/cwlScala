@@ -1,4 +1,4 @@
-lexer grammar CwlStringLexer;
+lexer grammar CwlParameterReferenceLexer;
 
 DOT: '.';
 LBRACKET: '[';

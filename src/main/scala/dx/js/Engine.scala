@@ -5,10 +5,7 @@ import spray.json.JsonReader
 
 import scala.reflect.ClassTag
 
-case class Runtime(
-    scope: Scope = withContext[Scope](_.initStandardObjects()).get
-) extends EvaluationSupport
-    with JsonSupport {
+case class Engine(scope: Scope = Scope.default) extends EvaluationSupport with JsonSupport {
 
   /**
     * Makes an object available to javascript so that it can be called off to
@@ -26,7 +23,6 @@ case class Runtime(
       extends WrapFactory
       with JsonSupport {
     override def wrap(cx: Context, scope: Scriptable, obj: Any, staticType: Class[_]): Any = {
-      println("trying to wrap up:" + obj)
       Context.javaToJS(toScala[T](obj), scope)
     }
   }
