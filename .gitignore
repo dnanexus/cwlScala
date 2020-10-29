@@ -2,3 +2,4 @@ project/project/
 target/
 src/main/java
 src/main/antlr4/*.tokens
+src/main/antlr4/gen/
