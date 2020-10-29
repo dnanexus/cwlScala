@@ -31,7 +31,7 @@ object CwlType {
   //  https://github.com/common-workflow-lab/cwljava/issues/29
   def apply(
       t: java.lang.Object,
-      schemaDefs: Map[String, CwlSchema]
+      schemaDefs: Map[String, CwlSchema] = Map.empty
   ): (Vector[CwlType], Option[StdFile.StdFile]) = {
     t match {
       case a: java.util.List[_] =>
@@ -50,6 +50,7 @@ object CwlType {
           case "float"                      => CwlFloat
           case "double"                     => CwlDouble
           case "null"                       => CwlNull
+          case "Any"                        => CwlAny
           case CWLType.FILE                 => CwlFile
           case CWLType.DIRECTORY            => CwlDirectory
           case schema: CommandInputSchema   => CwlSchema(schema, schemaDefs)
@@ -70,11 +71,17 @@ object CwlType {
   }
 }
 
+case object CwlAny extends CwlType {
+  override def coercibleTo(targetType: CwlType): Boolean = {
+    targetType != CwlNull
+  }
+}
+
 sealed trait CwlPrimitive extends CwlType {
   def coercibleTypes: Set[CwlType]
 
   override def coercibleTo(targetType: CwlType): Boolean = {
-    this == targetType || coercibleTypes.contains(targetType)
+    (Set(this, CwlAny) | coercibleTypes).contains(targetType)
   }
 }
 
@@ -130,11 +137,13 @@ object CwlSchema {
   }
 
   def apply(schema: OutputSchema, schemaDefs: Map[String, CwlSchema]): CwlSchema = {
-    case schema: CommandOutputArraySchemaImpl  => CwlArray(schema, schemaDefs)
-    case schema: CommandOutputRecordSchemaImpl => CwlRecord(schema, schemaDefs)
-    case schema: CommandOutputEnumSchemaImpl   => CwlEnum(schema)
-    case _ =>
-      throw new Exception(s"unexpected output schema ${schema}")
+    schema match {
+      case arraySchema: CommandOutputArraySchemaImpl   => CwlArray(arraySchema, schemaDefs)
+      case recordSchema: CommandOutputRecordSchemaImpl => CwlRecord(recordSchema, schemaDefs)
+      case enumSchema: CommandOutputEnumSchemaImpl     => CwlEnum(enumSchema)
+      case _ =>
+        throw new Exception(s"unexpected output schema ${schema}")
+    }
   }
 }
 
@@ -146,6 +155,7 @@ case class CwlArray(itemTypes: Vector[CwlType],
     extends CwlSchema {
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
+      case CwlAny                                         => true
       case targetSchema: CwlArray if targetSchema == this => true
       case targetSchema: CwlArray =>
         itemTypes.exists { fromType =>
@@ -218,6 +228,7 @@ case class CwlRecord(fields: Map[String, CwlRecordField],
     extends CwlSchema {
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
+      case CwlAny                                          => true
       case targetSchema: CwlRecord if this == targetSchema => true
       case targetSchema: CwlRecord if fields.keySet == targetSchema.fields.keySet =>
         fields.forall {
@@ -333,6 +344,7 @@ case class CwlEnum(symbols: Set[String],
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
       case targetSchema: CwlEnum if this.symbols == targetSchema.symbols => true
+      case CwlAny                                                        => true
       case CwlString                                                     => true
       case _                                                             => false
     }

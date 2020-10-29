@@ -109,22 +109,25 @@ object CwlValue {
             cwlType: CwlType,
             schemaDefs: Map[String, CwlSchema]): CwlValue = {
     cwlType match {
-      case CwlNull if value == null => NullValue
-      case CwlNull =>
-        throw new Exception("no value allowed for type null")
-      case CwlOptional(_) if value == null => NullValue
-      case CwlOptional(t)                  => apply(value, t, schemaDefs)
-      case CwlString                       => StringValue(value)
-      case CwlBoolean                      => BooleanValue(value)
-      case CwlInt                          => IntValue(value)
-      case CwlLong                         => LongValue(value)
-      case CwlFloat                        => FloatValue(value)
-      case CwlDouble                       => DoubleValue(value)
-      case CwlFile                         => FileValue(value)
-      case CwlDirectory                    => DirectoryValue(value)
-      case arraySchema: CwlArray           => ArrayValue(value, arraySchema, schemaDefs)
-      case recordSchema: CwlRecord         => ObjectValue(value, recordSchema, schemaDefs)
-      case enumSchema: CwlEnum             => StringValue.fromEnum(value, enumSchema)
+      case CwlString               => StringValue(value)
+      case CwlBoolean              => BooleanValue(value)
+      case CwlInt                  => IntValue(value)
+      case CwlLong                 => LongValue(value)
+      case CwlFloat                => FloatValue(value)
+      case CwlDouble               => DoubleValue(value)
+      case CwlFile                 => FileValue(value)
+      case CwlDirectory            => DirectoryValue(value)
+      case arraySchema: CwlArray   => ArrayValue(value, arraySchema, schemaDefs)
+      case recordSchema: CwlRecord => ObjectValue(value, recordSchema, schemaDefs)
+      case enumSchema: CwlEnum     => StringValue.fromEnum(value, enumSchema)
+      case CwlOptional(_) if value == null =>
+        NullValue
+      case CwlOptional(t) =>
+        apply(value, t, schemaDefs)
+      case CwlNull if value == null =>
+        NullValue
+      case CwlAny if value != null =>
+        apply(value, schemaDefs)
       case _ =>
         throw new RuntimeException(s"cannot translate ${value} to value of type ${cwlType}")
     }
@@ -200,12 +203,14 @@ object CwlValue {
       case schema: CwlArray  => ArrayValue(jsValue, schema, schemaDefs)
       case schema: CwlRecord => ObjectValue(jsValue, schema, schemaDefs)
       case schema: CwlEnum   => StringValue(jsValue, Some(schema))
-      case CwlNull if jsValue == JsNull =>
-        NullValue
       case CwlOptional(_) if jsValue == JsNull =>
         NullValue
       case CwlOptional(t) =>
         deserialize(jsValue, t, schemaDefs)
+      case CwlNull if jsValue == JsNull =>
+        NullValue
+      case CwlAny if jsValue != JsNull =>
+        deserialize(jsValue, schemaDefs)
       case _ =>
         throw new Exception(s"cannot deserialize ${jsValue} as type ${cwlType}")
     }
@@ -235,10 +240,20 @@ object CwlValue {
 
 sealed trait StringIndexable {
   def get(key: String): Option[CwlValue]
+
+  def apply(key: String): CwlValue = {
+    get(key).getOrElse(NullValue)
+  }
 }
 
 sealed trait IntIndexable {
   def get(index: Int): Option[CwlValue]
+
+  def apply(index: Int): CwlValue = {
+    get(index).getOrElse(NullValue)
+  }
+
+  def length: Int
 }
 
 case object NullValue extends PrimitiveValue {
@@ -255,9 +270,18 @@ case class StringValue(value: String) extends PrimitiveValue with IntIndexable {
   }
 
   override lazy val toJson: JsValue = JsString(value)
+
+  override def length: Int = value.length
 }
 
 object StringValue {
+  lazy val empty: StringValue = StringValue("")
+  lazy val opaque: StringValue = StringValue(OpaqueValue)
+
+  def isOpaque(value: StringValue): Boolean = {
+    value.value == OpaqueValue
+  }
+
   def apply(obj: Any): StringValue = {
     obj match {
       case s: String => StringValue(s)
@@ -294,6 +318,9 @@ case class BooleanValue(value: Boolean) extends PrimitiveValue {
 }
 
 object BooleanValue {
+  lazy val True: BooleanValue = BooleanValue(true)
+  lazy val False: BooleanValue = BooleanValue(false)
+
   def apply(obj: Any): BooleanValue = {
     obj match {
       case b: java.lang.Boolean => BooleanValue(b.booleanValue())
@@ -680,6 +707,8 @@ object FileValue {
             fields.get("format").map(unwrapString),
             fields.get("contents").map(unwrapString)
         )
+      case _ =>
+        throw new Exception(s"invalid file value ${jsValue}")
     }
   }
 }
@@ -771,9 +800,15 @@ case class ArrayValue(items: Vector[CwlValue]) extends CwlValue with IntIndexabl
       case _                => false
     }
   }
+
+  override def length: Int = {
+    items.size
+  }
 }
 
 object ArrayValue {
+  lazy val empty: ArrayValue = ArrayValue(Vector())
+
   def apply(array: java.util.Collection[_], schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     ArrayValue(
         array.asScala.toVector.map(obj => CwlValue(obj.asInstanceOf[java.lang.Object], schemaDefs))
@@ -782,7 +817,7 @@ object ArrayValue {
 
   def apply(array: java.util.Collection[_],
             cwlType: CwlArray,
-            schemaDefs: Map[String, CwlSchema] = Map.empty): ArrayValue = {
+            schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     ArrayValue(
         array.asScala.toVector.map(obj =>
           CwlValue(obj.asInstanceOf[java.lang.Object], cwlType.itemTypes, schemaDefs)
@@ -790,9 +825,7 @@ object ArrayValue {
     )
   }
 
-  def apply(obj: Any,
-            cwlType: CwlArray,
-            schemaDefs: Map[String, CwlSchema] = Map.empty): ArrayValue = {
+  def apply(obj: Any, cwlType: CwlArray, schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     obj match {
       case array: java.util.Collection[_] =>
         apply(array, cwlType, schemaDefs)
@@ -801,9 +834,7 @@ object ArrayValue {
     }
   }
 
-  def apply(jsValue: JsValue,
-            schema: CwlArray,
-            schemaDefs: Map[String, CwlSchema] = Map.empty): ArrayValue = {
+  def apply(jsValue: JsValue, schema: CwlArray, schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     jsValue match {
       case JsArray(array) =>
         ArrayValue(array.map(CwlValue(_, schema.itemTypes, schemaDefs)))
@@ -819,13 +850,15 @@ object ArrayValue {
   }
 }
 
-case class ObjectValue(members: Map[String, CwlValue]) extends CwlValue with StringIndexable {
+trait ObjectLike extends CwlValue with StringIndexable
+
+case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
   def get(key: String): Option[CwlValue] = {
     members.get(key)
   }
 
   override def toJson: JsValue = {
-    JsObject(members.view.mapValues(_.toJson).toMap)
+    CwlValue.serializeMap(members)
   }
 
   override def coercibleTo(targetType: CwlType): Boolean = {
@@ -840,15 +873,20 @@ case class ObjectValue(members: Map[String, CwlValue]) extends CwlValue with Str
             false
           }
         }
+      case _ => false
     }
   }
 }
 
 object ObjectValue {
+  lazy val empty: ObjectValue = ObjectValue(Map.empty)
+
   def apply(map: java.util.Map[_, _], schemaDefs: Map[String, CwlSchema]): ObjectValue = {
     ObjectValue(map.asScala.map {
       case (key: String, value) =>
         key -> CwlValue(value.asInstanceOf[java.lang.Object], schemaDefs)
+      case other =>
+        throw new Exception(s"invalid object member ${other}")
     }.toMap)
   }
 
@@ -862,13 +900,11 @@ object ObjectValue {
           throw new Exception(s"missing required field ${field.name} in ${map}")
         case obj: java.lang.Object =>
           CwlValue(obj, field.types, schemaDefs)
-      }value
+      }
     }.toMap)
   }
 
-  def apply(obj: Any,
-            cwlType: CwlRecord,
-            schemaDefs: Map[String, CwlSchema] = Map.empty): ObjectValue = {
+  def apply(obj: Any, cwlType: CwlRecord, schemaDefs: Map[String, CwlSchema]): ObjectValue = {
     obj match {
       case map: java.util.Map[_, _] =>
         apply(map, cwlType, schemaDefs)
@@ -879,7 +915,7 @@ object ObjectValue {
 
   def apply(jsValue: JsValue,
             schema: CwlRecord,
-            schemaDefs: Map[String, CwlSchema] = Map.empty): ObjectValue = {
+            schemaDefs: Map[String, CwlSchema]): ObjectValue = {
     val fields = jsValue.asJsObject.fields
     ObjectValue(schema.fields.view.mapValues { field =>
       if (fields.contains(field.name)) {

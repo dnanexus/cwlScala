@@ -24,22 +24,22 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
   }
 
   "expression parser" should {
+    val bar = Map(
+        "baz" -> StringValue("zab1"),
+        "b az" -> IntValue(2),
+        "b'az" -> BooleanValue.True,
+        "buz" -> ArrayValue(Vector("a", "b", "c").map(StringValue(_)))
+    )
+    val ctx = EvaluatorContext(inputs = ObjectValue(Map("bar" -> ObjectValue(bar))))
     testCases.foreach { x =>
       val testCase = x.asInstanceOf[java.util.Map[String, Any]].asScala
       val id = getString(testCase("id"))
       s"parse ${id}" in {
+        val (cwlTypes, _) = CwlType(getString(testCase("type")))
         val outputBinding =
           testCase("outputBinding").asInstanceOf[java.util.Map[String, Any]].asScala
         val expr = getString(outputBinding("outputEval"))
-        val cwlExpr = Evaluator.default(expr) match {
-          case expr: CompoundExpr       => expr
-          case expr: ParameterReference => expr
-          case other =>
-            throw new Exception(
-                s"failed to correctly parse ${expr} - expected a CompoundString or ParameterReference, got ${other}"
-            )
-        }
-        println(cwlExpr)
+        Evaluator.default(expr, cwlTypes, ctx)
       }
     }
   }

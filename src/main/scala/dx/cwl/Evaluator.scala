@@ -283,7 +283,8 @@ case class Runtime(outdir: String,
                    cores: Int,
                    ram: Long,
                    outdirSize: Long,
-                   tmpdirSize: Long) {
+                   tmpdirSize: Long)
+    extends ObjectLike {
   def toJson: JsValue = {
     JsObject(
         Map(
@@ -296,6 +297,20 @@ case class Runtime(outdir: String,
         )
     )
   }
+
+  override def get(key: String): Option[CwlValue] = {
+    key match {
+      case "outdir"     => Some(StringValue(outdir))
+      case "tmpdir"     => Some(StringValue(tmpdir))
+      case "cores"      => Some(IntValue(cores))
+      case "ram"        => Some(LongValue(ram))
+      case "outdirSize" => Some(LongValue(outdirSize))
+      case "tmpdirSize" => Some(LongValue(tmpdirSize))
+      case _            => None
+    }
+  }
+
+  override def coercibleTo(targetType: CwlType): Boolean = false
 }
 
 object Runtime {
@@ -346,24 +361,28 @@ object Runtime {
   }
 }
 
-case class EvaluatorContext(self: Option[CwlValue] = None,
-                            inputs: Map[String, CwlValue] = Map.empty,
+case class EvaluatorContext(self: CwlValue = NullValue,
+                            inputs: ObjectValue = ObjectValue.empty,
                             runtime: Runtime = Runtime.empty) {
   def toScope: Scope = {
     Scope.create(
         Map(
-            "self" -> self.map(_.toJson).getOrElse(JsNull),
-            "input" -> CwlValue.serializeMap(inputs),
+            "self" -> self.toJson,
+            "input" -> inputs.toJson,
             "runtime" -> runtime.toJson
         )
     )
   }
 
-  def lookup(name: String): Option[Any] = {
+  def contains(name: String): Boolean = {
+    Set("self", "inputs", "runtime").contains(name)
+  }
+
+  def apply(name: String): CwlValue = {
     name match {
       case "self"    => self
-      case "inputs"  => Some(inputs)
-      case "runtime" => Some(runtime)
+      case "inputs"  => inputs
+      case "runtime" => runtime
       case _         => throw new Exception(s"context does not contain ${name}")
     }
   }
@@ -397,78 +416,91 @@ case class Evaluator(jsEnabled: Boolean = false,
                      schemaDefs: Map[String, CwlSchema] = Map.empty) {
   private lazy val jsPreamble: String = jsLibrary.map(lib => s"${lib}\n").getOrElse("")
 
-  def evalEcmaScript(script: String,
-                     cwlType: CwlType,
-                     ctx: EvaluatorContext = EvaluatorContext.empty): CwlValue = {
+  def applyEcmaScript(script: String,
+                      cwlTypes: Vector[CwlType],
+                      ctx: EvaluatorContext): CwlValue = {
     val engine = Engine(ctx.toScope)
     val result = engine.evalToJson(script).getOrElse(JsNull)
-    CwlValue.deserialize(result, cwlType, schemaDefs)
+    CwlValue.deserialize(result, cwlTypes, schemaDefs)
   }
 
-  def eval(ecmaString: EcmaString,
-           cwlType: CwlType,
-           ctx: EvaluatorContext = EvaluatorContext.empty): CwlValue = {
+  def applyEcma(ecmaString: EcmaString,
+                cwlTypes: Vector[CwlType],
+                ctx: EvaluatorContext): CwlValue = {
     ecmaString match {
       case StringLiteral(s) =>
         StringValue(s)
       case CompoundString(parts) =>
-        StringValue(parts.map(eval(_, cwlType, ctx).toString).mkString(""))
+        StringValue(parts.map(applyEcma(_, cwlTypes, ctx).toString).mkString(""))
       case EcmaExpr(expr) =>
-        evalEcmaScript(s"${jsPreamble}${expr}", cwlType, ctx)
+        applyEcmaScript(s"${jsPreamble}${expr}", cwlTypes, ctx)
       case EcmaFunctionBody(body) =>
         val script = s"""${jsPreamble}function __anon__() {
                         |  ${body}
                         |}
                         |__anon__()""".stripMargin
-        evalEcmaScript(script, cwlType, ctx)
+        applyEcmaScript(script, cwlTypes, ctx)
     }
   }
 
-  def eval(expr: CwlExpr,
-           cwlType: CwlType,
-           ctx: EvaluatorContext = EvaluatorContext.empty): CwlValue = {
+  def applyEcma(ecmaString: EcmaString, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
+    applyEcma(ecmaString, Vector(cwlType), ctx)
+  }
+
+  def applyExpr(expr: CwlExpr, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {
     expr match {
-      case CwlValueExpr(value) if value.coercibleTo(cwlType) =>
+      case CwlValueExpr(value) if value.coercibleTo(cwlTypes) =>
         value
       case CwlValueExpr(value) =>
-        throw new Exception(s"${value} is not coercible to ${cwlType}")
+        throw new Exception(s"${value} is not coercible to ${cwlTypes}")
       case CompoundExpr(parts) =>
-        StringValue(parts.map(eval(_, CwlString, ctx).toString).mkString(""))
+        StringValue(parts.map(applyExpr(_, CwlString, ctx).toString).mkString(""))
       case ParameterReference(rootSymbol, segments) =>
-        val result: Option[Any] = segments.foldLeft(ctx.lookup(rootSymbol.value)) {
-          case (value, segment) =>
-            (value, segment) match {
-              case (None, _) =>
-                throw new Exception(s"cannot evaluate null${segment}")
-              case (Some(value: StringIndexable), Symbol(index)) =>
-                value.get(index)
-              case (Some(value: StringIndexable), StringIndex(index)) =>
-                value.get(index)
-              case (Some(value: IntIndexable), IntIndex(index)) =>
-                value.get(index)
-              case _ =>
-                throw new Exception(s"cannot evaluate ${value}${segment}")
+        rootSymbol.value match {
+          case symbol if ctx.contains(symbol) =>
+            segments.foldLeft(ctx(rootSymbol.value)) {
+              case (value, segment) =>
+                (value, segment) match {
+                  case (NullValue, _) =>
+                    throw new Exception(
+                        s"cannot evaluate right-hand side ${segment} for left-hand side null"
+                    )
+                  case (value: StringIndexable, Symbol(index)) =>
+                    value(index)
+                  case (value: StringIndexable, StringIndex(index)) =>
+                    value(index)
+                  case (value: IntIndexable, IntIndex(index)) =>
+                    value(index)
+                  case (value: IntIndexable, Symbol("length")) =>
+                    IntValue(value.length)
+                  case _ =>
+                    throw new Exception(s"cannot evaluate ${value}${segment}")
+                }
             }
-        }
-        result match {
-          case Some(value: CwlValue) => value
-          case None                  => NullValue
-          case _                     => throw new Exception(s"unexpected result ${result}")
+          case "null" => NullValue
+          case other =>
+            throw new Exception(s"symbol ${other} not found in context")
         }
     }
   }
 
-  def apply(s: String,
-            cwlType: CwlType,
-            ctx: EvaluatorContext = EvaluatorContext.empty): CwlValue = {
+  def applyExpr(expr: CwlExpr, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
+    applyExpr(expr, Vector(cwlType), ctx)
+  }
+
+  def apply(s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {
     if (!s.contains('$')) {
       // if an expression does not contain a '$', there are no expressions to evaluate
       StringValue(s)
     } else if (jsEnabled) {
-      eval(EcmaStringParser.apply(s), cwlType, ctx)
+      applyEcma(EcmaStringParser.apply(s), cwlTypes, ctx)
     } else {
-      eval(ParameterReferenceParser.apply(s), cwlType)
+      applyExpr(ParameterReferenceParser.apply(s), cwlTypes, ctx)
     }
+  }
+
+  def apply(s: String, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
+    apply(s, Vector(cwlType), ctx)
   }
 }
 

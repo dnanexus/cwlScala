@@ -5,7 +5,7 @@ import spray.json.JsonReader
 
 import scala.reflect.ClassTag
 
-case class Engine(scope: Scope = Scope.default) extends EvaluationSupport with JsonSupport {
+case class Engine(scope: Scope = Scope.standard) extends EvaluationSupport with JsonSupport {
 
   /**
     * Makes an object available to javascript so that it can be called off to
