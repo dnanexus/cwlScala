@@ -1,0 +1,8 @@
+- id: j1
+  type: Any
+  outputBinding:
+    outputEval: $(add2(inputs.bork))
+- id: j2
+  type: Double
+  outputBinding:
+    outputEval: $(add(add2(1), 3))

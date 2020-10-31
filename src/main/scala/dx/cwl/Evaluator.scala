@@ -45,9 +45,7 @@ case class StringIndex(value: String) extends ParameterReferencePart
 case class ParameterReference(rootSymbol: Symbol, segments: Vector[ParameterReferencePart])
     extends CwlExpr
 
-object ParameterReferenceParser {
-  private val trace: Boolean = false
-
+case class ParameterReferenceParser(trace: Boolean = false) {
   private def visitStringIndexPart(
       ctx: CwlParameterReferenceParser.String_index_partContext
   ): String = {
@@ -154,6 +152,10 @@ object ParameterReferenceParser {
   }
 }
 
+object ParameterReferenceParser {
+  lazy val default: ParameterReferenceParser = ParameterReferenceParser()
+}
+
 trait EcmaString
 case class StringLiteral(value: String) extends EcmaString
 case class EcmaExpr(value: String) extends EcmaString
@@ -165,22 +167,62 @@ case class CompoundString(parts: Vector[EcmaString]) extends EcmaString
   * (`${...}`). The expressions themselves are not evaluated (which requires a
   * JavaScript engine).
   */
-object EcmaStringParser {
-  private val trace: Boolean = false
+case class EcmaStringParser(trace: Boolean = false) {
+  private def visitSubSubExpr(ctx: CwlEcmaStringParser.Sub_sub_exprContext,
+                              prefix: String,
+                              suffix: String): String = {
+    val subSubExprStr = ctx
+      .sub_expr_part()
+      .asScala
+      .map { subSubPart =>
+        if (subSubPart.SubExprPart() != null) {
+          subSubPart.SubExprPart().toString
+        } else if (subSubPart.sub_sub_expr() != null) {
+          visitSubSubExpr(subSubPart.sub_sub_expr(), prefix, suffix)
+        } else {
+          throw new Exception(s"invalid sub-expression part ${subSubPart}")
+        }
+      }
+      .mkString("")
+    s"${prefix}${subSubExprStr}${suffix}"
+  }
 
-  private def visitExprParts(parts: Vector[CwlEcmaStringParser.Expr_partContext]): String = {
+  private def visitSubExpr(ctx: CwlEcmaStringParser.Sub_exprContext,
+                           prefix: String,
+                           suffix: String): String = {
+    val subExprStr = ctx
+      .sub_expr_part()
+      .asScala
+      .map { subPart =>
+        if (subPart.SubExprPart() != null) {
+          subPart.SubExprPart().toString
+        } else if (subPart.sub_sub_expr() != null) {
+          visitSubSubExpr(subPart.sub_sub_expr(), prefix, suffix)
+        } else {
+          throw new Exception(s"invalid sub-expression part ${subPart}")
+        }
+      }
+      .mkString("")
+    s"${prefix}${subExprStr}${suffix}"
+  }
+
+  private def visitExprParts(parts: Vector[CwlEcmaStringParser.Expr_partContext],
+                             prefix: String,
+                             suffix: String): String = {
     parts
-      .map { exprPart =>
-        if (exprPart.EscPart() != null) {
-          val escapedStr = exprPart.EscPart().toString
+      .map { part =>
+        if (part.EscPart() != null) {
+          val escapedStr = part.EscPart().toString
           if (!escapedStr.startsWith("\\")) {
             throw new Exception(s"invalid escaped string ${escapedStr}")
           }
           escapedStr.drop(1)
-        } else if (exprPart.ExprPart() != null) {
-          exprPart.ExprPart().toString
+        } else if (part.ExprPart() != null) {
+          part.ExprPart().toString
+        } else if (part.sub_expr() != null) {
+          visitSubExpr(part.sub_expr(), prefix, suffix)
         } else {
-          throw new Exception(s"invalid expr part ${exprPart}")
+          throw new Exception(s"invalid expression part ${part}")
         }
       }
       .mkString("")
@@ -195,16 +237,10 @@ object EcmaStringParser {
         .asScala
         .foldLeft((Vector.empty[EcmaString], new StringBuilder, false)) {
           case ((accu, buf, hasExpr), stringPart) =>
-            if (stringPart.paren_expr() != null &&
-                stringPart.paren_expr().expr() != null &&
-                stringPart.paren_expr().expr().expr_part() != null) {
-              val exprParts = stringPart
-                .paren_expr()
-                .expr()
-                .expr_part()
-                .asScala
-                .toVector
-              val expr = EcmaExpr(visitExprParts(exprParts))
+            if (stringPart.paren_expr() != null) {
+              val expr = EcmaExpr(
+                  visitExprParts(stringPart.paren_expr().expr_part().asScala.toVector, "(", ")")
+              )
               if (buf.isEmpty) {
                 (accu :+ expr, buf, true)
               } else {
@@ -212,16 +248,10 @@ object EcmaStringParser {
                 buf.clear()
                 (accu ++ Vector(stringVal, expr), buf, true)
               }
-            } else if (stringPart.brace_expr() != null &&
-                       stringPart.brace_expr().expr() != null &&
-                       stringPart.brace_expr().expr().expr_part() != null) {
-              val exprParts = stringPart
-                .brace_expr()
-                .expr()
-                .expr_part()
-                .asScala
-                .toVector
-              val expr = EcmaFunctionBody(visitExprParts(exprParts))
+            } else if (stringPart.brace_expr() != null) {
+              val expr = EcmaFunctionBody(
+                  visitExprParts(stringPart.brace_expr().expr_part().asScala.toVector, "{", "}")
+              )
               if (buf.isEmpty) {
                 (accu :+ expr, buf, true)
               } else {
@@ -276,6 +306,10 @@ object EcmaStringParser {
         throw new Exception(s"error evaluating string ${s}", ex)
     }
   }
+}
+
+object EcmaStringParser {
+  lazy val default: EcmaStringParser = EcmaStringParser()
 }
 
 case class Runtime(outdir: String,
@@ -413,8 +447,20 @@ object EvaluatorContext {
   */
 case class Evaluator(jsEnabled: Boolean = false,
                      jsLibrary: Option[String] = None,
-                     schemaDefs: Map[String, CwlSchema] = Map.empty) {
+                     schemaDefs: Map[String, CwlSchema] = Map.empty,
+                     trace: Boolean = false) {
   private lazy val jsPreamble: String = jsLibrary.map(lib => s"${lib}\n").getOrElse("")
+  private lazy val eval: (String, Vector[CwlType], EvaluatorContext) => CwlValue = {
+    if (jsEnabled) {
+      val parser = EcmaStringParser(trace)
+      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
+        applyEcma(parser(s), cwlTypes, ctx)
+    } else {
+      val parser = ParameterReferenceParser(trace)
+      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
+        applyExpr(parser(s), cwlTypes, ctx)
+    }
+  }
 
   def applyEcmaScript(script: String,
                       cwlTypes: Vector[CwlType],
@@ -433,10 +479,12 @@ case class Evaluator(jsEnabled: Boolean = false,
       case CompoundString(parts) =>
         StringValue(parts.map(applyEcma(_, cwlTypes, ctx).toString).mkString(""))
       case EcmaExpr(expr) =>
-        applyEcmaScript(s"${jsPreamble}${expr}", cwlTypes, ctx)
+        val script = s"${jsPreamble}${expr};"
+        println(s"Evaluating:\n${script}")
+        applyEcmaScript(script, cwlTypes, ctx)
       case EcmaFunctionBody(body) =>
         val script = s"""${jsPreamble}function __anon__() {
-                        |  ${body}
+                        |  ${body};
                         |}
                         |__anon__()""".stripMargin
         applyEcmaScript(script, cwlTypes, ctx)
@@ -492,10 +540,8 @@ case class Evaluator(jsEnabled: Boolean = false,
     if (!s.contains('$')) {
       // if an expression does not contain a '$', there are no expressions to evaluate
       StringValue(s)
-    } else if (jsEnabled) {
-      applyEcma(EcmaStringParser.apply(s), cwlTypes, ctx)
     } else {
-      applyExpr(ParameterReferenceParser.apply(s), cwlTypes, ctx)
+      eval(s, cwlTypes, ctx)
     }
   }
 
