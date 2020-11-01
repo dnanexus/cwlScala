@@ -402,7 +402,7 @@ case class EvaluatorContext(self: CwlValue = NullValue,
     Scope.create(
         Map(
             "self" -> self.toJson,
-            "input" -> inputs.toJson,
+            "inputs" -> inputs.toJson,
             "runtime" -> runtime.toJson
         )
     )
@@ -450,23 +450,18 @@ case class Evaluator(jsEnabled: Boolean = false,
                      schemaDefs: Map[String, CwlSchema] = Map.empty,
                      trace: Boolean = false) {
   private lazy val jsPreamble: String = jsLibrary.map(lib => s"${lib}\n").getOrElse("")
-  private lazy val eval: (String, Vector[CwlType], EvaluatorContext) => CwlValue = {
-    if (jsEnabled) {
-      val parser = EcmaStringParser(trace)
-      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
-        applyEcma(parser(s), cwlTypes, ctx)
-    } else {
-      val parser = ParameterReferenceParser(trace)
-      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
-        applyExpr(parser(s), cwlTypes, ctx)
-    }
-  }
 
   def applyEcmaScript(script: String,
                       cwlTypes: Vector[CwlType],
                       ctx: EvaluatorContext): CwlValue = {
     val engine = Engine(ctx.toScope)
-    val result = engine.evalToJson(script).getOrElse(JsNull)
+    val result =
+      try {
+        engine.evalToJson(script).getOrElse(JsNull)
+      } catch {
+        case ex: Throwable =>
+          throw new Exception(s"could not evaluate ECMA script ${script}", ex)
+      }
     CwlValue.deserialize(result, cwlTypes, schemaDefs)
   }
 
@@ -480,13 +475,12 @@ case class Evaluator(jsEnabled: Boolean = false,
         StringValue(parts.map(applyEcma(_, cwlTypes, ctx).toString).mkString(""))
       case EcmaExpr(expr) =>
         val script = s"${jsPreamble}${expr};"
-        println(s"Evaluating:\n${script}")
         applyEcmaScript(script, cwlTypes, ctx)
       case EcmaFunctionBody(body) =>
         val script = s"""${jsPreamble}function __anon__() {
                         |  ${body};
                         |}
-                        |__anon__()""".stripMargin
+                        |__anon__();""".stripMargin
         applyEcmaScript(script, cwlTypes, ctx)
     }
   }
@@ -534,6 +528,18 @@ case class Evaluator(jsEnabled: Boolean = false,
 
   def applyExpr(expr: CwlExpr, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
     applyExpr(expr, Vector(cwlType), ctx)
+  }
+
+  private lazy val eval: (String, Vector[CwlType], EvaluatorContext) => CwlValue = {
+    if (jsEnabled) {
+      val parser = EcmaStringParser(trace)
+      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
+        applyEcma(parser(s), cwlTypes, ctx)
+    } else {
+      val parser = ParameterReferenceParser(trace)
+      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
+        applyExpr(parser(s), cwlTypes, ctx)
+    }
   }
 
   def apply(s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {

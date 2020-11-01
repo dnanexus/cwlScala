@@ -37,7 +37,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
   )
 
   private val ctx = EvaluatorContext(inputs = ObjectValue(Map("bar" -> ObjectValue(bar))))
-  private val trace = true
+  private val trace = false
 
   "parameter reference evaluator" should {
     val testCases = loadYamlTestCases(s"/params/params_inc.yml")

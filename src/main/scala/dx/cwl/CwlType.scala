@@ -64,7 +64,7 @@ object CwlType {
                 throw new RuntimeException(s"missing definition for schema ${schemaName}")
             }
           case other =>
-            throw new RuntimeException(s"unexpected expression ${other}")
+            throw new RuntimeException(s"unexpected type ${other}")
         }
         (Vector(cwlType), None)
     }
