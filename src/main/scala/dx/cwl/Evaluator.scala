@@ -465,14 +465,22 @@ case class Evaluator(jsEnabled: Boolean = false,
     CwlValue.deserialize(result, cwlTypes, schemaDefs)
   }
 
+  private def checkCoercibleTo(value: CwlValue, cwlTypes: Vector[CwlType]): CwlValue = {
+    if (!cwlTypes.exists(value.coercibleTo)) {
+      throw new Exception(s"${value} is not coercible to any of ${cwlTypes}")
+    }
+    value
+  }
+
   def applyEcma(ecmaString: EcmaString,
                 cwlTypes: Vector[CwlType],
                 ctx: EvaluatorContext): CwlValue = {
     ecmaString match {
       case StringLiteral(s) =>
-        StringValue(s)
+        checkCoercibleTo(StringValue(s), cwlTypes)
       case CompoundString(parts) =>
-        StringValue(parts.map(applyEcma(_, cwlTypes, ctx).toString).mkString(""))
+        checkCoercibleTo(StringValue(parts.map(applyEcma(_, cwlTypes, ctx).toString).mkString("")),
+                         cwlTypes)
       case EcmaExpr(expr) =>
         val script = s"${jsPreamble}${expr};"
         applyEcmaScript(script, cwlTypes, ctx)
@@ -490,40 +498,40 @@ case class Evaluator(jsEnabled: Boolean = false,
   }
 
   def applyExpr(expr: CwlExpr, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {
-    expr match {
-      case CwlValueExpr(value) if value.coercibleTo(cwlTypes) =>
-        value
-      case CwlValueExpr(value) =>
-        throw new Exception(s"${value} is not coercible to ${cwlTypes}")
-      case CompoundExpr(parts) =>
-        StringValue(parts.map(applyExpr(_, CwlString, ctx).toString).mkString(""))
-      case ParameterReference(rootSymbol, segments) =>
-        rootSymbol.value match {
-          case symbol if ctx.contains(symbol) =>
-            segments.foldLeft(ctx(rootSymbol.value)) {
-              case (value, segment) =>
-                (value, segment) match {
-                  case (NullValue, _) =>
-                    throw new Exception(
-                        s"cannot evaluate right-hand side ${segment} for left-hand side null"
-                    )
-                  case (value: StringIndexable, Symbol(index)) =>
-                    value(index)
-                  case (value: StringIndexable, StringIndex(index)) =>
-                    value(index)
-                  case (value: IntIndexable, IntIndex(index)) =>
-                    value(index)
-                  case (value: IntIndexable, Symbol("length")) =>
-                    IntValue(value.length)
-                  case _ =>
-                    throw new Exception(s"cannot evaluate ${value}${segment}")
+    checkCoercibleTo(
+        expr match {
+          case CwlValueExpr(value) => value
+          case CompoundExpr(parts) =>
+            StringValue(parts.map(applyExpr(_, CwlString, ctx).toString).mkString(""))
+          case ParameterReference(rootSymbol, segments) =>
+            rootSymbol.value match {
+              case symbol if ctx.contains(symbol) =>
+                segments.foldLeft(ctx(rootSymbol.value)) {
+                  case (value, segment) =>
+                    (value, segment) match {
+                      case (NullValue, _) =>
+                        throw new Exception(
+                            s"cannot evaluate right-hand side ${segment} for left-hand side null"
+                        )
+                      case (value: StringIndexable, Symbol(index)) =>
+                        value(index)
+                      case (value: StringIndexable, StringIndex(index)) =>
+                        value(index)
+                      case (value: IntIndexable, IntIndex(index)) =>
+                        value(index)
+                      case (value: IntIndexable, Symbol("length")) =>
+                        IntValue(value.length)
+                      case _ =>
+                        throw new Exception(s"cannot evaluate ${value}${segment}")
+                    }
                 }
+              case "null" => NullValue
+              case other =>
+                throw new Exception(s"symbol ${other} not found in context")
             }
-          case "null" => NullValue
-          case other =>
-            throw new Exception(s"symbol ${other} not found in context")
-        }
-    }
+        },
+        cwlTypes
+    )
   }
 
   def applyExpr(expr: CwlExpr, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
@@ -545,7 +553,7 @@ case class Evaluator(jsEnabled: Boolean = false,
   def apply(s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {
     if (!s.contains('$')) {
       // if an expression does not contain a '$', there are no expressions to evaluate
-      StringValue(s)
+      checkCoercibleTo(StringValue(s), cwlTypes)
     } else {
       eval(s, cwlTypes, ctx)
     }
@@ -553,6 +561,13 @@ case class Evaluator(jsEnabled: Boolean = false,
 
   def apply(s: String, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
     apply(s, Vector(cwlType), ctx)
+  }
+
+  def applyString(s: String, ctx: EvaluatorContext = EvaluatorContext.empty): String = {
+    apply(s, CwlString, ctx) match {
+      case StringValue(value) => value
+      case _                  => throw new Exception("expected string")
+    }
   }
 }
 
