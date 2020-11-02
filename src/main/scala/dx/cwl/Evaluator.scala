@@ -16,9 +16,17 @@ import sun.security.action.GetPropertyAction
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 
-sealed trait CwlExpr
+/**
+  * Marker trait for expressions, which may be literal values,
+  * parameter references, or javascript expressions that require
+  * evaluation within a runtime context.
+  */
+sealed trait ParameterValue
 
-case class CwlValueExpr(value: CwlValue) extends CwlExpr {
+/**
+  * A literal value
+  */
+case class LiteralValue(value: CwlValue) extends ParameterValue {
   override def toString: String = {
     value.toString
   }
@@ -28,22 +36,24 @@ case class CwlValueExpr(value: CwlValue) extends CwlExpr {
   * A string that includes placeholders.
   * @param parts the parts of the string - alternating `StringValue` and `CwlExpr` objects.
   * @example
-  * "my name is ${name}" -> CompoundString(StringValue("my name is "), JavascriptExpr("name"))
+  * {{{
+  * "my name is \${name}" -> CompoundString(StringValue("my name is "), EcmaExpr("name"))
+  * }}}
   */
-case class CompoundExpr(parts: Vector[CwlExpr]) extends CwlExpr
+case class CompoundValue(parts: Vector[ParameterValue]) extends ParameterValue
 
-sealed trait ParameterReferencePart
-case class Symbol(value: String) extends ParameterReferencePart
-case class IntIndex(value: Int) extends ParameterReferencePart
-case class StringIndex(value: String) extends ParameterReferencePart
+sealed trait ParameterReferenceSegment
+case class Symbol(value: String) extends ParameterReferenceSegment
+case class IntIndex(value: Int) extends ParameterReferenceSegment
+case class StringIndex(value: String) extends ParameterReferenceSegment
 
 /**
   * A parameter reference.
   * @param rootSymbol the initial symbol of the reference
   * @param segments additional parts of the reference
   */
-case class ParameterReference(rootSymbol: Symbol, segments: Vector[ParameterReferencePart])
-    extends CwlExpr
+case class ParameterReference(rootSymbol: Symbol, segments: Vector[ParameterReferenceSegment])
+    extends ParameterValue
 
 case class ParameterReferenceParser(trace: Boolean = false) {
   private def visitStringIndexPart(
@@ -64,7 +74,7 @@ case class ParameterReferenceParser(trace: Boolean = false) {
 
   private def visitSegment(
       ctx: CwlParameterReferenceParser.Expr_segmentContext
-  ): ParameterReferencePart = {
+  ): ParameterReferenceSegment = {
     if (ctx.expr_dot_symbol() != null) {
       Symbol(ctx.expr_dot_symbol().ExprSymbol().toString)
     } else if (ctx.int_index() != null) {
@@ -80,7 +90,7 @@ case class ParameterReferenceParser(trace: Boolean = false) {
 
   private def visitInterpolatedString(
       ctx: CwlParameterReferenceParser.Interpolated_stringContext
-  ): CwlExpr = {
+  ): ParameterValue = {
     if (ctx.interpolated_string_part() == null) {
       throw new Exception("empty value")
     }
@@ -88,7 +98,7 @@ case class ParameterReferenceParser(trace: Boolean = false) {
       .interpolated_string_part()
       .asScala
       .toVector
-      .foldLeft((Vector.empty[CwlExpr], new StringBuilder, false)) {
+      .foldLeft((Vector.empty[ParameterValue], new StringBuilder, false)) {
         case ((accu, buf, hasExpr), part) =>
           if (part.paren_expr() != null) {
             if (part.paren_expr().ExprSymbol() == null) {
@@ -104,7 +114,7 @@ case class ParameterReferenceParser(trace: Boolean = false) {
             if (buf.isEmpty) {
               (accu :+ ref, buf, true)
             } else {
-              val stringVal = CwlValueExpr(StringValue(buf.toString))
+              val stringVal = LiteralValue(StringValue(buf.toString))
               buf.clear()
               (accu ++ Vector(stringVal, ref), buf, true)
             }
@@ -122,20 +132,20 @@ case class ParameterReferenceParser(trace: Boolean = false) {
           }
       }
     val allParts = if (buf.nonEmpty) {
-      parts :+ CwlValueExpr(StringValue(buf.toString))
+      parts :+ LiteralValue(StringValue(buf.toString))
     } else {
       parts
     }
     if (parts.size == 1) {
       allParts.head
     } else if (hasExpr) {
-      CompoundExpr(allParts)
+      CompoundValue(allParts)
     } else {
-      CwlValueExpr(StringValue(allParts.map(_.toString).mkString("")))
+      LiteralValue(StringValue(allParts.map(_.toString).mkString("")))
     }
   }
 
-  def apply(s: String): CwlExpr = {
+  def apply(s: String): ParameterValue = {
     // the string might contain an expression
     val codePointBuffer: CodePointBuffer =
       CodePointBuffer.withBytes(ByteBuffer.wrap(s.getBytes()))
@@ -163,8 +173,8 @@ case class EcmaFunctionBody(value: String) extends EcmaString
 case class CompoundString(parts: Vector[EcmaString]) extends EcmaString
 
 /**
-  * Parses a string that may contain ECMA expressions (`$(...)`) or function bodies
-  * (`${...}`). The expressions themselves are not evaluated (which requires a
+  * Parses a string that may contain ECMA expressions (`\$(...)`) or function bodies
+  * (`\${...}`). The expressions themselves are not evaluated (which requires a
   * JavaScript engine).
   */
 case class EcmaStringParser(trace: Boolean = false) {
@@ -312,6 +322,15 @@ object EcmaStringParser {
   lazy val default: EcmaStringParser = EcmaStringParser()
 }
 
+/**
+  * The runtime context to use when evaluating expressions.
+  * @param outdir output dir
+  * @param tmpdir temp dir
+  * @param cores number of available cores
+  * @param ram amount of available ram
+  * @param outdirSize size of output dir
+  * @param tmpdirSize size of temp dir
+  */
 case class Runtime(outdir: String,
                    tmpdir: String,
                    cores: Int,
@@ -319,17 +338,17 @@ case class Runtime(outdir: String,
                    outdirSize: Long,
                    tmpdirSize: Long)
     extends ObjectLike {
-  def toJson: JsValue = {
-    JsObject(
-        Map(
-            "outdir" -> JsString(outdir),
-            "tmpdir" -> JsString(tmpdir),
-            "cores" -> JsNumber(cores),
-            "ram" -> JsNumber(ram),
-            "outdirSize" -> JsNumber(outdirSize),
-            "tmpdirSize" -> JsNumber(tmpdirSize)
-        )
-    )
+  private val keys: Set[String] = Set(
+      "outdir",
+      "tmpdir",
+      "cores",
+      "ram",
+      "outdirSize",
+      "tmpdirSize"
+  )
+
+  override def contains(key: String): Boolean = {
+    keys.contains(key)
   }
 
   override def get(key: String): Option[CwlValue] = {
@@ -345,6 +364,19 @@ case class Runtime(outdir: String,
   }
 
   override def coercibleTo(targetType: CwlType): Boolean = false
+
+  override def toJson: JsValue = {
+    JsObject(
+        Map(
+            "outdir" -> JsString(outdir),
+            "tmpdir" -> JsString(tmpdir),
+            "cores" -> JsNumber(cores),
+            "ram" -> JsNumber(ram),
+            "outdirSize" -> JsNumber(outdirSize),
+            "tmpdirSize" -> JsNumber(tmpdirSize)
+        )
+    )
+  }
 }
 
 object Runtime {
@@ -363,7 +395,9 @@ object Runtime {
     mbean.getTotalPhysicalMemorySize
   }
 
-  private lazy val defaultTmpdir = Paths.get(doPrivileged(new GetPropertyAction("java.io.tmpdir")))
+  private lazy val defaultTmpdir = {
+    Paths.get(doPrivileged(new GetPropertyAction("java.io.tmpdir")))
+  }
 
   def create(outdir: Path = Paths.get(""),
              tmpdir: Path = defaultTmpdir,
@@ -395,6 +429,12 @@ object Runtime {
   }
 }
 
+/**
+  * Context used when evaluating expressions
+  * @param self the value of `self`, if any
+  * @param inputs the input values
+  * @param runtime [[Runtime]]
+  */
 case class EvaluatorContext(self: CwlValue = NullValue,
                             inputs: ObjectValue = ObjectValue.empty,
                             runtime: Runtime = Runtime.empty) {
@@ -425,6 +465,11 @@ case class EvaluatorContext(self: CwlValue = NullValue,
 object EvaluatorContext {
   lazy val empty: EvaluatorContext = EvaluatorContext()
 
+  /**
+    * Creates an `inputs` map from all the inputs that contain a default value.
+    * @param inputs all the process inputs
+    * @return
+    */
   def createStaticInputs(inputs: Vector[CommandInputParameter]): Map[String, CwlValue] = {
     inputs.collect {
       case param if param.id.isDefined && param.default.isDefined =>
@@ -444,6 +489,8 @@ object EvaluatorContext {
   *
   * @param jsEnabled was the `InlineJavascriptRequirement` specified?
   * @param jsLibrary optional Javascript library to be included in the evaluation
+  * @param schemaDefs schema defintions to use when resolving types
+  * @param trace whether to print ANTLR parser trace information
   */
 case class Evaluator(jsEnabled: Boolean = false,
                      jsLibrary: Option[String] = None,
@@ -472,15 +519,17 @@ case class Evaluator(jsEnabled: Boolean = false,
     value
   }
 
-  def applyEcma(ecmaString: EcmaString,
-                cwlTypes: Vector[CwlType],
-                ctx: EvaluatorContext): CwlValue = {
+  def applyEcmaString(ecmaString: EcmaString,
+                      cwlTypes: Vector[CwlType],
+                      ctx: EvaluatorContext): CwlValue = {
     ecmaString match {
       case StringLiteral(s) =>
         checkCoercibleTo(StringValue(s), cwlTypes)
       case CompoundString(parts) =>
-        checkCoercibleTo(StringValue(parts.map(applyEcma(_, cwlTypes, ctx).toString).mkString("")),
-                         cwlTypes)
+        checkCoercibleTo(
+            StringValue(parts.map(applyEcmaString(_, cwlTypes, ctx).toString).mkString("")),
+            cwlTypes
+        )
       case EcmaExpr(expr) =>
         val script = s"${jsPreamble}${expr};"
         applyEcmaScript(script, cwlTypes, ctx)
@@ -493,16 +542,22 @@ case class Evaluator(jsEnabled: Boolean = false,
     }
   }
 
-  def applyEcma(ecmaString: EcmaString, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
-    applyEcma(ecmaString, Vector(cwlType), ctx)
+  def applyEcmaString(ecmaString: EcmaString, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
+    applyEcmaString(ecmaString, Vector(cwlType), ctx)
   }
 
-  def applyExpr(expr: CwlExpr, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {
+  def applyParameterValue(expr: ParameterValue,
+                          cwlTypes: Vector[CwlType],
+                          ctx: EvaluatorContext): CwlValue = {
     checkCoercibleTo(
         expr match {
-          case CwlValueExpr(value) => value
-          case CompoundExpr(parts) =>
-            StringValue(parts.map(applyExpr(_, CwlString, ctx).toString).mkString(""))
+          case LiteralValue(value) => value
+          case CompoundValue(parts) =>
+            StringValue(
+                parts
+                  .map(applyParameterValue(_, Vector(CwlString, CwlNull), ctx).toString)
+                  .mkString("")
+            )
           case ParameterReference(rootSymbol, segments) =>
             rootSymbol.value match {
               case symbol if ctx.contains(symbol) =>
@@ -534,25 +589,31 @@ case class Evaluator(jsEnabled: Boolean = false,
     )
   }
 
-  def applyExpr(expr: CwlExpr, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
-    applyExpr(expr, Vector(cwlType), ctx)
+  def applyParameterValue(expr: ParameterValue,
+                          cwlType: CwlType,
+                          ctx: EvaluatorContext): CwlValue = {
+    applyParameterValue(expr, Vector(cwlType), ctx)
   }
 
+  /**
+    * The evaluator to use - simple parameter reference evaluator or Rhino
+    * Javascript evaluator, depending on the value of `jsEnabled`.
+    */
   private lazy val eval: (String, Vector[CwlType], EvaluatorContext) => CwlValue = {
     if (jsEnabled) {
       val parser = EcmaStringParser(trace)
       (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
-        applyEcma(parser(s), cwlTypes, ctx)
+        applyEcmaString(parser(s), cwlTypes, ctx)
     } else {
       val parser = ParameterReferenceParser(trace)
       (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
-        applyExpr(parser(s), cwlTypes, ctx)
+        applyParameterValue(parser(s), cwlTypes, ctx)
     }
   }
 
   def apply(s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {
     if (!s.contains('$')) {
-      // if an expression does not contain a '$', there are no expressions to evaluate
+      // if an value does not contain a '$', there are no expressions to evaluate
       checkCoercibleTo(StringValue(s), cwlTypes)
     } else {
       eval(s, cwlTypes, ctx)
@@ -563,6 +624,12 @@ case class Evaluator(jsEnabled: Boolean = false,
     apply(s, Vector(cwlType), ctx)
   }
 
+  /**
+    * Evaluates a string whose result must be coercible to a string.
+    * @param s the string to evaluate
+    * @param ctx [[EvaluatorContext]]
+    * @return the result string value
+    */
   def applyString(s: String, ctx: EvaluatorContext = EvaluatorContext.empty): String = {
     apply(s, CwlString, ctx) match {
       case StringValue(value) => value

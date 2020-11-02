@@ -7,25 +7,51 @@ import spray.json._
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
+/**
+  * Marker trait for all CWL values.
+  */
 sealed trait CwlValue {
+
+  /**
+    * Converts this value to JSON
+    */
   def toJson: JsValue
 
+  /**
+    * Returns true if this value is coercible to the specified type
+    */
   def coercibleTo(targetType: CwlType): Boolean
 
+  /**
+    * Returns true if this value is coercible to any of the specified types
+    */
   def coercibleTo(targetTypes: Vector[CwlType]): Boolean = {
     targetTypes.exists(coercibleTo)
   }
 }
 
+/**
+  * Parent of all primitive types. Every primitive value maps
+  * to a single, static [[CwlType]].
+  */
 sealed trait PrimitiveValue extends CwlValue {
   val cwlType: CwlType
 
-  def coercibleTo(targetType: CwlType): Boolean = {
+  override def coercibleTo(targetType: CwlType): Boolean = {
     cwlType.coercibleTo(targetType)
   }
 }
 
 object CwlValue {
+
+  /**
+    * Translates a Map-type value to a schema type.
+    * @param map the [[java.util.Map]] value
+    * @param cwlType the target schema type
+    * @param schemaDefs schema definitions to use when resolving the types of any members
+    *                   of the schema type
+    * @return a [[CwlValue]]
+    */
   def applySchema(map: java.util.Map[_, _],
                   cwlType: CwlSchema,
                   schemaDefs: Map[String, CwlSchema]): CwlValue = {
@@ -51,6 +77,13 @@ object CwlValue {
     }
   }
 
+  /**
+    * Translates a Map-type value, which must at a minimum have a `class` key whose
+    * value is `File`, `Directory`, or a previously defined schema type.
+    * @param map the [[java.util.Map]] value
+    * @param schemaDefs schema definitions to use when resolving the value's type
+    * @return
+    */
   def applyMap(map: java.util.Map[_, _], schemaDefs: Map[String, CwlSchema]): CwlValue = {
     map.get("class") match {
       case null        => ObjectValue(map, schemaDefs)
@@ -63,22 +96,13 @@ object CwlValue {
     }
   }
 
-  def applyMap(map: java.util.Map[_, _],
-               cwlType: Option[CwlType] = None,
-               schemaDefs: Map[String, CwlSchema] = Map.empty): CwlValue = {
-    (cwlType, map.get("class")) match {
-      case (Some(CwlFile), "File")           => FileValue(map)
-      case (Some(CwlDirectory), "Directory") => DirectoryValue(map)
-      case (None, null)                      => ObjectValue(map, schemaDefs)
-      case (Some(schema: CwlSchema), null) =>
-        applySchema(map, schema, schemaDefs)
-      case (None, schemaName: String) if schemaDefs.contains(schemaName) =>
-        applySchema(map, schemaDefs(schemaName), schemaDefs)
-      case _ =>
-        throw new Exception(s"cannot translate ${map} to value of type ${cwlType}")
-    }
-  }
-
+  /**
+    * Translates a Java value to a [[CwlValue]], absent of type information.
+    * @param value the value to translate
+    * @param schemaDefs any schema definitions to use when resolving Map-type
+    *                   values that specify their `class`
+    * @return a [[CwlValue]]
+    */
   def apply(value: java.lang.Object, schemaDefs: Map[String, CwlSchema]): CwlValue = {
     value match {
       case null                       => NullValue
@@ -101,10 +125,38 @@ object CwlValue {
             throw new RuntimeException(s"invalid long value ${bi.toString}", ex)
         }
       case _ =>
-        throw new RuntimeException(s"cannot translate value without a type specification ${value}")
+        throw new RuntimeException(s"cannot translate ${value} without a type specification")
     }
   }
 
+  def applyMap(map: java.util.Map[_, _],
+               cwlType: Option[CwlType] = None,
+               schemaDefs: Map[String, CwlSchema] = Map.empty): CwlValue = {
+    (cwlType, map.get("class")) match {
+      case (Some(CwlFile), "File")           => FileValue(map)
+      case (Some(CwlDirectory), "Directory") => DirectoryValue(map)
+      case (None, null)                      => ObjectValue(map, schemaDefs)
+      case (Some(schema: CwlSchema), null) =>
+        applySchema(map, schema, schemaDefs)
+      case (None, schemaName: String) if schemaDefs.contains(schemaName) =>
+        applySchema(map, schemaDefs(schemaName), schemaDefs)
+      case _ =>
+        throw new Exception(s"cannot translate ${map} to value of type ${cwlType}")
+    }
+  }
+
+  /**
+    * Translates a Java value to a [[CwlValue]] of the specified type.
+    *
+    * Some limited auto-coersion is applied, e.g. {{{apply("1.0", CwlInt)}}}
+    * is translated to {{{IntValue(1)}}}, but {{{apply("1.1", CwlInt)}}}
+    * throws an exception because "1.1" cannot be converted exactly to an Int.
+    * @param value the value to translate
+    * @param cwlType the target type
+    * @param schemaDefs any schema definitions to use when resolving Map-type
+    *                   values that specify their `class`
+    * @return a [[CwlValue]]
+    */
   def apply(value: java.lang.Object,
             cwlType: CwlType,
             schemaDefs: Map[String, CwlSchema]): CwlValue = {
@@ -133,6 +185,15 @@ object CwlValue {
     }
   }
 
+  /**
+    * Translates a Java value to a [[CwlValue]] of one of the specified types. Each type
+    * is tried in order, and the result is the first one to return a value.
+    * @param value the value to translate
+    * @param cwlTypes the target types
+    * @param schemaDefs any schema definitions to use when resolving Map-type
+    *                   values that specify their `class`
+    * @return a [[CwlValue]]
+    */
   def apply(value: java.lang.Object,
             cwlTypes: Vector[CwlType],
             schemaDefs: Map[String, CwlSchema]): CwlValue = {
@@ -154,10 +215,17 @@ object CwlValue {
       )
   }
 
+  /**
+    * Serializes a [[Map[String, CwlValue]] to a [[JsObject]] using the
+    * `toJson` method of the values.
+    */
   def serializeMap(map: Map[String, CwlValue]): JsObject = {
     JsObject(map.view.mapValues(_.toJson).toMap)
   }
 
+  /**
+    * Deserializes a JSON value to a [[CwlValue]], absent type information.
+    */
   def deserialize(jsValue: JsValue, schemaDefs: Map[String, CwlSchema]): CwlValue = {
     jsValue match {
       case JsNull       => NullValue
@@ -167,7 +235,8 @@ object CwlValue {
         try {
           LongValue(n.toLongExact)
         } catch {
-          case _: ArithmeticException => DoubleValue(n.toDouble)
+          case _: ArithmeticException =>
+            DoubleValue(n.toDouble)
         }
       case JsArray(a) =>
         ArrayValue(a.map(deserialize(_, schemaDefs)))
@@ -183,10 +252,17 @@ object CwlValue {
             ObjectValue(o.view.mapValues(deserialize(_, schemaDefs)).toMap)
         }
       case _ =>
-        throw new Exception(s"cannot deserialize value ${jsValue}")
+        throw new Exception(s"cannot deserialize ${jsValue} without type information")
     }
   }
 
+  /**
+    * Deserializes a JSON value to a [[CwlValue]] given type information.
+    * @param jsValue the JSON value
+    * @param cwlType the target type
+    * @param schemaDefs schema defintions to use when resolving types
+    * @return a [[CwlValue]]
+    */
   @tailrec
   def deserialize(jsValue: JsValue,
                   cwlType: CwlType,
@@ -216,6 +292,14 @@ object CwlValue {
     }
   }
 
+  /**
+    * Deserializes a JSON value to a [[CwlValue]] given type information. Each type
+    * * is tried in order, and the result is the first one to return a value.
+    * @param jsValue the JSON value
+    * @param cwlTypes the target types
+    * @param schemaDefs schema defintions to use when resolving types
+    * @return a [[CwlValue]]
+    */
   def deserialize(jsValue: JsValue,
                   cwlTypes: Vector[CwlType],
                   schemaDefs: Map[String, CwlSchema]): CwlValue = {
@@ -238,7 +322,12 @@ object CwlValue {
   }
 }
 
+/**
+  * Trait of [[CwlType]]s that allow indexing with a string key.
+  */
 sealed trait StringIndexable {
+  def contains(key: String): Boolean
+
   def get(key: String): Option[CwlValue]
 
   def apply(key: String): CwlValue = {
@@ -246,26 +335,29 @@ sealed trait StringIndexable {
   }
 }
 
+/**
+  * Trait of [[CwlType]]s that allow indexing with an integer key.
+  */
 sealed trait IntIndexable {
+  def length: Int
+
   def get(index: Int): Option[CwlValue]
 
   def apply(index: Int): CwlValue = {
     get(index).getOrElse(NullValue)
   }
-
-  def length: Int
 }
 
 case object NullValue extends PrimitiveValue {
-  val cwlType: CwlType = CwlNull
+  override val cwlType: CwlType = CwlNull
 
   override val toJson: JsValue = JsNull
 }
 
 case class StringValue(value: String) extends PrimitiveValue with IntIndexable {
-  val cwlType: CwlType = CwlString
+  override val cwlType: CwlType = CwlString
 
-  def get(index: Int): Option[CwlValue] = {
+  override def get(index: Int): Option[CwlValue] = {
     Some(StringValue(value.charAt(index).toString))
   }
 
@@ -312,7 +404,7 @@ object StringValue {
 }
 
 case class BooleanValue(value: Boolean) extends PrimitiveValue {
-  val cwlType: CwlType = CwlBoolean
+  override val cwlType: CwlType = CwlBoolean
 
   override lazy val toJson: JsValue = JsBoolean(value)
 }
@@ -343,7 +435,7 @@ object BooleanValue {
 }
 
 case class IntValue(value: Int) extends PrimitiveValue {
-  val cwlType: CwlType = CwlInt
+  override val cwlType: CwlType = CwlInt
 
   override lazy val toJson: JsValue = JsNumber(value)
 }
@@ -391,7 +483,7 @@ object IntValue {
 }
 
 case class LongValue(value: Long) extends PrimitiveValue {
-  val cwlType: CwlType = CwlLong
+  override val cwlType: CwlType = CwlLong
 
   override lazy val toJson: JsValue = JsNumber(value)
 }
@@ -439,7 +531,7 @@ object LongValue {
 }
 
 case class FloatValue(value: Float) extends PrimitiveValue {
-  val cwlType: CwlType = CwlFloat
+  override val cwlType: CwlType = CwlFloat
 
   override lazy val toJson: JsValue = JsNumber(value)
 }
@@ -487,7 +579,7 @@ object FloatValue {
 }
 
 case class DoubleValue(value: Double) extends PrimitiveValue {
-  val cwlType: CwlType = CwlDouble
+  override val cwlType: CwlType = CwlDouble
 
   override lazy val toJson: JsValue = JsNumber(value)
 }
@@ -527,6 +619,9 @@ object DoubleValue {
   }
 }
 
+/**
+  * Parent of the path-type values.
+  */
 sealed trait PathValue extends PrimitiveValue with StringIndexable {
   val location: Option[String]
   val path: Option[String]
@@ -592,9 +687,24 @@ case class FileValue(location: Option[String] = None,
                      format: Option[String] = None,
                      contents: Option[String] = None)
     extends PathValue {
-  val cwlType: CwlType = CwlFile
+  override val cwlType: CwlType = CwlFile
+  private val keys: Set[String] = Set("location",
+                                      "path",
+                                      "basename",
+                                      "dirname",
+                                      "nameroot",
+                                      "nameext",
+                                      "checksum",
+                                      "size",
+                                      "secondaryFiles",
+                                      "format",
+                                      "contents")
 
-  def get(key: String): Option[CwlValue] = {
+  override def contains(key: String): Boolean = {
+    keys.contains(key)
+  }
+
+  override def get(key: String): Option[CwlValue] = {
     key match {
       case "location"       => location.map(StringValue(_))
       case "path"           => path.map(StringValue(_))
@@ -718,9 +828,14 @@ case class DirectoryValue(location: Option[String] = None,
                           basename: Option[String] = None,
                           listing: Vector[PathValue] = Vector.empty)
     extends PathValue {
-  val cwlType: CwlType = CwlDirectory
+  override val cwlType: CwlType = CwlDirectory
+  private val keys: Set[String] = Set("location", "path", "basename", "listing")
 
-  def get(key: String): Option[CwlValue] = {
+  override def contains(key: String): Boolean = {
+    keys.contains(key)
+  }
+
+  override def get(key: String): Option[CwlValue] = {
     key match {
       case "location" => location.map(StringValue(_))
       case "path"     => path.map(StringValue(_))
@@ -730,7 +845,6 @@ case class DirectoryValue(location: Option[String] = None,
         throw new Exception(s"invalid File property ${key}")
     }
   }
-
 }
 
 object DirectoryValue {
@@ -778,7 +892,7 @@ object DirectoryValue {
   * contents of stdout/stderr.
   */
 case class RandomFile(stdfile: StdFile.StdFile) extends PrimitiveValue {
-  val cwlType: CwlType = CwlFile
+  override val cwlType: CwlType = CwlFile
 
   override def toJson: JsValue = {
     JsObject("location" -> JsString(stdfile.toString))
@@ -786,7 +900,11 @@ case class RandomFile(stdfile: StdFile.StdFile) extends PrimitiveValue {
 }
 
 case class ArrayValue(items: Vector[CwlValue]) extends CwlValue with IntIndexable {
-  def get(index: Int): Option[CwlValue] = {
+  override def length: Int = {
+    items.size
+  }
+
+  override def get(index: Int): Option[CwlValue] = {
     Some(items(index))
   }
 
@@ -799,10 +917,6 @@ case class ArrayValue(items: Vector[CwlValue]) extends CwlValue with IntIndexabl
       case schema: CwlArray => items.forall(_.coercibleTo(schema.itemTypes))
       case _                => false
     }
-  }
-
-  override def length: Int = {
-    items.size
   }
 }
 
@@ -853,7 +967,12 @@ object ArrayValue {
 trait ObjectLike extends CwlValue with StringIndexable
 
 case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
-  def get(key: String): Option[CwlValue] = {
+
+  override def contains(key: String): Boolean = {
+    members.contains(key)
+  }
+
+  override def get(key: String): Option[CwlValue] = {
     members.get(key)
   }
 
@@ -863,6 +982,7 @@ case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
 
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
+      case CwlAny => true
       case schema: CwlRecord =>
         schema.fields.values.forall { field =>
           if (members.contains(field.name)) {

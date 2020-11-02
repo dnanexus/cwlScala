@@ -25,6 +25,7 @@ import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 
 import scala.jdk.CollectionConverters._
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#LoadListingEnum
 object LoadListing extends Enumeration {
   type LoadListing = Value
   val No, Shallow, Deep = Value
@@ -38,11 +39,15 @@ object LoadListing extends Enumeration {
   }
 }
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#stdin
+// https://www.commonwl.org/v1.2/CommandLineTool.html#stdout
+// https://www.commonwl.org/v1.2/CommandLineTool.html#stderr
 object StdFile extends Enumeration {
   type StdFile = Value
   val Stdin, Stdout, Stderr = Value
 }
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#SecondaryFileSchema
 case class SecondaryFile(pattern: CwlValue, required: CwlValue)
 
 object SecondaryFile {
@@ -53,6 +58,7 @@ object SecondaryFile {
   }
 }
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#CommandLineBinding
 case class CommandInputBinding(position: Option[CwlValue],
                                prefix: Option[String],
                                separate: Option[Boolean],
@@ -74,6 +80,7 @@ object CommandInputBinding {
   }
 }
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputParameter
 case class CommandInputParameter(id: Option[String],
                                  label: Option[String],
                                  doc: Option[String],
@@ -117,6 +124,7 @@ object CommandInputParameter {
   }
 }
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputBinding
 case class CommandOutputBinding(glob: Vector[CwlValue],
                                 outputEval: Option[CwlValue],
                                 loadContents: Option[Boolean],
@@ -134,6 +142,7 @@ object CommandOutputBinding {
   }
 }
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputParameter
 case class CommandOutputParameter(id: Option[String],
                                   label: Option[String],
                                   doc: Option[String],
@@ -188,6 +197,7 @@ sealed trait Argument
 case class ExprArgument(expr: CwlValue) extends Argument
 case class BindingArgument(binding: CommandInputBinding) extends Argument
 
+// https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputBinding
 case class CommandLineTool(source: Option[String],
                            cwlVersion: Option[CWLVersion],
                            id: Option[String],
@@ -206,9 +216,17 @@ case class CommandLineTool(source: Option[String],
                            successCodes: Set[Int],
                            temporaryFailCodes: Set[Int],
                            permanentFailCodes: Set[Int])
-    extends DocumentElement
+    extends Process
 
 object CommandLineTool {
+
+  /**
+    * Creates a [[CommandLineTool]] from the [[CommandLineToolImpl]] created by the Java parser.
+    * @param tool the Java object
+    * @param source the CWL original source code
+    * @param schemaDefs any schema definitions to use when resolving types
+    * @return a [[CommandLineTool]]
+    */
   def apply(tool: CommandLineToolImpl,
             source: Option[String] = None,
             schemaDefs: Map[String, CwlSchema] = Map.empty): CommandLineTool = {
@@ -218,6 +236,7 @@ object CommandLineTool {
           case ((reqAccu, defAccu), req: ProcessRequirement) =>
             val cwlRequirement = Requirement(req, defAccu)
             cwlRequirement match {
+              // add any new schema defs to the initial set
               case SchemaDefRequirement(typeDefs) =>
                 (reqAccu, defAccu ++ typeDefs.map(d => d.name.get -> d))
               case _ =>
@@ -227,6 +246,14 @@ object CommandLineTool {
             throw new RuntimeException(s"unexpected requirement value ${req}")
         }
 
+    // TODO: for now, hints is left empty because cwljava doesn't parse them
+    val hints = Vector.empty
+
+    // An input may have type `stdin`, which is a file that is created from the
+    // standard input piped to the CommandLineTool. A maximum of one input parameter
+    // can have the `stdin` type, and if there is one then the tool's `stdin`
+    // attribute cannot be set.
+    // https://www.commonwl.org/v1.2/CommandLineTool.html#stdin
     val (inputParams, isStdin) = tool.getInputs.asScala
       .map {
         case param: CommandInputParameterImpl => CommandInputParameter(param, allSchemaDefs)
@@ -255,6 +282,10 @@ object CommandLineTool {
       }
       .orElse(toolStdin)
 
+    // An output parameter may have type `stdout` or `stderr`. There can be a maximum of
+    // one output parameter with each type, and if there is one then the corresponding
+    // CommandLineTool attribute cannot also be set.
+    // https://www.commonwl.org/v1.2/CommandLineTool.html#stdout
     val (outputParams, stdfile) = tool.getOutputs.asScala
       .map {
         case param: CommandOutputParameterImpl => CommandOutputParameter(param, allSchemaDefs)
@@ -263,7 +294,6 @@ object CommandLineTool {
       }
       .toVector
       .unzip
-
     val stdout: Option[CwlValue] =
       translateOptionalObject(tool.getStdout).map(CwlValue(_, allSchemaDefs)) match {
         case None if stdfile.contains(Some(StdFile.Stdout)) =>
@@ -280,7 +310,8 @@ object CommandLineTool {
     val arguments = translateOptionalArray(tool.getArguments).map {
       case binding: CommandLineBindingImpl =>
         BindingArgument(CommandInputBinding(binding, allSchemaDefs))
-      case expr => ExprArgument(CwlValue(expr, allSchemaDefs))
+      case expr =>
+        ExprArgument(CwlValue(expr, allSchemaDefs))
     }
 
     CommandLineTool(
@@ -298,19 +329,20 @@ object CommandLineTool {
         stdout,
         stderr,
         requirements,
-        //        translateOptionalArray(tool.getHints).map {
-        //          case req: ProcessRequirement => Requirement(req)
-        //          case other =>
-        //            throw new RuntimeException(s"unexpected hint value ${other}")
-        //        },
-        // TODO: for now, hints is left empty because cwljava doesn't parse them
-        Vector.empty,
+        hints,
         translateOptionalArray(tool.getSuccessCodes).map(translateInt).toSet,
         translateOptionalArray(tool.getTemporaryFailCodes).map(translateInt).toSet,
         translateOptionalArray(tool.getPermanentFailCodes).map(translateInt).toSet
     )
   }
 
+  /**
+    * Parses a CommandLineTool CWL document.
+    * @param path path to the document
+    * @param baseUri base URI to use when loading imports
+    * @param loadingOptions document loading options
+    * @return a [[CommandLineTool]]
+    */
   def parse(path: Path,
             baseUri: Option[String] = None,
             loadingOptions: Option[LoadingOptions] = None): CommandLineTool = {

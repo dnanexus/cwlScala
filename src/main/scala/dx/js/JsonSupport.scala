@@ -40,22 +40,18 @@ trait JsonSupport {
 
   @tailrec
   private def toJsValue(input: Any): JsValue = input match {
-    case b: Boolean => JsBoolean(b)
-    case i: Int     => JsNumber(i)
-    case l: Long    => JsNumber(l)
-    case f: Float   => JsNumber(f)
-    case d: Double  => JsNumber(d)
-    case s: String  => JsString(s)
-
+    case b: Boolean      => JsBoolean(b)
+    case i: Int          => JsNumber(i)
+    case l: Long         => JsNumber(l)
+    case f: Float        => JsNumber(f)
+    case d: Double       => JsNumber(d)
+    case s: String       => JsString(s)
     case o: NativeObject => toJsObject(o)
     case a: NativeArray  => toJsArray(a)
     case w: Wrapper      => toJsValue(w.unwrap())
-
-    case _: Undefined => JsNull
-    case null         => JsNull
-    case _ => {
-      JsNull
-    }
+    case _: Undefined    => JsNull
+    case null            => JsNull
+    case _               => JsNull
   }
 
   private def toJsObject(nativeObject: NativeObject): JsObject = {

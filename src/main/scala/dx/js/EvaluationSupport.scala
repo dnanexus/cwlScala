@@ -21,6 +21,12 @@ object Scope {
     withContext[Scope](_.initStandardObjects()).get
   }
 
+  /**
+    * Creates a scope that contains the standard values as well as any additional
+    * values specified.
+    * @param jsValues Additional values to add to the scope, as JSON objects.
+    * @return
+    */
   def create(jsValues: Map[String, JsValue] = Map.empty): Scope = {
     withContext[Scope] { ctx =>
       val newScope = ctx.newObject(standard.wrapped)

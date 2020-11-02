@@ -22,6 +22,10 @@ import org.w3id.cwl.cwl1_2.{
 }
 import scala.jdk.CollectionConverters._
 
+/**
+  * One of the requirements defined in the CWL spec.
+  * https://www.commonwl.org/v1.2/CommandLineTool.html#InlineJavascriptRequirement
+  */
 sealed trait Requirement
 
 object Requirement {

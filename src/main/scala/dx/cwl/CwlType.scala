@@ -22,13 +22,33 @@ import org.w3id.cwl.cwl1_2.{
 
 import scala.jdk.CollectionConverters._
 
+/**
+  * Marker trait for all CWL data types.
+  */
 sealed trait CwlType {
+
+  /**
+    * Returns true if this type is coercible to the specified type
+    */
   def coercibleTo(targetType: CwlType): Boolean
 }
 
 object CwlType {
-  // TODO: we need to handle optional types, but they currently fail to parse due to
-  //  https://github.com/common-workflow-lab/cwljava/issues/29
+
+  /**
+    * Translates a Java type object to a [[CwlType]]. Since CWL allows parameters
+    * to be polymorphic (i.e. accept multiple types), the value returned is a
+    * [[Vector[CwlType]]]. If the type is any of `stdin`, `stdout`, `stderr`, it is
+    * converted to a [[CwlFile]] and a [[Some(StdFile.StdFile)]] is also returned
+    * indicating which std file is represented.
+    *
+    * TODO: we need to handle optional types, but they currently fail to parse due to
+    *  https://github.com/common-workflow-lab/cwljava/issues/29
+    *
+    * @param t the Java type object - may be a [[java.util.List]] of multiple types
+    * @param schemaDefs schema definitions to use for resolving non-standard types
+    * @return a tuple [[(Vector[CwlType], Option[StdFile.StdFile])]].
+    */
   def apply(
       t: java.lang.Object,
       schemaDefs: Map[String, CwlSchema] = Map.empty
@@ -37,7 +57,11 @@ object CwlType {
       case a: java.util.List[_] =>
         val (cwlTypes, stdfile) =
           a.asInstanceOf[java.util.List[java.lang.Object]].asScala.map(apply(_, schemaDefs)).unzip
-        (cwlTypes.flatten.toVector, stdfile.flatten.toSet.headOption)
+        val stdfiles = stdfile.flatten.toSet
+        if (stdfiles.size > 1) {
+          throw new Exception(s"found multiple different std types ${stdfiles.mkString(",")}")
+        }
+        (cwlTypes.flatten.toVector, stdfiles.headOption)
       case CWLStdin.STDIN   => (Vector(CwlFile), Some(StdFile.Stdin))
       case CWLStdout.STDOUT => (Vector(CwlFile), Some(StdFile.Stdout))
       case CWLStderr.STDERR => (Vector(CwlFile), Some(StdFile.Stderr))
@@ -77,7 +101,14 @@ case object CwlAny extends CwlType {
   }
 }
 
+/**
+  * All valid CWL types are primitive, excepting `Any`, `null`, and schema types.
+  */
 sealed trait CwlPrimitive extends CwlType {
+
+  /**
+    * The set of types to which the primitive type is coercible
+    */
   def coercibleTypes: Set[CwlType]
 
   override def coercibleTo(targetType: CwlType): Boolean = {
@@ -94,6 +125,9 @@ case object CwlBoolean extends CwlPrimitive {
   override val coercibleTypes: Set[CwlType] = Set(CwlString)
 }
 
+/**
+  * Parent trait of the four CWL numeric types
+  */
 sealed trait CwlNumber extends CwlPrimitive {
   override val coercibleTypes: Set[CwlType] = Set(CwlInt, CwlLong, CwlFloat, CwlDouble, CwlString)
 }
@@ -103,6 +137,9 @@ case object CwlLong extends CwlNumber
 case object CwlFloat extends CwlNumber
 case object CwlDouble extends CwlNumber
 
+/**
+  * Parent trait of the two CWL path types
+  */
 sealed trait CwlPath extends CwlPrimitive {
   override val coercibleTypes: Set[CwlType] = Set(CwlString)
 }
@@ -114,10 +151,20 @@ case object CwlNull extends CwlPrimitive {
   override val coercibleTypes: Set[CwlType] = Set.empty[CwlType]
 }
 
+/**
+  * An optional type.
+  * @param t the inner type
+  * @example {{{string?}}} is translated to {{{CwlOptional(CwlString)}}}
+  */
 case class CwlOptional(t: CwlType) extends CwlPrimitive {
   override val coercibleTypes: Set[CwlType] = Set(CwlNull)
 }
 
+/**
+  * Parent of CWL schema types. Note that input and output schema definitions
+  * both use the same objects, but `inputBinding` will always be `None` for
+  * output types.
+  */
 sealed trait CwlSchema extends CwlType {
   val name: Option[String]
   val label: Option[String]

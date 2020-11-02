@@ -5,10 +5,14 @@ import spray.json.JsonReader
 
 import scala.reflect.ClassTag
 
+/**
+  * Javascript evaluation engine, based on Rhino.
+  * @param scope the evaluation scope - defaults to the scope with only standard objects defined
+  */
 case class Engine(scope: Scope = Scope.standard) extends EvaluationSupport with JsonSupport {
 
   /**
-    * Makes an object available to javascript so that it can be called off to
+    * Makes an object available to the javascript engine so that it can be referenced
     * @param name object name
     * @param callbackObj callback
     */

@@ -109,6 +109,16 @@ libraryDependencies ++= Seq(
 // Add Java sources
 Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java"
 
+assemblyMergeStrategy in assembly := {
+  {
+    case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
+    case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
+    case x =>
+      val oldStrategy = (assemblyMergeStrategy in assembly).value
+      oldStrategy(x)
+  }
+}
+
 // If an exception is thrown during tests, show the full
 // stack trace, by adding the "-oF" option to the list.
 //
