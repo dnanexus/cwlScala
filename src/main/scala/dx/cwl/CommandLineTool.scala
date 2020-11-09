@@ -81,7 +81,7 @@ object CommandInputBinding {
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputParameter
-case class CommandInputParameter(id: Option[String],
+case class CommandInputParameter(id: Option[Identifier],
                                  label: Option[String],
                                  doc: Option[String],
                                  types: Vector[CwlType],
@@ -100,7 +100,7 @@ object CommandInputParameter {
   ): (CommandInputParameter, Boolean) = {
     val (types, stdfile) = CwlType(param.getType, schemaDefs)
     val inparam = CommandInputParameter(
-        translateOptional(param.getId),
+        translateOptional(param.getId).map(Identifier.apply),
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
@@ -143,7 +143,7 @@ object CommandOutputBinding {
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputParameter
-case class CommandOutputParameter(id: Option[String],
+case class CommandOutputParameter(id: Option[Identifier],
                                   label: Option[String],
                                   doc: Option[String],
                                   types: Vector[CwlType],
@@ -176,7 +176,7 @@ object CommandOutputParameter {
       translateOptional(param.getStreamable).map(_.booleanValue())
     }
     val outparam = CommandOutputParameter(
-        translateOptional(param.getId),
+        translateOptional(param.getId).map(Identifier.apply),
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
@@ -200,7 +200,7 @@ case class BindingArgument(binding: CommandInputBinding) extends Argument
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputBinding
 case class CommandLineTool(source: Option[String],
                            cwlVersion: Option[CWLVersion],
-                           id: Option[String],
+                           id: Identifier,
                            label: Option[String],
                            doc: Option[String],
                            intent: Vector[String],
@@ -228,7 +228,7 @@ object CommandLineTool {
     * @return a [[CommandLineTool]]
     */
   def apply(tool: CommandLineToolImpl,
-            source: Option[String] = None,
+            source: Option[Path] = None,
             schemaDefs: Map[String, CwlSchema] = Map.empty): CommandLineTool = {
     val (requirements, allSchemaDefs) =
       translateOptionalArray(tool.getRequirements)
@@ -278,7 +278,12 @@ object CommandLineTool {
     }
     val stdin = paramStdin
       .map { param =>
-        CwlValue(s"$${inputs.${param.id}.path}", allSchemaDefs)
+        val paramId = param.id
+          .flatMap(_.name)
+          .getOrElse(
+              throw new Exception(s"missing input parameter ${paramStdin}")
+          )
+        CwlValue(s"$${inputs.${paramId}.path}", allSchemaDefs)
       }
       .orElse(toolStdin)
 
@@ -314,10 +319,18 @@ object CommandLineTool {
         ExprArgument(CwlValue(expr, allSchemaDefs))
     }
 
+    val id = (translateOptional(tool.getId), source) match {
+      case (Some(id), _) => Identifier(id)
+      case (None, Some(path)) if path.endsWith(".cwl") =>
+        Identifier(namespace = None, name = Some(path.getFileName.toString.dropRight(4)))
+      case _ =>
+        throw new Exception("either tool id or file path must be defined")
+    }
+
     CommandLineTool(
-        source,
+        source.map(_.toString),
         translateOptional(tool.getCwlVersion),
-        translateOptional(tool.getId),
+        id,
         translateOptional(tool.getLabel),
         translateDoc(tool.getDoc),
         translateOptionalArray(tool.getIntent).map(translateString),
@@ -347,7 +360,7 @@ object CommandLineTool {
             baseUri: Option[String] = None,
             loadingOptions: Option[LoadingOptions] = None): CommandLineTool = {
     RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull) match {
-      case tool: CommandLineToolImpl => CommandLineTool(tool, Some(path.toString))
+      case tool: CommandLineToolImpl => CommandLineTool(tool, Some(path))
       case other =>
         throw new RuntimeException(s"Expected CommandLineTool, found ${other}")
     }

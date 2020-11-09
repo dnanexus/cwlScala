@@ -113,7 +113,12 @@ assemblyMergeStrategy in assembly := {
   {
     case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
     case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
-    case PathList("META_INF", "MANFIEST.MF")             => MergeStrategy.first
+    case PathList("META_INF", xs @ _*) =>
+      xs map { _.toLowerCase } match {
+        case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
+          MergeStrategy.discard
+        case _ => MergeStrategy.last
+      }
     case x =>
       val oldStrategy = (assemblyMergeStrategy in assembly).value
       oldStrategy(x)

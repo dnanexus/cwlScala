@@ -473,7 +473,7 @@ object EvaluatorContext {
   def createStaticInputs(inputs: Vector[CommandInputParameter]): Map[String, CwlValue] = {
     inputs.collect {
       case param if param.id.isDefined && param.default.isDefined =>
-        param.id.get -> param.default.get
+        param.id.get.name.get -> param.default.get
     }.toMap
   }
 }
