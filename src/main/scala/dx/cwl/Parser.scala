@@ -1,9 +1,11 @@
 package dx.cwl
 
+import java.io.FileInputStream
 import java.nio.file.Path
 
 import org.w3id.cwl.cwl1_2.{CommandLineToolImpl, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
+import org.yaml.snakeyaml.Yaml
 
 /**
   * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
@@ -13,6 +15,19 @@ trait Process {
 }
 
 object Parser {
+
+  /**
+    * Can a file be parsed as CWL?
+    */
+  def canParse(path: Path): Boolean = {
+    try {
+      val doc = new Yaml().load[java.util.Map[String, Any]](new FileInputStream(path.toFile))
+      doc.containsKey("cwlVersion") && doc.get("cwlVersion").asInstanceOf[String].startsWith("v1.2")
+    } catch {
+      case _: Throwable =>
+        false
+    }
+  }
 
   /**
     * Parses a CWL document.
