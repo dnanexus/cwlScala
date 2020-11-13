@@ -1,5 +1,9 @@
 # Change log
 
+## Version 0.2.2 (2020-11-13)
+
+* Add `Parser.canParse` method
+
 ## Version 0.2.1 (2020-11-09)
 
 * Parse identifiers
