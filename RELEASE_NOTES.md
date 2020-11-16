@@ -1,6 +1,10 @@
 # Change log
 
-## Version 0.2.2 (2020-11-13)
+## Version 0.2.3 (2020-11-16)
+
+* Fix parsing of process requirements
+
+## Version 0.2.2 (2020-11-12)
 
 * Add `Parser.canParse` method
 

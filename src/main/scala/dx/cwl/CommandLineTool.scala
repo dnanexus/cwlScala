@@ -235,13 +235,14 @@ object CommandLineTool {
         .foldLeft(Vector.empty[Requirement], schemaDefs) {
           case ((reqAccu, defAccu), req: ProcessRequirement) =>
             val cwlRequirement = Requirement(req, defAccu)
-            cwlRequirement match {
+            val newSchemaDefs = cwlRequirement match {
               // add any new schema defs to the initial set
               case SchemaDefRequirement(typeDefs) =>
-                (reqAccu, defAccu ++ typeDefs.map(d => d.name.get -> d))
+                defAccu ++ typeDefs.map(d => d.name.get -> d)
               case _ =>
-                (reqAccu, defAccu)
+                defAccu
             }
+            (reqAccu :+ cwlRequirement, newSchemaDefs)
           case (_, req) =>
             throw new RuntimeException(s"unexpected requirement value ${req}")
         }
