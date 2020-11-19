@@ -444,20 +444,19 @@ object IntValue {
   def apply(obj: Any): IntValue = {
     try {
       obj match {
-        case i: java.lang.Integer =>
-          IntValue(i.intValue())
+        case l: Long if l.isValidInt   => IntValue(l.toInt)
+        case f: Float if f.isValidInt  => IntValue(f.toInt)
+        case d: Double if d.isValidInt => IntValue(d.toInt)
+        case i: java.lang.Integer      => IntValue(i.toInt)
         case l: java.lang.Long =>
-          IntValue(new java.math.BigInteger(l.toString).intValueExact())
+          IntValue(java.math.BigInteger.valueOf(l).intValueExact())
         case f: java.lang.Float =>
-          IntValue(new java.math.BigDecimal(f.toString).intValueExact())
+          IntValue(java.math.BigDecimal.valueOf(f.toDouble).intValueExact())
         case d: java.lang.Double =>
-          IntValue(new java.math.BigDecimal(d.toString).intValueExact())
-        case bi: java.math.BigInteger =>
-          IntValue(bi.intValueExact())
-        case bd: java.math.BigDecimal =>
-          IntValue(bd.intValueExact())
-        case s: String =>
-          IntValue(s.toInt)
+          IntValue(java.math.BigDecimal.valueOf(d).intValueExact())
+        case bi: java.math.BigInteger => IntValue(bi.intValueExact())
+        case bd: java.math.BigDecimal => IntValue(bd.intValueExact())
+        case s: String                => IntValue(s.toInt)
         case _ =>
           throw new Exception(s"invalid int value ${obj}")
       }
@@ -492,20 +491,19 @@ object LongValue {
   def apply(obj: Any): LongValue = {
     try {
       obj match {
-        case i: java.lang.Integer =>
-          LongValue(i.intValue())
-        case l: java.lang.Long =>
-          LongValue(l.longValue())
+        case i: Int => LongValue(i.longValue())
+        case f: Float =>
+          LongValue(java.math.BigDecimal.valueOf(f.toDouble).longValueExact())
+        case d: Double =>
+          LongValue(java.math.BigDecimal.valueOf(d).longValueExact())
         case f: java.lang.Float =>
-          LongValue(new java.math.BigDecimal(f.toString).longValueExact())
+          LongValue(java.math.BigDecimal.valueOf(f.toDouble).longValueExact())
         case d: java.lang.Double =>
-          LongValue(new java.math.BigDecimal(d.toString).longValueExact())
-        case bi: java.math.BigInteger =>
-          LongValue(bi.longValueExact())
-        case bd: java.math.BigDecimal =>
-          LongValue(bd.longValueExact())
-        case s: String =>
-          LongValue(s.toLong)
+          LongValue(java.math.BigDecimal.valueOf(d).longValueExact())
+        case bi: java.math.BigInteger => LongValue(bi.longValueExact())
+        case bd: java.math.BigDecimal => LongValue(bd.longValueExact())
+        case n: java.lang.Number      => LongValue(n.longValue())
+        case s: String                => LongValue(s.toLong)
         case _ =>
           throw new Exception(s"invalid long value ${obj}")
       }
@@ -537,23 +535,14 @@ case class FloatValue(value: Float) extends PrimitiveValue {
 }
 
 object FloatValue {
-  def apply(obj: Any): LongValue = {
+  def apply(obj: Any): FloatValue = {
     try {
       obj match {
-        case i: java.lang.Integer =>
-          FloatValue(i.floatValue())
-        case l: java.lang.Long =>
-          FloatValue(l.floatValue())
-        case f: java.lang.Float =>
-          FloatValue(f.floatValue())
-        case d: java.lang.Double =>
-          FloatValue(new java.math.BigDecimal(d.toString).floatValue())
-        case bi: java.math.BigInteger =>
-          FloatValue(bi.floatValue())
-        case bd: java.math.BigDecimal =>
-          FloatValue(bd.floatValue())
-        case s: String =>
-          FloatValue(s.toFloat)
+        case i: Int              => FloatValue(i.floatValue())
+        case l: Long             => FloatValue(l.floatValue())
+        case d: Double           => FloatValue(d.floatValue())
+        case n: java.lang.Number => FloatValue(n.floatValue())
+        case s: String           => FloatValue(s.toFloat)
         case _ =>
           throw new Exception(s"invalid float value ${obj}")
       }
@@ -588,13 +577,11 @@ object DoubleValue {
   def apply(obj: Any): DoubleValue = {
     try {
       obj match {
-        case (CwlDouble, i: java.lang.Integer)     => DoubleValue(i.doubleValue())
-        case (CwlDouble, l: java.lang.Long)        => DoubleValue(l.doubleValue())
-        case (CwlDouble, f: java.lang.Float)       => DoubleValue(f.doubleValue())
-        case (CwlDouble, d: java.lang.Double)      => DoubleValue(d.doubleValue())
-        case (CwlDouble, bi: java.math.BigInteger) => DoubleValue(bi.doubleValue())
-        case (CwlDouble, bd: java.math.BigDecimal) => DoubleValue(bd.doubleValue())
-        case s: String                             => DoubleValue(s.toDouble)
+        case i: Int              => DoubleValue(i.doubleValue())
+        case l: Long             => DoubleValue(l.doubleValue())
+        case f: Float            => DoubleValue(f.doubleValue())
+        case n: java.lang.Number => DoubleValue(n.doubleValue())
+        case s: String           => DoubleValue(s.toDouble)
         case _ =>
           throw new Exception(s"invalid double value ${obj}")
       }

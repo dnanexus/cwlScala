@@ -2,7 +2,6 @@ package dx.cwl
 
 import java.nio.file.{Path, Paths}
 
-import org.scalatest.Ignore
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
