@@ -3,6 +3,7 @@ package dx.cwl
 import dx.cwl.Utils._
 import org.w3id.cwl.cwl1_2.{
   CommandInputSchema,
+  DirentImpl,
   DockerRequirementImpl,
   EnvVarRequirementImpl,
   EnvironmentDefImpl,
@@ -20,6 +21,7 @@ import org.w3id.cwl.cwl1_2.{
   ToolTimeLimitImpl,
   WorkReuseImpl
 }
+
 import scala.jdk.CollectionConverters._
 
 /**
@@ -136,12 +138,31 @@ object SoftwareRequirement {
   }
 }
 
-case class InitialWorkDirRequirement(listing: Vector[CwlValue]) extends Requirement
+sealed trait InitialWorkDirEntry
+case class ValueInitialWorkDirEntry(value: CwlValue) extends InitialWorkDirEntry
+case class DirInitialWorkDirEntry(entry: CwlValue,
+                                  entryName: Option[CwlValue],
+                                  writable: Option[Boolean])
+    extends InitialWorkDirEntry
+
+object DirInitialWorkDirEntry {
+  def apply(dirent: DirentImpl, schemaDefs: Map[String, CwlSchema]): DirInitialWorkDirEntry = {
+    val entry = CwlValue(dirent.getEntry, schemaDefs)
+    val entryName = translateOptionalObject(dirent.getEntryname).map(CwlValue(_, schemaDefs))
+    val writable = translateOptional[java.lang.Boolean](dirent.getWritable).map(_.booleanValue())
+    DirInitialWorkDirEntry(entry, entryName, writable)
+  }
+}
+
+case class InitialWorkDirRequirement(listing: Vector[InitialWorkDirEntry]) extends Requirement
 
 object InitialWorkDirRequirement {
   def apply(req: InitialWorkDirRequirementImpl,
             schemaDefs: Map[String, CwlSchema]): InitialWorkDirRequirement = {
-    InitialWorkDirRequirement(translateArray(req.getListing).map(CwlValue(_, schemaDefs)))
+    InitialWorkDirRequirement(translateArray(req.getListing).map {
+      case entry: DirentImpl => DirInitialWorkDirEntry(entry, schemaDefs)
+      case value             => ValueInitialWorkDirEntry(CwlValue(value, schemaDefs))
+    })
   }
 }
 

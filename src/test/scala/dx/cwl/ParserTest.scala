@@ -27,18 +27,21 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     // this test is broken due to a bug in the underlying java parser
-//    "parse requirements" in {
-//      val doc = CommandLineTool.parse(getPath("/tools/pass/writable-dir.cwl"))
-//      doc.requirements.size shouldBe 2
-//      val workDir: Map[String, CwlValue] = Map(
-//          "entryname" -> StringValue("emptyWritableDir"),
-//          "writable" -> BooleanValue(true),
-//          "entry" -> StringValue("$({class: 'Directory', listing: []})")
-//      )
-//      doc.requirements shouldBe Vector(
-//          InlineJavascriptRequirement(None),
-//          InitialWorkDirRequirement(Vector(ObjectValue(workDir)))
-//      )
-//    }
+    "parse requirements" in {
+      val doc = CommandLineTool.parse(getPath("/tools/pass/writable-dir.cwl"))
+      doc.requirements.size shouldBe 2
+      doc.requirements.iterator sameElements Vector(
+          InlineJavascriptRequirement(None),
+          InitialWorkDirRequirement(
+              Vector(
+                  DirInitialWorkDirEntry(
+                      entry = StringValue("$({class: 'Directory', listing: []})"),
+                      entryName = Some(StringValue("emptyWritableDir")),
+                      writable = Some(true)
+                  )
+              )
+          )
+      )
+    }
   }
 }
