@@ -1,5 +1,11 @@
 # Change log
 
+## v0.2.5 (2020-11-20)
+
+* Updated cwljava
+  - fixes some issues with requirements parsing
+  - fixes some tests cases and breaks others
+
 ## v0.2.4 (2020-11-19)
 
 * Fix apply functions for CwlValue primitives - correctly handle Scala values 
