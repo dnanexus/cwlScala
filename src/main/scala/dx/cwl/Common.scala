@@ -1,6 +1,9 @@
 package dx.cwl
 
-case class Identifier(namespace: Option[String], name: Option[String])
+case class Identifier(namespace: Option[String], name: Option[String]) {
+  def fullyQualifiedName: Option[String] =
+    name.map(n => namespace.map(ns => s"${ns}#${n}").getOrElse(n))
+}
 
 object Identifier {
   private val identifierRegexp = "(.*?)(?:#(.*))?".r

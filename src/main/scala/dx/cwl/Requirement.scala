@@ -50,6 +50,49 @@ object Requirement {
         throw new RuntimeException(s"unsupported requirement value ${requirement}")
     }
   }
+
+  /**
+    * Compares two literal numeric values to test if the first is
+    * less than or equal to the second. Returns true of either
+    * value is not a literal numeric value.
+    * @param min lesser value to test
+    * @param max greater value to test
+    * @return
+    */
+  def lte(min: Option[CwlValue], max: Option[CwlValue]): Boolean = {
+    (min, max) match {
+      case (Some(min: NumericValue), Some(max: NumericValue)) =>
+        min.decimalValue <= max.decimalValue
+      case _ => true
+    }
+  }
+
+  /**
+    * Ensures that min and max are both >= defaultMinValue, that
+    * min <= max, and that min is always set.
+    * @param min min value
+    * @param max max value
+    * @param defaultMinValue default min value
+    * @return
+    */
+  def updateMinMax(min: Option[CwlValue],
+                   max: Option[CwlValue],
+                   defaultMinValue: Long): (Option[CwlValue], Option[CwlValue]) = {
+    val updatedMin = min.map {
+      case m: NumericValue if m.decimalValue < defaultMinValue => LongValue(defaultMinValue)
+      case m                                                   => m
+    }
+    val updatedMax = max.map {
+      case m: NumericValue if m.decimalValue < defaultMinValue => LongValue(defaultMinValue)
+      case m                                                   => m
+    }
+    (updatedMin, updatedMax) match {
+      case (Some(min: NumericValue), Some(max: NumericValue))
+          if min.decimalValue > max.decimalValue =>
+        (Some(min), Some(min))
+      case other => other
+    }
+  }
 }
 
 case class InlineJavascriptRequirement(expressionLib: Option[String]) extends Requirement
@@ -189,17 +232,78 @@ object EnvVarRequirement {
 
 case object ShellCommandRequirement extends Requirement
 
-case class ResourceRequirement(coresMin: Option[CwlValue],
-                               coresMax: Option[CwlValue],
-                               ramMin: Option[CwlValue],
-                               ramMax: Option[CwlValue],
-                               tmpdirMin: Option[CwlValue],
-                               tmpdirMax: Option[CwlValue],
-                               outdirMin: Option[CwlValue],
-                               outdirMax: Option[CwlValue])
-    extends Requirement
+case class ResourceRequirement(coresMin: Option[CwlValue] = None,
+                               coresMax: Option[CwlValue] = None,
+                               ramMin: Option[CwlValue] = None,
+                               ramMax: Option[CwlValue] = None,
+                               tmpdirMin: Option[CwlValue] = None,
+                               tmpdirMax: Option[CwlValue] = None,
+                               outdirMin: Option[CwlValue] = None,
+                               outdirMax: Option[CwlValue] = None)
+    extends Requirement {
+
+  assert(Requirement.lte(coresMin, coresMax))
+  assert(Requirement.lte(ramMin, ramMax))
+  assert(Requirement.lte(tmpdirMin, tmpdirMax))
+  assert(Requirement.lte(outdirMin, outdirMax))
+
+  /**
+    * Merge another ResourceRequirement by replacing any `None`
+    * value in this object with the corresponding value in `other`.
+    * If there is a mismatch between any pair of (min,max) values,
+    * the min value takes priority - e.g. if this.coresMin = 2
+    * and that.coresMax = 1, in the new ResourceRequirement
+    * coresMin = coresMax = 2.
+    * @param that the ResourceRequirement to merge
+    * @return a new ResourceRequirement
+    */
+  def merge(that: ResourceRequirement): ResourceRequirement = {
+    val (minCores, maxCores) = Requirement.updateMinMax(
+        coresMin.orElse(that.coresMin),
+        coresMax.orElse(that.coresMax),
+        ResourceRequirement.DefaultCoresMin
+    )
+    val (minRam, maxRam) = Requirement.updateMinMax(
+        ramMin.orElse(that.ramMin),
+        ramMax.orElse(that.ramMax),
+        ResourceRequirement.DefaultRamMin
+    )
+    val (minTmpdir, maxTmpdir) = Requirement.updateMinMax(
+        tmpdirMin.orElse(that.tmpdirMin),
+        tmpdirMax.orElse(that.tmpdirMax),
+        ResourceRequirement.DefaultTmpdirMin
+    )
+    val (minOutdir, maxOutdir) = Requirement.updateMinMax(
+        outdirMin.orElse(that.outdirMin),
+        outdirMax.orElse(that.outdirMax),
+        ResourceRequirement.DefaultOutdirMin
+    )
+    ResourceRequirement(
+        minCores,
+        maxCores,
+        minRam,
+        maxRam,
+        minTmpdir,
+        maxTmpdir,
+        minOutdir,
+        maxOutdir
+    )
+  }
+
+  /**
+    * Merges this ResourceRequirement with the default values.
+    */
+  def complete: ResourceRequirement = {
+    merge(ResourceRequirement.default)
+  }
+}
 
 object ResourceRequirement {
+  val DefaultCoresMin = 1
+  val DefaultRamMin = 256
+  val DefaultTmpdirMin = 1024
+  val DefaultOutdirMin = 1024
+
   def apply(req: ResourceRequirementImpl,
             schemaDefs: Map[String, CwlSchema]): ResourceRequirement = {
     ResourceRequirement(
@@ -213,6 +317,19 @@ object ResourceRequirement {
         translateOptionalObject(req.getOutdirMax).map(CwlValue(_, schemaDefs))
     )
   }
+
+  lazy val empty: ResourceRequirement = ResourceRequirement()
+
+  /**
+    * ResourceRequirement with default values as
+    * @return
+    */
+  lazy val default: ResourceRequirement = ResourceRequirement(
+      coresMin = Some(LongValue(DefaultCoresMin)),
+      ramMin = Some(LongValue(DefaultRamMin)),
+      tmpdirMin = Some(LongValue(DefaultTmpdirMin)),
+      outdirMin = Some(LongValue(DefaultOutdirMin))
+  )
 }
 
 case class WorkReuseRequirement(enable: CwlValue) extends Requirement

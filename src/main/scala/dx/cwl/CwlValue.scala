@@ -434,10 +434,20 @@ object BooleanValue {
   }
 }
 
-case class IntValue(value: Int) extends PrimitiveValue {
+sealed trait NumericValue extends PrimitiveValue {
+
+  /**
+    * Gets the numeric value as a BigDecimal.
+    */
+  def decimalValue: BigDecimal
+}
+
+case class IntValue(value: Int) extends NumericValue {
   override val cwlType: CwlType = CwlInt
 
   override lazy val toJson: JsValue = JsNumber(value)
+
+  override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
 }
 
 object IntValue {
@@ -481,10 +491,12 @@ object IntValue {
   }
 }
 
-case class LongValue(value: Long) extends PrimitiveValue {
+case class LongValue(value: Long) extends NumericValue {
   override val cwlType: CwlType = CwlLong
 
   override lazy val toJson: JsValue = JsNumber(value)
+
+  override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
 }
 
 object LongValue {
@@ -528,10 +540,12 @@ object LongValue {
   }
 }
 
-case class FloatValue(value: Float) extends PrimitiveValue {
+case class FloatValue(value: Float) extends NumericValue {
   override val cwlType: CwlType = CwlFloat
 
   override lazy val toJson: JsValue = JsNumber(value)
+
+  override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
 }
 
 object FloatValue {
@@ -567,10 +581,12 @@ object FloatValue {
   }
 }
 
-case class DoubleValue(value: Double) extends PrimitiveValue {
+case class DoubleValue(value: Double) extends NumericValue {
   override val cwlType: CwlType = CwlDouble
 
   override lazy val toJson: JsValue = JsNumber(value)
+
+  override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
 }
 
 object DoubleValue {
