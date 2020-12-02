@@ -47,22 +47,30 @@ object Parser {
   }
 
   /**
-    * Parses a CWL document.
+    * Parses a CWL document from a file.
     * @note currently, only CommandLineTool documents are supported.
     * @param path path to the document
     * @param baseUri base URI to use when importing documents
     * @param loadingOptions document loading options
     * @return a [[Process]]
     */
-  def parse(path: Path,
-            baseUri: Option[String] = None,
-            loadingOptions: Option[LoadingOptions] = None): Process = {
+  def parseFile(path: Path,
+                baseUri: Option[String] = None,
+                loadingOptions: Option[LoadingOptions] = None): Process = {
     parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull))
   }
 
-  def parse(sourceCode: String,
-            baseUri: Option[String] = None,
-            loadingOptions: Option[LoadingOptions] = None): Process = {
+  /**
+    * Parses a CWL document from a string.
+    * @note currently, only CommandLineTool documents are supported.
+    * @param sourceCode path to the document
+    * @param baseUri base URI to use when importing documents
+    * @param loadingOptions document loading options
+    * @return a [[Process]]
+    */
+  def parseString(sourceCode: String,
+                  baseUri: Option[String] = None,
+                  loadingOptions: Option[LoadingOptions] = None): Process = {
     parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull))
   }
 }
