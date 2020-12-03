@@ -1,5 +1,9 @@
 # Change log
 
+## v0.2.7 (dev)
+
+* In `Evaluator`, have all functions that take a Vector of types return the actual type of the evaluated value
+
 ## v0.2.6 (2020-12-03)
 
 * Fix several issues with CwlTypes

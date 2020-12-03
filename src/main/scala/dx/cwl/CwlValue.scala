@@ -298,21 +298,21 @@ object CwlValue {
     * @param jsValue the JSON value
     * @param cwlTypes the target types
     * @param schemaDefs schema defintions to use when resolving types
-    * @return a [[CwlValue]]
+    * @return tuple ([[CwlType]], [[CwlValue]])
     */
   def deserialize(jsValue: JsValue,
                   cwlTypes: Vector[CwlType],
-                  schemaDefs: Map[String, CwlSchema]): CwlValue = {
+                  schemaDefs: Map[String, CwlSchema]): (CwlType, CwlValue) = {
     cwlTypes.iterator
       .map { t =>
         try {
-          Some(deserialize(jsValue, t, schemaDefs))
+          Some((t, deserialize(jsValue, t, schemaDefs)))
         } catch {
           case _: Throwable => None
         }
       }
       .collectFirst {
-        case Some(value) => value
+        case Some(result) => result
       }
       .getOrElse(
           throw new Exception(

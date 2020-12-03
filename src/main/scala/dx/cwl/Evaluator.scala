@@ -500,7 +500,7 @@ case class Evaluator(jsEnabled: Boolean = false,
 
   def applyEcmaScript(script: String,
                       cwlTypes: Vector[CwlType],
-                      ctx: EvaluatorContext): CwlValue = {
+                      ctx: EvaluatorContext): (CwlType, CwlValue) = {
     val engine = Engine(ctx.toScope)
     val result =
       try {
@@ -512,16 +512,20 @@ case class Evaluator(jsEnabled: Boolean = false,
     CwlValue.deserialize(result, cwlTypes, schemaDefs)
   }
 
-  private def checkCoercibleTo(value: CwlValue, cwlTypes: Vector[CwlType]): CwlValue = {
-    if (!cwlTypes.exists(value.coercibleTo)) {
-      throw new Exception(s"${value} is not coercible to any of ${cwlTypes}")
-    }
-    value
+  private def checkCoercibleTo(value: CwlValue, cwlTypes: Vector[CwlType]): (CwlType, CwlValue) = {
+    val firstType = cwlTypes
+      .collectFirst {
+        case t if value.coercibleTo(t) => t
+      }
+      .getOrElse(
+          throw new Exception(s"${value} is not coercible to any of ${cwlTypes}")
+      )
+    (firstType, value)
   }
 
   def applyEcmaString(ecmaString: EcmaString,
                       cwlTypes: Vector[CwlType],
-                      ctx: EvaluatorContext): CwlValue = {
+                      ctx: EvaluatorContext): (CwlType, CwlValue) = {
     ecmaString match {
       case StringLiteral(s) =>
         checkCoercibleTo(StringValue(s), cwlTypes)
@@ -542,13 +546,15 @@ case class Evaluator(jsEnabled: Boolean = false,
     }
   }
 
-  def applyEcmaString(ecmaString: EcmaString, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
+  def applyEcmaString(ecmaString: EcmaString,
+                      cwlType: CwlType,
+                      ctx: EvaluatorContext): (CwlType, CwlValue) = {
     applyEcmaString(ecmaString, Vector(cwlType), ctx)
   }
 
   def applyParameterValue(expr: ParameterValue,
                           cwlTypes: Vector[CwlType],
-                          ctx: EvaluatorContext): CwlValue = {
+                          ctx: EvaluatorContext): (CwlType, CwlValue) = {
     checkCoercibleTo(
         expr match {
           case LiteralValue(value) => value
@@ -592,14 +598,14 @@ case class Evaluator(jsEnabled: Boolean = false,
   def applyParameterValue(expr: ParameterValue,
                           cwlType: CwlType,
                           ctx: EvaluatorContext): CwlValue = {
-    applyParameterValue(expr, Vector(cwlType), ctx)
+    applyParameterValue(expr, Vector(cwlType), ctx)._2
   }
 
   /**
     * The evaluator to use - simple parameter reference evaluator or Rhino
     * Javascript evaluator, depending on the value of `jsEnabled`.
     */
-  private lazy val eval: (String, Vector[CwlType], EvaluatorContext) => CwlValue = {
+  private lazy val eval: (String, Vector[CwlType], EvaluatorContext) => (CwlType, CwlValue) = {
     if (jsEnabled) {
       val parser = EcmaStringParser(trace)
       (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
@@ -611,7 +617,7 @@ case class Evaluator(jsEnabled: Boolean = false,
     }
   }
 
-  def apply(s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): CwlValue = {
+  def apply(s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): (CwlType, CwlValue) = {
     if (!s.contains('$')) {
       // if an value does not contain a '$', there are no expressions to evaluate
       checkCoercibleTo(StringValue(s), cwlTypes)
@@ -621,7 +627,7 @@ case class Evaluator(jsEnabled: Boolean = false,
   }
 
   def apply(s: String, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
-    apply(s, Vector(cwlType), ctx)
+    apply(s, Vector(cwlType), ctx)._2
   }
 
   /**
