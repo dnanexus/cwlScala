@@ -1,5 +1,11 @@
 # Change log
 
+## v0.2.6 (2020-12-03)
+
+* Fix several issues with CwlTypes
+* Add `Parser.canParse(String)` and `Parser.parseString` functions
+* Add default values and `merge` function to `ReSourceRequirement`
+
 ## v0.2.5 (2020-11-20)
 
 * Updated cwljava

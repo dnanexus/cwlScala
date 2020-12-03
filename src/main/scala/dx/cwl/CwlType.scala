@@ -20,6 +20,7 @@ import org.w3id.cwl.cwl1_2.{
   stdout => CWLStdout
 }
 
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
 /**
@@ -30,7 +31,16 @@ sealed trait CwlType {
   /**
     * Returns true if this type is coercible to the specified type
     */
-  def coercibleTo(targetType: CwlType): Boolean
+  def coercibleTo(targetType: CwlType): Boolean = {
+    val nonOptType = CwlOptional.unwrapOptional(targetType)
+    Set[CwlType](this, CwlAny).contains(nonOptType) || canBeCoercedTo(nonOptType)
+  }
+
+  /**
+    * Returns true if this type can be coerced to targetType,
+    * which is a non-optional, non-equal, and non-Any type.
+    */
+  protected def canBeCoercedTo(targetType: CwlType): Boolean = false
 }
 
 object CwlType {
@@ -95,9 +105,46 @@ object CwlType {
   }
 }
 
+case object CwlNull extends CwlType
+
 case object CwlAny extends CwlType {
-  override def coercibleTo(targetType: CwlType): Boolean = {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType != CwlNull
+  }
+}
+
+/**
+  * An optional type.
+  * @param t the inner type
+  * @example {{{string?}}} is translated to {{{CwlOptional(CwlString)}}}
+  */
+case class CwlOptional(t: CwlType) extends CwlType {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    CwlNull == targetType
+  }
+}
+
+object CwlOptional {
+  def isOptional(t: CwlType): Boolean = {
+    t match {
+      case CwlOptional(_) => true
+      case _              => false
+    }
+  }
+
+  @tailrec
+  def unwrapOptional(t: CwlType): CwlType = {
+    t match {
+      case CwlOptional(innerType) => unwrapOptional(innerType)
+      case _                      => t
+    }
+  }
+
+  def ensureOptional(t: CwlType): CwlType = {
+    t match {
+      case optType: CwlOptional => optType
+      case _                    => CwlOptional(t)
+    }
   }
 }
 
@@ -105,31 +152,33 @@ case object CwlAny extends CwlType {
   * All valid CWL types are primitive, excepting `Any`, `null`, and schema types.
   */
 sealed trait CwlPrimitive extends CwlType {
-
-  /**
-    * The set of types to which the primitive type is coercible
-    */
-  def coercibleTypes: Set[CwlType]
-
-  override def coercibleTo(targetType: CwlType): Boolean = {
-    (Set(this, CwlAny) | coercibleTypes).contains(targetType)
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    CwlString == targetType
   }
 }
 
-case object CwlString extends CwlPrimitive {
-  override val coercibleTypes: Set[CwlType] =
-    Set(CwlBoolean, CwlInt, CwlLong, CwlFloat, CwlDouble, CwlFile, CwlDirectory)
-}
+case object CwlBoolean extends CwlPrimitive
 
-case object CwlBoolean extends CwlPrimitive {
-  override val coercibleTypes: Set[CwlType] = Set(CwlString)
+case object CwlString extends CwlPrimitive {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case _: CwlPrimitive => true
+      case _               => false
+    }
+  }
 }
 
 /**
   * Parent trait of the four CWL numeric types
   */
 sealed trait CwlNumber extends CwlPrimitive {
-  override val coercibleTypes: Set[CwlType] = Set(CwlInt, CwlLong, CwlFloat, CwlDouble, CwlString)
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case _: CwlNumber => true
+      case CwlString    => true
+      case _            => false
+    }
+  }
 }
 
 case object CwlInt extends CwlNumber
@@ -140,25 +189,9 @@ case object CwlDouble extends CwlNumber
 /**
   * Parent trait of the two CWL path types
   */
-sealed trait CwlPath extends CwlPrimitive {
-  override val coercibleTypes: Set[CwlType] = Set(CwlString)
-}
-
+sealed trait CwlPath extends CwlPrimitive
 case object CwlFile extends CwlPath
 case object CwlDirectory extends CwlPath
-
-case object CwlNull extends CwlPrimitive {
-  override val coercibleTypes: Set[CwlType] = Set.empty[CwlType]
-}
-
-/**
-  * An optional type.
-  * @param t the inner type
-  * @example {{{string?}}} is translated to {{{CwlOptional(CwlString)}}}
-  */
-case class CwlOptional(t: CwlType) extends CwlPrimitive {
-  override val coercibleTypes: Set[CwlType] = Set(CwlNull)
-}
 
 /**
   * Parent of CWL schema types. Note that input and output schema definitions
@@ -200,10 +233,8 @@ case class CwlArray(itemTypes: Vector[CwlType],
                     doc: Option[String],
                     inputBinding: Option[CommandInputBinding])
     extends CwlSchema {
-  override def coercibleTo(targetType: CwlType): Boolean = {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
-      case CwlAny                                         => true
-      case targetSchema: CwlArray if targetSchema == this => true
       case targetSchema: CwlArray =>
         itemTypes.exists { fromType =>
           targetSchema.itemTypes.exists { toType =>
@@ -273,10 +304,8 @@ case class CwlRecord(fields: Map[String, CwlRecordField],
                      doc: Option[String],
                      inputBinding: Option[CommandInputBinding])
     extends CwlSchema {
-  override def coercibleTo(targetType: CwlType): Boolean = {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
-      case CwlAny                                          => true
-      case targetSchema: CwlRecord if this == targetSchema => true
       case targetSchema: CwlRecord if fields.keySet == targetSchema.fields.keySet =>
         fields.forall {
           case (name, fromField) =>
@@ -388,10 +417,9 @@ case class CwlEnum(symbols: Set[String],
                    doc: Option[String],
                    inputBinding: Option[CommandInputBinding])
     extends CwlSchema {
-  override def coercibleTo(targetType: CwlType): Boolean = {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
       case targetSchema: CwlEnum if this.symbols == targetSchema.symbols => true
-      case CwlAny                                                        => true
       case CwlString                                                     => true
       case _                                                             => false
     }
