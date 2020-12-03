@@ -228,10 +228,10 @@ object CwlSchema {
 }
 
 case class CwlArray(itemTypes: Vector[CwlType],
-                    name: Option[String],
-                    label: Option[String],
-                    doc: Option[String],
-                    inputBinding: Option[CommandInputBinding])
+                    name: Option[String] = None,
+                    label: Option[String] = None,
+                    doc: Option[String] = None,
+                    inputBinding: Option[CommandInputBinding] = None)
     extends CwlSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
@@ -299,10 +299,10 @@ case class CwlRecordField(name: String,
 }
 
 case class CwlRecord(fields: Map[String, CwlRecordField],
-                     name: Option[String],
-                     label: Option[String],
-                     doc: Option[String],
-                     inputBinding: Option[CommandInputBinding])
+                     name: Option[String] = None,
+                     label: Option[String] = None,
+                     doc: Option[String] = None,
+                     inputBinding: Option[CommandInputBinding] = None)
     extends CwlSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
@@ -412,10 +412,10 @@ object CwlRecord {
 }
 
 case class CwlEnum(symbols: Set[String],
-                   name: Option[String],
-                   label: Option[String],
-                   doc: Option[String],
-                   inputBinding: Option[CommandInputBinding])
+                   name: Option[String] = None,
+                   label: Option[String] = None,
+                   doc: Option[String] = None,
+                   inputBinding: Option[CommandInputBinding] = None)
     extends CwlSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
