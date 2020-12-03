@@ -392,7 +392,7 @@ object CwlRecord {
   }
 
   def apply(schema: CommandOutputRecordSchemaImpl,
-            schemaDefs: Map[String, CwlSchema] = Map.empty): CwlRecord = {
+            schemaDefs: Map[String, CwlSchema]): CwlRecord = {
     CwlRecord(
         translateOptional(schema.getFields)
           .map(_.asScala.map {
