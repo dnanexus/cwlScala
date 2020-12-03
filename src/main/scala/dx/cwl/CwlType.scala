@@ -277,15 +277,15 @@ object CwlArray {
 }
 
 case class CwlRecordField(name: String,
-                          label: Option[String],
-                          doc: Option[String],
                           types: Vector[CwlType],
-                          inputBinding: Option[CommandInputBinding],
-                          secondaryFiles: Vector[SecondaryFile],
-                          format: Vector[CwlValue],
-                          streamable: Option[Boolean],
-                          loadContents: Option[Boolean],
-                          loadListing: Option[LoadListing.LoadListing]) {
+                          label: Option[String] = None,
+                          doc: Option[String] = None,
+                          inputBinding: Option[CommandInputBinding] = None,
+                          secondaryFiles: Vector[SecondaryFile] = Vector.empty,
+                          format: Vector[CwlValue] = Vector.empty,
+                          streamable: Option[Boolean] = None,
+                          loadContents: Option[Boolean] = None,
+                          loadListing: Option[LoadListing.LoadListing] = None) {
 
   /**
     * the field is optional if any of the allowed types are optional
@@ -327,9 +327,9 @@ object CwlRecord {
     assert(stdfile.isEmpty)
     CwlRecordField(
         field.getName,
+        types,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
-        types,
         translateOptional(field.getInputBinding).map {
           case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
           case other =>
@@ -375,9 +375,9 @@ object CwlRecord {
     assert(stdfile.isEmpty)
     CwlRecordField(
         field.getName,
+        types,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
-        types,
         None,
         translateOptionalArray(field.getSecondaryFiles).map {
           case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
