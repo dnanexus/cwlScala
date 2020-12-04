@@ -363,6 +363,10 @@ case class Runtime(outdir: String,
     }
   }
 
+  override def members: Map[String, CwlValue] = {
+    keys.map(key => key -> apply(key)).toMap
+  }
+
   override def coercibleTo(targetType: CwlType): Boolean = false
 
   override def toJson: JsValue = {

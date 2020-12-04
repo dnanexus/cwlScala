@@ -25,8 +25,35 @@ sealed trait CwlValue {
   /**
     * Returns true if this value is coercible to any of the specified types
     */
-  def coercibleTo(targetTypes: Vector[CwlType]): Boolean = {
-    targetTypes.exists(coercibleTo)
+  def coercibleTo(targetTypes: Vector[CwlType]): Vector[CwlType] = {
+    targetTypes.filter(coercibleTo)
+  }
+
+  protected def coerceToOther(targetType: CwlType): CwlValue = ???
+
+  def coerceTo(targetType: CwlType): CwlValue = {
+    targetType match {
+      case CwlOptional(t)               => coerceTo(t)
+      case CwlAny                       => this
+      case _ if coercibleTo(targetType) => coerceToOther(targetType)
+      case _ =>
+        throw new Exception(s"${this} is not coercible to ${targetType}")
+    }
+  }
+
+  /**
+    * Coerces this value to the first of the given types to which
+    * it is coercible, or throws an Exception if it is not coercible to
+    * any of the given types.
+    * @param targetTypes the types to attempt coercion
+    * @return
+    */
+  def coerceTo(targetTypes: Vector[CwlType]): (CwlType, CwlValue) = {
+    coercibleTo(targetTypes).iterator
+      .collectFirst {
+        case t if coercibleTo(t) => (t, coerceTo(t))
+      }
+      .getOrElse(throw new Exception(s"${this} is not coercible to any of ${targetTypes}"))
   }
 }
 
@@ -39,6 +66,14 @@ sealed trait PrimitiveValue extends CwlValue {
 
   override def coercibleTo(targetType: CwlType): Boolean = {
     cwlType.coercibleTo(targetType)
+  }
+
+  override def coerceTo(targetType: CwlType): CwlValue = {
+    if (targetType == cwlType) {
+      this
+    } else {
+      super.coerceTo(targetType)
+    }
   }
 }
 
@@ -320,6 +355,33 @@ object CwlValue {
           )
       )
   }
+
+  /**
+    * Infers the CwlType for the given value.
+    */
+  def inferType(value: CwlValue): CwlType = {
+    value match {
+      case NullValue         => CwlNull
+      case _: BooleanValue   => CwlBoolean
+      case _: IntValue       => CwlInt
+      case _: LongValue      => CwlLong
+      case _: FloatValue     => CwlFloat
+      case _: DoubleValue    => CwlDouble
+      case _: StringValue    => CwlString
+      case _: FileValue      => CwlFile
+      case _: RandomFile     => CwlFile
+      case _: DirectoryValue => CwlDirectory
+      case ArrayValue(array) =>
+        val itemTypes = array.map(inferType)
+        CwlArray(itemTypes.distinct)
+      case schema: ObjectLike =>
+        CwlRecord(schema.members.map {
+          case (name, value) =>
+            val cwlType = inferType(value)
+            name -> CwlRecordField(name, Vector(cwlType))
+        })
+    }
+  }
 }
 
 /**
@@ -352,6 +414,8 @@ case object NullValue extends PrimitiveValue {
   override val cwlType: CwlType = CwlNull
 
   override val toJson: JsValue = JsNull
+
+  override val toString: String = "null"
 }
 
 case class StringValue(value: String) extends PrimitiveValue with IntIndexable {
@@ -364,6 +428,21 @@ case class StringValue(value: String) extends PrimitiveValue with IntIndexable {
   override lazy val toJson: JsValue = JsString(value)
 
   override def length: Int = value.length
+
+  override def toString: String = value
+
+  override def coerceToOther(targetType: CwlType): CwlValue = {
+    targetType match {
+      case CwlBoolean   => BooleanValue(value.toBoolean)
+      case CwlInt       => IntValue(value.toInt)
+      case CwlLong      => LongValue(value.toLong)
+      case CwlFloat     => FloatValue(value.toFloat)
+      case CwlDouble    => DoubleValue(value.toDouble)
+      case CwlFile      => FileValue(value)
+      case CwlDirectory => DirectoryValue(value)
+      case _            => throw new RuntimeException
+    }
+  }
 }
 
 object StringValue {
@@ -407,6 +486,15 @@ case class BooleanValue(value: Boolean) extends PrimitiveValue {
   override val cwlType: CwlType = CwlBoolean
 
   override lazy val toJson: JsValue = JsBoolean(value)
+
+  override def toString: String = value.toString
+
+  override def coerceToOther(targetType: CwlType): CwlValue = {
+    targetType match {
+      case CwlString => StringValue(value.toString)
+      case _         => throw new RuntimeException
+    }
+  }
 }
 
 object BooleanValue {
@@ -440,6 +528,17 @@ sealed trait NumericValue extends PrimitiveValue {
     * Gets the numeric value as a BigDecimal.
     */
   def decimalValue: BigDecimal
+
+  override def coerceToOther(targetType: CwlType): CwlValue = {
+    targetType match {
+      case CwlInt    => IntValue(decimalValue.toIntExact)
+      case CwlLong   => LongValue(decimalValue.toLongExact)
+      case CwlFloat  => FloatValue(decimalValue.floatValue)
+      case CwlDouble => DoubleValue(decimalValue.doubleValue)
+      case CwlString => StringValue(toString)
+      case _         => throw new RuntimeException
+    }
+  }
 }
 
 case class IntValue(value: Int) extends NumericValue {
@@ -448,6 +547,8 @@ case class IntValue(value: Int) extends NumericValue {
   override lazy val toJson: JsValue = JsNumber(value)
 
   override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
+
+  override def toString: String = value.toString
 }
 
 object IntValue {
@@ -497,6 +598,8 @@ case class LongValue(value: Long) extends NumericValue {
   override lazy val toJson: JsValue = JsNumber(value)
 
   override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
+
+  override def toString: String = value.toString
 }
 
 object LongValue {
@@ -546,6 +649,8 @@ case class FloatValue(value: Float) extends NumericValue {
   override lazy val toJson: JsValue = JsNumber(value)
 
   override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
+
+  override def toString: String = value.toString
 }
 
 object FloatValue {
@@ -587,6 +692,8 @@ case class DoubleValue(value: Double) extends NumericValue {
   override lazy val toJson: JsValue = JsNumber(value)
 
   override lazy val decimalValue: BigDecimal = BigDecimal.apply(value)
+
+  override def toString: String = value.toString
 }
 
 object DoubleValue {
@@ -639,6 +746,15 @@ sealed trait PathValue extends PrimitiveValue with StringIndexable {
         case Some(value) => Some(key -> value.toJson)
       }
     }.toMap)
+  }
+
+  override lazy val toString: String = location.orElse(path).getOrElse(s"<${this.cwlType} literal>")
+
+  override def coerceToOther(targetType: CwlType): CwlValue = {
+    targetType match {
+      case CwlString => StringValue(toString)
+      case _         => throw new RuntimeException
+    }
   }
 }
 
@@ -897,8 +1013,17 @@ object DirectoryValue {
 case class RandomFile(stdfile: StdFile.StdFile) extends PrimitiveValue {
   override val cwlType: CwlType = CwlFile
 
+  override def toString: String = stdfile.toString
+
   override def toJson: JsValue = {
-    JsObject("location" -> JsString(stdfile.toString))
+    JsObject("location" -> JsString(toString))
+  }
+
+  override def coerceToOther(targetType: CwlType): CwlValue = {
+    targetType match {
+      case CwlString => StringValue(toString)
+      case _         => throw new RuntimeException
+    }
   }
 }
 
@@ -917,8 +1042,16 @@ case class ArrayValue(items: Vector[CwlValue]) extends CwlValue with IntIndexabl
 
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
-      case schema: CwlArray => items.forall(_.coercibleTo(schema.itemTypes))
+      case schema: CwlArray => items.forall(_.coercibleTo(schema.itemTypes).nonEmpty)
       case _                => false
+    }
+  }
+
+  override def coerceToOther(targetType: CwlType): CwlValue = {
+    targetType match {
+      case arrayType: CwlArray =>
+        ArrayValue(items.map(_.coerceTo(arrayType.itemTypes)).map(_._2))
+      case _ => throw new RuntimeException
     }
   }
 }
@@ -967,7 +1100,9 @@ object ArrayValue {
   }
 }
 
-trait ObjectLike extends CwlValue with StringIndexable
+trait ObjectLike extends CwlValue with StringIndexable {
+  def members: Map[String, CwlValue]
+}
 
 case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
 
@@ -989,7 +1124,7 @@ case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
       case schema: CwlRecord =>
         schema.fields.values.forall { field =>
           if (members.contains(field.name)) {
-            members(field.name).coercibleTo(field.types)
+            members(field.name).coercibleTo(field.types).nonEmpty
           } else if (field.optional) {
             true
           } else {
@@ -997,6 +1132,23 @@ case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
           }
         }
       case _ => false
+    }
+  }
+
+  override protected def coerceToOther(targetType: CwlType): CwlValue = {
+    targetType match {
+      case schema: CwlRecord =>
+        ObjectValue(schema.fields.values.map { field =>
+          val value = if (members.contains(field.name)) {
+            members(field.name).coerceTo(field.types)._2
+          } else if (field.optional) {
+            NullValue
+          } else {
+            throw new RuntimeException
+          }
+          field.name -> value
+        }.toMap)
+      case _ => throw new RuntimeException
     }
   }
 }
