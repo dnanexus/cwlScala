@@ -5,7 +5,6 @@ import java.nio.ByteBuffer
 import java.nio.file.{Path, Paths}
 import java.lang.{Runtime => JavaRuntime}
 import java.security.AccessController.doPrivileged
-
 import dx.js.{Engine, Scope}
 import org.antlr.v4.runtime.{CodePointBuffer, CodePointCharStream, CommonTokenStream}
 import org.commonwl.cwl.ecma.v1_2.{CwlEcmaStringLexer, CwlEcmaStringParser}
@@ -646,8 +645,83 @@ case class Evaluator(jsEnabled: Boolean = false,
       case _                  => throw new Exception("expected string")
     }
   }
+
+  def evaluate(value: CwlValue,
+               cwlTypes: Vector[CwlType],
+               ctx: EvaluatorContext): (CwlType, CwlValue) = {
+    def inner(innerValue: CwlValue, innerTypes: Vector[CwlType]): (CwlType, CwlValue) = {
+      innerValue match {
+        case StringValue(s) => apply(s, innerTypes, ctx)
+        case ArrayValue(items) =>
+          innerTypes.iterator
+            .map {
+              case arrayType: CwlArray =>
+                try {
+                  val (types, values) = items.map(inner(_, arrayType.itemTypes)).unzip
+                  Some((CwlArray(types.distinct), ArrayValue(values)))
+                } catch {
+                  case _: Throwable => None
+                }
+              case _ => None
+            }
+            .collectFirst {
+              case Some(value) => value
+            }
+            .getOrElse(
+                throw new Exception(
+                    s"array ${items} does not evaluate to any of ${innerTypes}"
+                )
+            )
+        case ObjectValue(members) =>
+          innerTypes.iterator
+            .map {
+              case record: CwlRecord =>
+                try {
+                  val (types, values) = members.map {
+                    case (key, value) =>
+                      val (t, v) = inner(value, record.fields(key).types)
+                      (key -> t, key -> v)
+                  }.unzip
+                  val recordType = CwlRecord(types.map {
+                    case (name, t) => name -> CwlRecordField(name, Vector(t))
+                  }.toMap)
+                  Some((recordType, ObjectValue(values.toMap)))
+                } catch {
+                  case _: Throwable => None
+                }
+              case _ => None
+            }
+            .collectFirst {
+              case Some(value) => value
+            }
+            .getOrElse(
+                throw new Exception(
+                    s"object ${members} does not evaluate to any of ${innerTypes}"
+                )
+            )
+        case _ => value.coerceTo(cwlTypes)
+      }
+    }
+    inner(value, cwlTypes)
+  }
+
+  def evaluateMap(
+      map: Map[String, (CwlType, CwlValue)],
+      ctx: EvaluatorContext
+  ): Map[String, (CwlType, CwlValue)] = {
+    map.foldLeft(Map.empty[String, (CwlType, CwlValue)]) {
+      case (accu, (key, (cwlType, cwlValue))) =>
+        accu + (key -> evaluate(cwlValue, Vector(cwlType), ctx))
+    }
+  }
 }
 
 object Evaluator {
   lazy val default: Evaluator = Evaluator()
+
+  def create(requirements: Vector[Requirement]): Evaluator = {
+    val (jsEnabled, jsLibrary) = RequirementUtils.getJsRequirements(requirements)
+    val schemaDefs = RequirementUtils.getSchemaDefs(requirements)
+    Evaluator(jsEnabled, jsLibrary, schemaDefs)
+  }
 }

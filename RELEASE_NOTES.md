@@ -4,6 +4,7 @@
 
 * Implement coercion of values
 * In `Evaluator`, have all functions that take a Vector of types return the actual type of the evaluated value
+* Add convenience functions to `Evaluator`
 
 ## v0.2.6 (2020-12-03)
 

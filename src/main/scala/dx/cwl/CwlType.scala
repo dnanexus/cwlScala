@@ -132,6 +132,10 @@ object CwlOptional {
     }
   }
 
+  def anyOptional(types: Vector[CwlType]): Boolean = {
+    types.exists(isOptional)
+  }
+
   @tailrec
   def unwrapOptional(t: CwlType): CwlType = {
     t match {

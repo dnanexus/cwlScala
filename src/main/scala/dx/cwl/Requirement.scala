@@ -365,3 +365,25 @@ object ToolTimeLimitRequirement {
     ToolTimeLimitRequirement(CwlValue(req.getTimelimit, schemaDefs))
   }
 }
+
+object RequirementUtils {
+  def getJsRequirements(requirements: Vector[Requirement]): (Boolean, Option[String]) = {
+    requirements.collect {
+      case req: InlineJavascriptRequirement => req
+    } match {
+      case Vector()    => (false, None)
+      case Vector(req) => (true, req.expressionLib)
+      case _ =>
+        throw new Exception("found multiple InlineJavascriptRequirements")
+    }
+  }
+
+  def getSchemaDefs(requirements: Vector[Requirement]): Map[String, CwlSchema] = {
+    requirements
+      .collect {
+        case req: SchemaDefRequirement => req.asMap
+      }
+      .flatten
+      .toMap
+  }
+}
