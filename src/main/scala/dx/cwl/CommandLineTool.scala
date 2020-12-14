@@ -80,6 +80,16 @@ object CommandInputBinding {
   }
 }
 
+sealed trait CommandParameter {
+  val id: Option[Identifier]
+  val label: Option[String]
+  val doc: Option[String]
+  val types: Vector[CwlType]
+  val secondaryFiles: Vector[SecondaryFile]
+  val format: Vector[CwlValue]
+  val streamable: Option[Boolean]
+}
+
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputParameter
 case class CommandInputParameter(id: Option[Identifier],
                                  label: Option[String],
@@ -92,6 +102,7 @@ case class CommandInputParameter(id: Option[Identifier],
                                  streamable: Option[Boolean],
                                  loadContents: Option[Boolean],
                                  loadListing: Option[LoadListing.LoadListing])
+    extends CommandParameter
 
 object CommandInputParameter {
   def apply(
@@ -151,6 +162,7 @@ case class CommandOutputParameter(id: Option[Identifier],
                                   secondaryFiles: Vector[SecondaryFile],
                                   format: Vector[CwlValue],
                                   streamable: Option[Boolean])
+    extends CommandParameter
 
 object CommandOutputParameter {
   def apply(
