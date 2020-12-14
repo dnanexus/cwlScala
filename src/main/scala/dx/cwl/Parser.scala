@@ -37,9 +37,12 @@ object Parser {
     canParse(new ByteArrayInputStream(sourceCode.getBytes()))
   }
 
-  def parse(doc: java.lang.Object): Process = {
+  def parse(doc: java.lang.Object,
+            source: Option[Path] = None,
+            schemaDefs: Map[String, CwlSchema] = Map.empty,
+            hintSchemas: Map[String, HintSchema] = Map.empty): Process = {
     doc match {
-      case tool: CommandLineToolImpl => CommandLineTool(tool)
+      case tool: CommandLineToolImpl => CommandLineTool(tool, source, schemaDefs, hintSchemas)
       case workflow: WorkflowImpl    => Workflow(workflow)
       case other =>
         throw new RuntimeException(s"unexpected top-level element ${other}")
@@ -56,8 +59,13 @@ object Parser {
     */
   def parseFile(path: Path,
                 baseUri: Option[String] = None,
-                loadingOptions: Option[LoadingOptions] = None): Process = {
-    parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull))
+                loadingOptions: Option[LoadingOptions] = None,
+                schemaDefs: Map[String, CwlSchema] = Map.empty,
+                hintSchemas: Map[String, HintSchema] = Map.empty): Process = {
+    parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull),
+          Some(path),
+          schemaDefs,
+          hintSchemas)
   }
 
   /**
@@ -70,7 +78,12 @@ object Parser {
     */
   def parseString(sourceCode: String,
                   baseUri: Option[String] = None,
-                  loadingOptions: Option[LoadingOptions] = None): Process = {
-    parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull))
+                  loadingOptions: Option[LoadingOptions] = None,
+                  schemaDefs: Map[String, CwlSchema] = Map.empty,
+                  hintSchemas: Map[String, HintSchema] = Map.empty): Process = {
+    parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull),
+          None,
+          schemaDefs,
+          hintSchemas)
   }
 }
