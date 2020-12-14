@@ -18,6 +18,8 @@ trait Process {
   val intent: Vector[String]
   val requirements: Vector[Requirement]
   val hints: Vector[Hint]
+
+  def name: String = id.name.getOrElse(throw new Exception("process has no name"))
 }
 
 object Parser {
