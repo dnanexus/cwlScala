@@ -138,7 +138,7 @@ object CwlValue {
     *                   values that specify their `class`
     * @return a [[CwlValue]]
     */
-  def apply(value: java.lang.Object, schemaDefs: Map[String, CwlSchema]): CwlValue = {
+  def apply(value: Any, schemaDefs: Map[String, CwlSchema]): CwlValue = {
     value match {
       case null                       => NullValue
       case s: String                  => StringValue(s)

@@ -1,8 +1,8 @@
 package dx.cwl
 
 import java.nio.file.Path
-
 import dx.cwl.Utils.{
+  toStringAnyMap,
   translateDoc,
   translateInt,
   translateOptional,
@@ -224,7 +224,7 @@ case class CommandLineTool(source: Option[String],
                            stdout: Option[CwlValue],
                            stderr: Option[CwlValue],
                            requirements: Vector[Requirement],
-                           hints: Vector[Requirement],
+                           hints: Vector[Hint],
                            successCodes: Set[Int],
                            temporaryFailCodes: Set[Int],
                            permanentFailCodes: Set[Int])
@@ -241,7 +241,8 @@ object CommandLineTool {
     */
   def apply(tool: CommandLineToolImpl,
             source: Option[Path] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty): CommandLineTool = {
+            schemaDefs: Map[String, CwlSchema] = Map.empty,
+            hintSchemas: Map[String, HintSchema] = Map.empty): CommandLineTool = {
     val (requirements, allSchemaDefs) =
       translateOptionalArray(tool.getRequirements)
         .foldLeft(Vector.empty[Requirement], schemaDefs) {
@@ -259,8 +260,16 @@ object CommandLineTool {
             throw new RuntimeException(s"unexpected requirement value ${req}")
         }
 
-    // TODO: for now, hints is left empty because cwljava doesn't parse them
-    val hints = Vector.empty
+    val hints = translateOptionalArray(tool.getHints).map {
+      case attrs: java.util.Map[_, _] =>
+        val rawHints = attrs.asScala.toMap match {
+          case hints: Map[_, _] => toStringAnyMap(hints)
+          case other            => throw new Exception(s"invalid hints ${other.getClass}")
+        }
+        Requirement.apply(rawHints, allSchemaDefs, hintSchemas)
+      case other =>
+        throw new Exception(s"unexpected hints value ${other}")
+    }
 
     // An input may have type `stdin`, which is a file that is created from the
     // standard input piped to the CommandLineTool. A maximum of one input parameter
@@ -371,9 +380,11 @@ object CommandLineTool {
     */
   def parse(path: Path,
             baseUri: Option[String] = None,
-            loadingOptions: Option[LoadingOptions] = None): CommandLineTool = {
+            loadingOptions: Option[LoadingOptions] = None,
+            schemaDefs: Map[String, CwlSchema] = Map.empty,
+            hintSchemas: Map[String, HintSchema] = Map.empty): CommandLineTool = {
     RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull) match {
-      case tool: CommandLineToolImpl => CommandLineTool(tool, Some(path))
+      case tool: CommandLineToolImpl => CommandLineTool(tool, Some(path), schemaDefs, hintSchemas)
       case other =>
         throw new RuntimeException(s"Expected CommandLineTool, found ${other}")
     }

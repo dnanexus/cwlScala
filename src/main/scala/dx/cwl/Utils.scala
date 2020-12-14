@@ -84,4 +84,11 @@ object Utils {
         throw new RuntimeException(s"unexpected doc value ${obj}")
     }
   }
+
+  def toStringAnyMap(m: Map[_, _]): Map[String, Any] = {
+    m.map {
+      case (k: String, v) => k -> v
+      case (other, _)     => throw new Exception(s"expected string key, not ${other}")
+    }
+  }
 }

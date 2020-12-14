@@ -25,10 +25,24 @@ import org.w3id.cwl.cwl1_2.{
 import scala.jdk.CollectionConverters._
 
 /**
+  * A hint, which may be one of the Requirements defined in the spec or
+  * base on a user-defined schema.
+  */
+trait Hint
+
+trait HintSchema {
+  val className: String = getClass.getName
+
+  def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint
+}
+
+/**
   * One of the requirements defined in the CWL spec.
   * https://www.commonwl.org/v1.2/CommandLineTool.html#InlineJavascriptRequirement
   */
-sealed trait Requirement
+sealed trait Requirement extends Hint
+
+case class GenericHint(attributes: Map[String, Any]) extends Hint
 
 object Requirement {
   def apply(requirement: ProcessRequirement, schemaDefs: Map[String, CwlSchema]): Requirement = {
@@ -48,6 +62,33 @@ object Requirement {
       case req: ToolTimeLimitImpl               => ToolTimeLimitRequirement(req, schemaDefs)
       case _ =>
         throw new RuntimeException(s"unsupported requirement value ${requirement}")
+    }
+  }
+
+  val DefaultHintSchemas: Map[String, HintSchema] = Vector(
+      InlineJavascriptRequirement,
+      LoadListingRequirement,
+      DockerRequirement,
+      SoftwareRequirement,
+      InitialWorkDirRequirement,
+      EnvVarRequirement,
+      ShellCommandRequirement,
+      ResourceRequirement,
+      WorkReuseRequirement,
+      NetworkAccessRequirement,
+      InplaceUpdateRequirement,
+      ToolTimeLimitRequirement
+  ).map(schema => schema.className -> schema).toMap
+
+  def apply(hint: Map[String, Any],
+            schemaDefs: Map[String, CwlSchema],
+            hintSchemas: Map[String, HintSchema]): Hint = {
+    hint.get("class") match {
+      case Some(cls: String) if hintSchemas.contains(cls) =>
+        hintSchemas(cls).apply(hint, schemaDefs)
+      case Some(cls: String) if DefaultHintSchemas.contains(cls) =>
+        DefaultHintSchemas(cls).apply(hint, schemaDefs)
+      case _ => GenericHint(hint)
     }
   }
 
@@ -97,11 +138,15 @@ object Requirement {
 
 case class InlineJavascriptRequirement(expressionLib: Option[String]) extends Requirement
 
-object InlineJavascriptRequirement {
+object InlineJavascriptRequirement extends HintSchema {
   def apply(req: InlineJavascriptRequirementImpl): InlineJavascriptRequirement = {
     val exprLib = translateOptionalArray(req.getExpressionLib).asOption
       .map(_.iterator.map(translateString).mkString("\n"))
     InlineJavascriptRequirement(exprLib)
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    InlineJavascriptRequirement(expressionLib = hint.get("expressionLib").map(_.toString))
   }
 }
 
@@ -130,9 +175,15 @@ object SchemaDefRequirement {
 
 case class LoadListingRequirement(value: Option[LoadListing.LoadListing]) extends Requirement
 
-object LoadListingRequirement {
+object LoadListingRequirement extends HintSchema {
   def apply(req: LoadListingRequirementImpl): LoadListingRequirement = {
     LoadListingRequirement(translateOptional(req.getLoadListing).map(LoadListing.from))
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    LoadListingRequirement(value =
+      hint.get("loadListing").map(name => LoadListing.withName(name.toString))
+    )
   }
 }
 
@@ -144,7 +195,7 @@ case class DockerRequirement(pullName: Option[String],
                              outputDirectory: Option[String])
     extends Requirement
 
-object DockerRequirement {
+object DockerRequirement extends HintSchema {
   def apply(req: DockerRequirementImpl): DockerRequirement = {
     DockerRequirement(
         translateOptional(req.getDockerPull).map(translateString),
@@ -155,9 +206,21 @@ object DockerRequirement {
         translateOptional(req.getDockerOutputDirectory).map(translateString)
     )
   }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    DockerRequirement(
+        pullName = hint.get("dockerPull").map(_.toString),
+        loadUri = hint.get("dockerLoad").map(_.toString),
+        importUri = hint.get("dockerImport").map(_.toString),
+        dockerfile = hint.get("dockerFile").map(_.toString),
+        imageId = hint.get("dockerImageId").map(_.toString),
+        outputDirectory = hint.get("dockerOutputDirectory").map(_.toString)
+    )
+  }
 }
 
 case class SoftwarePackage(name: String, version: Vector[String], specs: Vector[String])
+    extends Requirement
 
 object SoftwarePackage {
   def apply(pkg: SoftwarePackageImpl): SoftwarePackage = {
@@ -165,11 +228,32 @@ object SoftwarePackage {
                     translateOptionalArray(pkg.getVersion).map(translateString),
                     translateOptionalArray(pkg.getSpecs).map(translateString))
   }
+
+  def apply(hint: Map[String, Any]): SoftwarePackage = {
+    SoftwarePackage(
+        name =
+          hint.getOrElse("name", throw new Exception("missing required attribute name")).toString,
+        version = hint
+          .get("version")
+          .map {
+            case versions: Seq[Any] => versions.map(_.toString).toVector
+            case other              => throw new Exception(s"invalid version ${other}")
+          }
+          .getOrElse(Vector.empty),
+        specs = hint
+          .get("specs")
+          .map {
+            case versions: Seq[Any] => versions.map(_.toString).toVector
+            case other              => throw new Exception(s"invalid version ${other}")
+          }
+          .getOrElse(Vector.empty)
+    )
+  }
 }
 
 case class SoftwareRequirement(packages: Vector[SoftwarePackage]) extends Requirement
 
-object SoftwareRequirement {
+object SoftwareRequirement extends HintSchema {
   def apply(req: SoftwareRequirementImpl): SoftwareRequirement = {
     SoftwareRequirement(
         req.getPackages.asScala.map {
@@ -177,6 +261,20 @@ object SoftwareRequirement {
           case other =>
             throw new RuntimeException(s"unexpected SoftwarePackage value ${other}")
         }.toVector
+    )
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    SoftwareRequirement(
+        packages = hint
+          .getOrElse("packages", throw new Exception("missing required attribute packages")) match {
+          case packages: Seq[Any] =>
+            packages.map {
+              case pkg: Map[_, _] => SoftwarePackage(toStringAnyMap(pkg))
+            }.toVector
+          case other =>
+            throw new RuntimeException(s"unexpected package value ${other}")
+        }
     )
   }
 }
@@ -195,17 +293,51 @@ object DirInitialWorkDirEntry {
     val writable = translateOptional[java.lang.Boolean](dirent.getWritable).map(_.booleanValue())
     DirInitialWorkDirEntry(entry, entryName, writable)
   }
+
+  def apply(dirent: Map[String, Any],
+            schemaDefs: Map[String, CwlSchema]): DirInitialWorkDirEntry = {
+    DirInitialWorkDirEntry(
+        entry = CwlValue(
+            dirent
+              .getOrElse("entry", throw new Exception("missing required attribute 'entry'")),
+            schemaDefs
+        ),
+        entryName = dirent.get("entryname").map(CwlValue(_, schemaDefs)),
+        writable = dirent.get("writable").map {
+          case s: String  => s.toBoolean
+          case b: Boolean => b
+          case other      => throw new Exception(s"invalid writable value ${other}")
+        }
+    )
+  }
 }
 
 case class InitialWorkDirRequirement(listing: Vector[InitialWorkDirEntry]) extends Requirement
 
-object InitialWorkDirRequirement {
+object InitialWorkDirRequirement extends HintSchema {
   def apply(req: InitialWorkDirRequirementImpl,
             schemaDefs: Map[String, CwlSchema]): InitialWorkDirRequirement = {
     InitialWorkDirRequirement(translateArray(req.getListing).map {
       case entry: DirentImpl => DirInitialWorkDirEntry(entry, schemaDefs)
       case value             => ValueInitialWorkDirEntry(CwlValue(value, schemaDefs))
     })
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    InitialWorkDirRequirement(
+        listing = hint
+          .getOrElse("listing", throw new Exception("missing required attribute 'listing'")) match {
+          case entry: Seq[_] =>
+            entry.map {
+              case m: Map[_, _] => DirInitialWorkDirEntry.apply(toStringAnyMap(m), schemaDefs)
+              case other        => throw new Exception(s"invalid entry value ${other}")
+            }.toVector
+          case value: Object =>
+            Vector(ValueInitialWorkDirEntry(CwlValue(value, schemaDefs)))
+          case other =>
+            throw new RuntimeException(s"unexpected listing value ${other}")
+        }
+    )
   }
 }
 
@@ -220,7 +352,7 @@ object EnvironmentDefinition {
 case class EnvVarRequirement(environmentDefinitions: Vector[EnvironmentDefinition])
     extends Requirement
 
-object EnvVarRequirement {
+object EnvVarRequirement extends HintSchema {
   def apply(req: EnvVarRequirementImpl, schemaDefs: Map[String, CwlSchema]): EnvVarRequirement = {
     EnvVarRequirement(req.getEnvDef.asScala.map {
       case env: EnvironmentDefImpl => EnvironmentDefinition(env, schemaDefs)
@@ -228,9 +360,28 @@ object EnvVarRequirement {
         throw new RuntimeException(s"unexpected EnvironmentDef value ${other}")
     }.toVector)
   }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    EnvVarRequirement(
+        hint.getOrElse("envDef", throw new Exception("missing required attribute 'envDef'")) match {
+          case defs: Seq[_] =>
+            defs.map {
+              case d: Map[_, _] =>
+                val dStrAny = toStringAnyMap(d)
+                EnvironmentDefinition(dStrAny("envName").toString,
+                                      CwlValue(dStrAny("envValue"), schemaDefs))
+              case other =>
+                throw new Exception(s"invalid envDef value ${other}")
+            }.toVector
+          case other => throw new Exception(s"invalid version ${other}")
+        }
+    )
+  }
 }
 
-case object ShellCommandRequirement extends Requirement
+case object ShellCommandRequirement extends Requirement with HintSchema {
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = this
+}
 
 case class ResourceRequirement(coresMin: Option[CwlValue] = None,
                                coresMax: Option[CwlValue] = None,
@@ -298,7 +449,7 @@ case class ResourceRequirement(coresMin: Option[CwlValue] = None,
   }
 }
 
-object ResourceRequirement {
+object ResourceRequirement extends HintSchema {
   val DefaultCoresMin = 1
   val DefaultRamMin = 256
   val DefaultTmpdirMin = 1024
@@ -318,6 +469,19 @@ object ResourceRequirement {
     )
   }
 
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    ResourceRequirement(
+        coresMin = hint.get("coresMin").map(CwlValue(_, schemaDefs)),
+        coresMax = hint.get("coresMax").map(CwlValue(_, schemaDefs)),
+        ramMin = hint.get("ramMin").map(CwlValue(_, schemaDefs)),
+        ramMax = hint.get("ramMin").map(CwlValue(_, schemaDefs)),
+        tmpdirMin = hint.get("tmpdirMin").map(CwlValue(_, schemaDefs)),
+        tmpdirMax = hint.get("tmpdirMax").map(CwlValue(_, schemaDefs)),
+        outdirMin = hint.get("coresMin").map(CwlValue(_, schemaDefs)),
+        outdirMax = hint.get("outdirMax").map(CwlValue(_, schemaDefs))
+    )
+  }
+
   lazy val empty: ResourceRequirement = ResourceRequirement()
 
   /**
@@ -334,35 +498,54 @@ object ResourceRequirement {
 
 case class WorkReuseRequirement(enable: CwlValue) extends Requirement
 
-object WorkReuseRequirement {
+object WorkReuseRequirement extends HintSchema {
   def apply(req: WorkReuseImpl, schemaDefs: Map[String, CwlSchema]): WorkReuseRequirement = {
     WorkReuseRequirement(CwlValue(req.getEnableReuse, schemaDefs))
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    WorkReuseRequirement(enable = CwlValue(hint("enableReuse"), schemaDefs))
   }
 }
 
 case class NetworkAccessRequirement(allow: CwlValue) extends Requirement
 
-object NetworkAccessRequirement {
+object NetworkAccessRequirement extends HintSchema {
   def apply(req: NetworkAccessImpl,
             schemaDefs: Map[String, CwlSchema]): NetworkAccessRequirement = {
     NetworkAccessRequirement(CwlValue(req.getNetworkAccess, schemaDefs))
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    NetworkAccessRequirement(allow = CwlValue(hint("networkAccess"), schemaDefs))
   }
 }
 
 case class InplaceUpdateRequirement(allow: Boolean) extends Requirement
 
-object InplaceUpdateRequirement {
+object InplaceUpdateRequirement extends HintSchema {
   def apply(req: InplaceUpdateRequirementImpl): InplaceUpdateRequirement = {
     InplaceUpdateRequirement(req.getInplaceUpdate)
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    InplaceUpdateRequirement(allow = hint("inplaceUpdate") match {
+      case b: Boolean => b
+      case other      => throw new Exception(s"invalid inplaceUpdate value ${other}")
+    })
   }
 }
 
 case class ToolTimeLimitRequirement(timeLimit: CwlValue) extends Requirement
 
-object ToolTimeLimitRequirement {
+object ToolTimeLimitRequirement extends HintSchema {
   def apply(req: ToolTimeLimitImpl,
             schemaDefs: Map[String, CwlSchema]): ToolTimeLimitRequirement = {
     ToolTimeLimitRequirement(CwlValue(req.getTimelimit, schemaDefs))
+  }
+
+  override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
+    ToolTimeLimitRequirement(timeLimit = CwlValue(hint("timelimit"), schemaDefs))
   }
 }
 

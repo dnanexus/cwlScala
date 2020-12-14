@@ -16,17 +16,6 @@ class ParserTest extends AnyWordSpec with Matchers {
       Parser.canParse(getPath("/tools/fail/invalid2.cwl")) shouldBe false
     }
 
-    val toolsPath = getPath(s"/tools/pass")
-    toolsPath.toFile.listFiles().toVector.foreach { toolPath =>
-      s"parse tool ${toolPath}" in {
-        if (!toolPath.getName.contains("invalid")) {
-          Parser.canParse(toolPath.toPath) shouldBe true
-        }
-        CommandLineTool.parse(toolPath.toPath)
-      }
-    }
-
-    // this test is broken due to a bug in the underlying java parser
     "parse requirements" in {
       val doc = CommandLineTool.parse(getPath("/tools/pass/writable-dir.cwl"))
       doc.requirements.size shouldBe 2
@@ -42,6 +31,16 @@ class ParserTest extends AnyWordSpec with Matchers {
               )
           )
       )
+    }
+
+    val toolsPath = getPath(s"/tools/pass")
+    toolsPath.toFile.listFiles().toVector.foreach { toolPath =>
+      s"parse tool ${toolPath}" in {
+        if (!toolPath.getName.contains("invalid")) {
+          Parser.canParse(toolPath.toPath) shouldBe true
+        }
+        CommandLineTool.parse(toolPath.toPath)
+      }
     }
   }
 }
