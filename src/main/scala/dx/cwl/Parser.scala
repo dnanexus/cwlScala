@@ -2,8 +2,7 @@ package dx.cwl
 
 import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
 import java.nio.file.Path
-
-import org.w3id.cwl.cwl1_2.{CommandLineToolImpl, WorkflowImpl}
+import org.w3id.cwl.cwl1_2.{CWLVersion, CommandLineToolImpl, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 import org.yaml.snakeyaml.Yaml
 
@@ -12,6 +11,13 @@ import org.yaml.snakeyaml.Yaml
   */
 trait Process {
   val source: Option[String]
+  val cwlVersion: Option[CWLVersion]
+  val id: Identifier
+  val label: Option[String]
+  val doc: Option[String]
+  val intent: Vector[String]
+  val requirements: Vector[Requirement]
+  val hints: Vector[Hint]
 }
 
 object Parser {

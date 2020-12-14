@@ -1,11 +1,18 @@
 package dx.cwl
 
 import java.nio.file.Path
-
-import org.w3id.cwl.cwl1_2.WorkflowImpl
+import org.w3id.cwl.cwl1_2.{CWLVersion, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 
-case class Workflow(source: Option[String]) extends Process
+case class Workflow(source: Option[String],
+                    cwlVersion: Option[CWLVersion],
+                    id: Identifier,
+                    label: Option[String],
+                    doc: Option[String],
+                    intent: Vector[String],
+                    requirements: Vector[Requirement],
+                    hints: Vector[Hint])
+    extends Process
 
 object Workflow {
   def apply(workflow: WorkflowImpl, source: Option[String] = None): Workflow = {

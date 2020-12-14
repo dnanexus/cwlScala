@@ -88,6 +88,8 @@ sealed trait CommandParameter {
   val secondaryFiles: Vector[SecondaryFile]
   val format: Vector[CwlValue]
   val streamable: Option[Boolean]
+
+  def name: String = id.flatMap(_.name).getOrElse(throw new Exception("parameter has no name"))
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandInputParameter
@@ -341,10 +343,11 @@ object CommandLineTool {
         ExprArgument(CwlValue(expr, allSchemaDefs))
     }
 
-    val id = (translateOptional(tool.getId), source) match {
-      case (Some(id), _) => Identifier(id)
-      case (None, Some(path)) if path.endsWith(".cwl") =>
-        Identifier(namespace = None, name = Some(path.getFileName.toString.dropRight(4)))
+    val id = translateOptional(tool.getId).map(Identifier(_)) match {
+      case Some(id) if id.name.isDefined => id
+      case id if source.isDefined =>
+        val name = Some(source.get.getFileName.toString.dropRight(4))
+        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
       case _ =>
         throw new Exception("either tool id or file path must be defined")
     }
