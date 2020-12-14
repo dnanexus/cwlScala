@@ -31,7 +31,12 @@ import scala.jdk.CollectionConverters._
 trait Hint
 
 trait HintSchema {
-  val className: String = getClass.getName
+  val className: String = {
+    getClass.getSimpleName match {
+      case name if name.endsWith("$") => name.dropRight(1)
+      case name                       => name
+    }
+  }
 
   def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint
 }
@@ -236,15 +241,15 @@ object SoftwarePackage {
         version = hint
           .get("version")
           .map {
-            case versions: Seq[Any] => versions.map(_.toString).toVector
-            case other              => throw new Exception(s"invalid version ${other}")
+            case versions: java.util.Collection[_] => versions.asScala.map(_.toString).toVector
+            case other                             => throw new Exception(s"invalid version ${other}")
           }
           .getOrElse(Vector.empty),
         specs = hint
           .get("specs")
           .map {
-            case versions: Seq[Any] => versions.map(_.toString).toVector
-            case other              => throw new Exception(s"invalid version ${other}")
+            case versions: java.util.Collection[_] => versions.asScala.map(_.toString).toVector
+            case other                             => throw new Exception(s"invalid version ${other}")
           }
           .getOrElse(Vector.empty)
     )
@@ -268,9 +273,9 @@ object SoftwareRequirement extends HintSchema {
     SoftwareRequirement(
         packages = hint
           .getOrElse("packages", throw new Exception("missing required attribute packages")) match {
-          case packages: Seq[Any] =>
-            packages.map {
-              case pkg: Map[_, _] => SoftwarePackage(toStringAnyMap(pkg))
+          case packages: java.util.Collection[_] =>
+            packages.asScala.map {
+              case pkg: java.util.Map[_, _] => SoftwarePackage(toStringAnyMap(pkg.asScala.toMap))
             }.toVector
           case other =>
             throw new RuntimeException(s"unexpected package value ${other}")
@@ -327,15 +332,14 @@ object InitialWorkDirRequirement extends HintSchema {
     InitialWorkDirRequirement(
         listing = hint
           .getOrElse("listing", throw new Exception("missing required attribute 'listing'")) match {
-          case entry: Seq[_] =>
-            entry.map {
-              case m: Map[_, _] => DirInitialWorkDirEntry.apply(toStringAnyMap(m), schemaDefs)
-              case other        => throw new Exception(s"invalid entry value ${other}")
+          case entry: java.util.Collection[_] =>
+            entry.asScala.map {
+              case m: java.util.Map[_, _] =>
+                DirInitialWorkDirEntry.apply(toStringAnyMap(m.asScala.toMap), schemaDefs)
+              case other => throw new Exception(s"invalid entry value ${other}")
             }.toVector
-          case value: Object =>
+          case value =>
             Vector(ValueInitialWorkDirEntry(CwlValue(value, schemaDefs)))
-          case other =>
-            throw new RuntimeException(s"unexpected listing value ${other}")
         }
     )
   }
@@ -363,9 +367,14 @@ object EnvVarRequirement extends HintSchema {
 
   override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
     EnvVarRequirement(
-        hint.getOrElse("envDef", throw new Exception("missing required attribute 'envDef'")) match {
-          case defs: Seq[_] =>
-            defs.map {
+        environmentDefinitions = hint
+          .getOrElse("envDef", throw new Exception("missing required attribute 'envDef'")) match {
+          case defs: java.util.Map[_, _] =>
+            toStringAnyMap(defs.asScala.toMap).map {
+              case (name, value) => EnvironmentDefinition(name, CwlValue(value, schemaDefs))
+            }.toVector
+          case defs: java.util.Collection[_] =>
+            defs.asScala.map {
               case d: Map[_, _] =>
                 val dStrAny = toStringAnyMap(d)
                 EnvironmentDefinition(dStrAny("envName").toString,
@@ -373,7 +382,7 @@ object EnvVarRequirement extends HintSchema {
               case other =>
                 throw new Exception(s"invalid envDef value ${other}")
             }.toVector
-          case other => throw new Exception(s"invalid version ${other}")
+          case other => throw new Exception(s"invalid version ${other.getClass}")
         }
     )
   }
