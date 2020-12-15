@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 class RequirementTest extends AnyFlatSpec with Matchers {
   it should "merge requirements" in {
     val req1 = ResourceRequirement(coresMin = Some(LongValue(10)), ramMax = Some(LongValue(1024)))
-    req1.complete shouldBe ResourceRequirement(
+    req1.merge shouldBe ResourceRequirement(
         coresMin = Some(LongValue(10)),
         ramMin = Some(LongValue(ResourceRequirement.DefaultRamMin)),
         ramMax = Some(LongValue(1024)),

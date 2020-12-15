@@ -356,6 +356,13 @@ object CwlValue {
       )
   }
 
+  def deserializeMap(map: Map[String, JsValue],
+                     schemaDefs: Map[String, CwlSchema] = Map.empty): Map[String, CwlValue] = {
+    map.map {
+      case (name, jsValue) => name -> deserialize(jsValue, schemaDefs)
+    }
+  }
+
   /**
     * Infers the CwlType for the given value.
     */

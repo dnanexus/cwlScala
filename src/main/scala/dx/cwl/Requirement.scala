@@ -417,7 +417,7 @@ case class ResourceRequirement(coresMin: Option[CwlValue] = None,
     * @param that the ResourceRequirement to merge
     * @return a new ResourceRequirement
     */
-  def merge(that: ResourceRequirement): ResourceRequirement = {
+  def merge(that: ResourceRequirement = ResourceRequirement.default): ResourceRequirement = {
     val (minCores, maxCores) = Requirement.updateMinMax(
         coresMin.orElse(that.coresMin),
         coresMax.orElse(that.coresMax),
@@ -448,13 +448,6 @@ case class ResourceRequirement(coresMin: Option[CwlValue] = None,
         minOutdir,
         maxOutdir
     )
-  }
-
-  /**
-    * Merges this ResourceRequirement with the default values.
-    */
-  def complete: ResourceRequirement = {
-    merge(ResourceRequirement.default)
   }
 }
 
