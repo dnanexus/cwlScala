@@ -47,11 +47,19 @@ object Parser {
 
   def parse(doc: java.lang.Object,
             source: Option[Path] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty): Process = {
+            schemaDefs: Vector[CwlSchema] = Vector.empty,
+            hintSchemas: Vector[HintSchema] = Vector.empty): Process = {
     doc match {
-      case tool: CommandLineToolImpl => CommandLineTool(tool, source, schemaDefs, hintSchemas)
-      case workflow: WorkflowImpl    => Workflow(workflow)
+      case tool: CommandLineToolImpl =>
+        CommandLineTool(
+            tool,
+            source,
+            schemaDefs.collect {
+              case schema if schema.name.isDefined => schema.name.get -> schema
+            }.toMap,
+            hintSchemas.map(s => s.className -> s).toMap
+        )
+      case workflow: WorkflowImpl => Workflow(workflow)
       case other =>
         throw new RuntimeException(s"unexpected top-level element ${other}")
     }
@@ -68,8 +76,8 @@ object Parser {
   def parseFile(path: Path,
                 baseUri: Option[String] = None,
                 loadingOptions: Option[LoadingOptions] = None,
-                schemaDefs: Map[String, CwlSchema] = Map.empty,
-                hintSchemas: Map[String, HintSchema] = Map.empty): Process = {
+                schemaDefs: Vector[CwlSchema] = Vector.empty,
+                hintSchemas: Vector[HintSchema] = Vector.empty): Process = {
     parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull),
           Some(path),
           schemaDefs,
@@ -87,8 +95,8 @@ object Parser {
   def parseString(sourceCode: String,
                   baseUri: Option[String] = None,
                   loadingOptions: Option[LoadingOptions] = None,
-                  schemaDefs: Map[String, CwlSchema] = Map.empty,
-                  hintSchemas: Map[String, HintSchema] = Map.empty): Process = {
+                  schemaDefs: Vector[CwlSchema] = Vector.empty,
+                  hintSchemas: Vector[HintSchema] = Vector.empty): Process = {
     parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull),
           None,
           schemaDefs,
