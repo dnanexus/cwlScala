@@ -48,7 +48,8 @@ object Parser {
   def parse(doc: java.lang.Object,
             source: Option[Path] = None,
             schemaDefs: Vector[CwlSchema] = Vector.empty,
-            hintSchemas: Vector[HintSchema] = Vector.empty): Process = {
+            hintSchemas: Vector[HintSchema] = Vector.empty,
+            name: Option[String] = None): Process = {
     doc match {
       case tool: CommandLineToolImpl =>
         CommandLineTool(
@@ -57,7 +58,8 @@ object Parser {
             schemaDefs.collect {
               case schema if schema.name.isDefined => schema.name.get -> schema
             }.toMap,
-            hintSchemas.map(s => s.className -> s).toMap
+            hintSchemas.map(s => s.className -> s).toMap,
+            name
         )
       case workflow: WorkflowImpl => Workflow(workflow)
       case other =>
@@ -71,17 +73,22 @@ object Parser {
     * @param path path to the document
     * @param baseUri base URI to use when importing documents
     * @param loadingOptions document loading options
+    * @param hintSchemas HintSchemas
+    * @param name tool/workflow name, in case it is not specified in the document
+    *             if not specified, the name of the file without .cwl is used
     * @return a [[Process]]
     */
   def parseFile(path: Path,
                 baseUri: Option[String] = None,
                 loadingOptions: Option[LoadingOptions] = None,
                 schemaDefs: Vector[CwlSchema] = Vector.empty,
-                hintSchemas: Vector[HintSchema] = Vector.empty): Process = {
+                hintSchemas: Vector[HintSchema] = Vector.empty,
+                name: Option[String] = None): Process = {
     parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull),
           Some(path),
           schemaDefs,
-          hintSchemas)
+          hintSchemas,
+          name)
   }
 
   /**
@@ -90,16 +97,20 @@ object Parser {
     * @param sourceCode path to the document
     * @param baseUri base URI to use when importing documents
     * @param loadingOptions document loading options
+    * @param hintSchemas HintSchemas
+    * @param name tool/workflow name, in case it is not specified in the document
     * @return a [[Process]]
     */
   def parseString(sourceCode: String,
                   baseUri: Option[String] = None,
                   loadingOptions: Option[LoadingOptions] = None,
                   schemaDefs: Vector[CwlSchema] = Vector.empty,
-                  hintSchemas: Vector[HintSchema] = Vector.empty): Process = {
+                  hintSchemas: Vector[HintSchema] = Vector.empty,
+                  name: Option[String] = None): Process = {
     parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull),
           None,
           schemaDefs,
-          hintSchemas)
+          hintSchemas,
+          name)
   }
 }

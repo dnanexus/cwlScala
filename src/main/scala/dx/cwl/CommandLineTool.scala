@@ -244,7 +244,8 @@ object CommandLineTool {
   def apply(tool: CommandLineToolImpl,
             source: Option[Path] = None,
             schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty): CommandLineTool = {
+            hintSchemas: Map[String, HintSchema] = Map.empty,
+            name: Option[String] = None): CommandLineTool = {
     val (requirements, allSchemaDefs) =
       translateOptionalArray(tool.getRequirements)
         .foldLeft(Vector.empty[Requirement], schemaDefs) {
@@ -345,6 +346,8 @@ object CommandLineTool {
 
     val id = translateOptional(tool.getId).map(Identifier(_)) match {
       case Some(id) if id.name.isDefined => id
+      case id if name.isDefined =>
+        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
       case id if source.isDefined =>
         val name = Some(source.get.getFileName.toString.dropRight(4))
         id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
