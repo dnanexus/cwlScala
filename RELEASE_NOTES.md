@@ -1,6 +1,6 @@
 # Change log
 
-## v0.2.9 (dev)
+## v0.2.9 (2021-01-05)
 
 * Add optional name parameter to `Parser.parse*` functions, for tools/workflows that do not specify `id`
 * Fixed bug with `Runtime.create`
