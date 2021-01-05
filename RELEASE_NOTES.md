@@ -3,6 +3,7 @@
 ## v0.2.9 (dev)
 
 * Add optional name parameter to `Parser.parse*` functions, for tools/workflows that do not specify `id`
+* Fixed bug with `Runtime.create`
 
 ## v0.2.8 (2020-12-14)
 

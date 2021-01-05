@@ -409,21 +409,21 @@ object Runtime {
              minOutdirSize: Option[Long] = None,
              minTmpdirSize: Option[Long] = None): Runtime = {
     val cores = JavaRuntime.getRuntime.availableProcessors()
-    if (minCores.forall(_ > cores)) {
+    if (minCores.exists(_ > cores)) {
       throw new Exception(s"avaiable cores ${cores} is less than min cores ${minCores}")
     }
     val ram = totalMemorySize
-    if (minRam.forall(_ > ram)) {
+    if (minRam.exists(_ > ram)) {
       throw new Exception(s"avaiable ram ${ram} is less than min ram ${minRam}")
     }
     val outdirSize = outdir.getRoot.toFile.getFreeSpace
-    if (minOutdirSize.forall(_ > outdirSize)) {
+    if (minOutdirSize.exists(_ > outdirSize)) {
       throw new Exception(
           s"avaiable outdir size ${outdirSize} is less than min outdir size ${minOutdirSize}"
       )
     }
     val tmpdirSize = tmpdir.getRoot.toFile.getFreeSpace
-    if (minTmpdirSize.forall(_ > tmpdirSize)) {
+    if (minTmpdirSize.exists(_ > tmpdirSize)) {
       throw new Exception(
           s"avaiable tmpdir size ${tmpdirSize} is less than min tmpdir size ${minTmpdirSize}"
       )
