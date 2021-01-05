@@ -675,15 +675,15 @@ case class Evaluator(jsEnabled: Boolean = false,
         case ObjectValue(members) =>
           innerTypes.iterator
             .map {
-              case record: CwlRecord =>
+              case record: CwlInputRecord =>
                 try {
                   val (types, values) = members.map {
                     case (key, value) =>
                       val (t, v) = inner(value, record.fields(key).types)
                       (key -> t, key -> v)
                   }.unzip
-                  val recordType = CwlRecord(types.map {
-                    case (name, t) => name -> CwlRecordField(name, Vector(t))
+                  val recordType = CwlInputRecord(types.map {
+                    case (name, t) => name -> CwlInputRecordField(name, Vector(t))
                   }.toMap)
                   Some((recordType, ObjectValue(values.toMap)))
                 } catch {

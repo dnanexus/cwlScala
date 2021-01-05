@@ -10,9 +10,16 @@ import org.w3id.cwl.cwl1_2.{
   CommandInputSchema,
   CommandLineBindingImpl,
   CommandOutputArraySchemaImpl,
+  CommandOutputBindingImpl,
   CommandOutputEnumSchemaImpl,
   CommandOutputRecordFieldImpl,
   CommandOutputRecordSchemaImpl,
+  InputArraySchemaImpl,
+  InputEnumSchemaImpl,
+  InputRecordFieldImpl,
+  InputRecordSchemaImpl,
+  OutputArraySchemaImpl,
+  OutputEnumSchemaImpl,
   OutputSchema,
   SecondaryFileSchemaImpl,
   stderr => CWLStderr,
@@ -212,6 +219,9 @@ sealed trait CwlSchema extends CwlType {
   val name: Option[String]
   val label: Option[String]
   val doc: Option[String]
+}
+
+sealed trait CwlInputSchema extends CwlSchema {
   val inputBinding: Option[CommandInputBinding]
 }
 
@@ -219,7 +229,7 @@ object CwlSchema {
   def apply(schema: CommandInputSchema, schemaDefs: Map[String, CwlSchema]): CwlSchema = {
     schema match {
       case schema: CommandInputArraySchemaImpl  => CwlArray(schema, schemaDefs)
-      case schema: CommandInputRecordSchemaImpl => CwlRecord(schema, schemaDefs)
+      case schema: CommandInputRecordSchemaImpl => CwlInputRecord(schema, schemaDefs)
       case schema: CommandInputEnumSchemaImpl   => CwlEnum(schema, schemaDefs)
       case _ =>
         throw new Exception(s"unexpected input schema ${schema}")
@@ -229,7 +239,7 @@ object CwlSchema {
   def apply(schema: OutputSchema, schemaDefs: Map[String, CwlSchema]): CwlSchema = {
     schema match {
       case arraySchema: CommandOutputArraySchemaImpl   => CwlArray(arraySchema, schemaDefs)
-      case recordSchema: CommandOutputRecordSchemaImpl => CwlRecord(recordSchema, schemaDefs)
+      case recordSchema: CommandOutputRecordSchemaImpl => CwlOutputRecord(recordSchema, schemaDefs)
       case enumSchema: CommandOutputEnumSchemaImpl     => CwlEnum(enumSchema)
       case _ =>
         throw new Exception(s"unexpected output schema ${schema}")
@@ -242,7 +252,7 @@ case class CwlArray(itemTypes: Vector[CwlType],
                     label: Option[String] = None,
                     doc: Option[String] = None,
                     inputBinding: Option[CommandInputBinding] = None)
-    extends CwlSchema {
+    extends CwlInputSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
       case targetSchema: CwlArray =>
@@ -280,22 +290,41 @@ object CwlArray {
         types,
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc),
-        None
+        translateDoc(schema.getDoc)
+    )
+  }
+
+  def apply(schema: InputArraySchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlArray = {
+    val (types, stdfile) = CwlType(schema.getItems, schemaDefs)
+    assert(stdfile.isEmpty)
+    CwlArray(
+        types,
+        translateOptional(schema.getName),
+        translateOptional(schema.getLabel),
+        translateDoc(schema.getDoc)
+    )
+  }
+
+  def apply(schema: OutputArraySchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlArray = {
+    val (types, stdfile) = CwlType(schema.getItems, schemaDefs)
+    assert(stdfile.isEmpty)
+    CwlArray(
+        types,
+        translateOptional(schema.getName),
+        translateOptional(schema.getLabel),
+        translateDoc(schema.getDoc)
     )
   }
 }
 
-case class CwlRecordField(name: String,
-                          types: Vector[CwlType],
-                          label: Option[String] = None,
-                          doc: Option[String] = None,
-                          inputBinding: Option[CommandInputBinding] = None,
-                          secondaryFiles: Vector[SecondaryFile] = Vector.empty,
-                          format: Vector[CwlValue] = Vector.empty,
-                          streamable: Option[Boolean] = None,
-                          loadContents: Option[Boolean] = None,
-                          loadListing: Option[LoadListing.LoadListing] = None) {
+sealed trait CwlRecordField {
+  val name: String
+  val types: Vector[CwlType]
+  val label: Option[String]
+  val doc: Option[String]
+  val secondaryFiles: Vector[SecondaryFile]
+  val format: Vector[CwlValue]
+  val streamable: Option[Boolean]
 
   /**
     * the field is optional if any of the allowed types are optional
@@ -308,34 +337,28 @@ case class CwlRecordField(name: String,
   }
 }
 
-case class CwlRecord(fields: Map[String, CwlRecordField],
-                     name: Option[String] = None,
-                     label: Option[String] = None,
-                     doc: Option[String] = None,
-                     inputBinding: Option[CommandInputBinding] = None)
-    extends CwlSchema {
-  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
-    targetType match {
-      case targetSchema: CwlRecord if fields.keySet == targetSchema.fields.keySet =>
-        fields.forall {
-          case (name, fromField) =>
-            fromField.types.exists { fromType =>
-              targetSchema.fields(name).types.exists { toType =>
-                fromType.coercibleTo(toType)
-              }
-            }
-        }
-      case _ => false
-    }
-  }
+sealed trait CwlRecord extends CwlSchema {
+  val fields: Map[String, CwlRecordField]
 }
 
-object CwlRecord {
+case class CwlInputRecordField(name: String,
+                               types: Vector[CwlType],
+                               label: Option[String] = None,
+                               doc: Option[String] = None,
+                               inputBinding: Option[CommandInputBinding] = None,
+                               secondaryFiles: Vector[SecondaryFile] = Vector.empty,
+                               format: Vector[CwlValue] = Vector.empty,
+                               streamable: Option[Boolean] = None,
+                               loadContents: Option[Boolean] = None,
+                               loadListing: Option[LoadListing.LoadListing] = None)
+    extends CwlRecordField
+
+object CwlInputRecordField {
   def apply(field: CommandInputRecordFieldImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlRecordField = {
+            schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
     val (types, stdfile) = CwlType(field.getType, schemaDefs)
     assert(stdfile.isEmpty)
-    CwlRecordField(
+    CwlInputRecordField(
         field.getName,
         types,
         translateOptional(field.getLabel),
@@ -357,12 +380,60 @@ object CwlRecord {
     )
   }
 
-  def apply(schema: CommandInputRecordSchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlRecord = {
-    CwlRecord(
+  def apply(field: InputRecordFieldImpl,
+            schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
+    val (types, stdfile) = CwlType(field.getType, schemaDefs)
+    assert(stdfile.isEmpty)
+    CwlInputRecordField(
+        field.getName,
+        types,
+        translateOptional(field.getLabel),
+        translateDoc(field.getDoc),
+        None,
+        translateOptionalArray(field.getSecondaryFiles).map {
+          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
+          case other =>
+            throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
+        },
+        translateOptionalArray(field.getFormat).map(CwlValue.apply(_, schemaDefs)),
+        translateOptional(field.getStreamable).map(_.booleanValue()),
+        translateOptional(field.getLoadContents).map(_.booleanValue()),
+        translateOptional(field.getLoadListing).map(LoadListing.from)
+    )
+  }
+}
+
+case class CwlInputRecord(fields: Map[String, CwlInputRecordField],
+                          name: Option[String] = None,
+                          label: Option[String] = None,
+                          doc: Option[String] = None,
+                          inputBinding: Option[CommandInputBinding] = None)
+    extends CwlRecord
+    with CwlInputSchema {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case targetSchema: CwlInputRecord if fields.keySet == targetSchema.fields.keySet =>
+        fields.forall {
+          case (name, fromField) =>
+            fromField.types.exists { fromType =>
+              targetSchema.fields(name).types.exists { toType =>
+                fromType.coercibleTo(toType)
+              }
+            }
+        }
+      case _ => false
+    }
+  }
+}
+
+object CwlInputRecord {
+  def apply(schema: CommandInputRecordSchemaImpl,
+            schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
+    CwlInputRecord(
         translateOptional(schema.getFields)
           .map(_.asScala.map {
             case field: CommandInputRecordFieldImpl =>
-              val cwlField = apply(field, schemaDefs)
+              val cwlField = CwlInputRecordField(field, schemaDefs)
               cwlField.name -> cwlField
             case other =>
               throw new RuntimeException(s"invalid record field ${other}")
@@ -379,35 +450,12 @@ object CwlRecord {
     )
   }
 
-  def apply(field: CommandOutputRecordFieldImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlRecordField = {
-    val (types, stdfile) = CwlType(field.getType, schemaDefs)
-    assert(stdfile.isEmpty)
-    CwlRecordField(
-        field.getName,
-        types,
-        translateOptional(field.getLabel),
-        translateDoc(field.getDoc),
-        None,
-        translateOptionalArray(field.getSecondaryFiles).map {
-          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
-          case other =>
-            throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
-        },
-        translateOptionalArray(field.getFormat).map(CwlValue.apply(_, schemaDefs)),
-        translateOptional(field.getStreamable).map(_.booleanValue()),
-        None,
-        None
-    )
-  }
-
-  def apply(schema: CommandOutputRecordSchemaImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlRecord = {
-    CwlRecord(
+  def apply(schema: InputRecordSchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
+    CwlInputRecord(
         translateOptional(schema.getFields)
           .map(_.asScala.map {
-            case field: CommandOutputRecordFieldImpl =>
-              val cwlField = apply(field, schemaDefs)
+            case field: CommandInputRecordFieldImpl =>
+              val cwlField = CwlInputRecordField(field, schemaDefs)
               cwlField.name -> cwlField
             case other =>
               throw new RuntimeException(s"invalid record field ${other}")
@@ -415,8 +463,84 @@ object CwlRecord {
           .getOrElse(Map.empty),
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc),
-        None
+        translateDoc(schema.getDoc)
+    )
+  }
+}
+
+case class CwlOutputRecordField(name: String,
+                                types: Vector[CwlType],
+                                label: Option[String] = None,
+                                doc: Option[String] = None,
+                                outputBinding: Option[CommandOutputBinding] = None,
+                                secondaryFiles: Vector[SecondaryFile] = Vector.empty,
+                                format: Vector[CwlValue] = Vector.empty,
+                                streamable: Option[Boolean] = None)
+    extends CwlRecordField
+
+object CwlOutputRecordField {
+  def apply(field: CommandOutputRecordFieldImpl,
+            schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
+    val (types, stdfile) = CwlType(field.getType, schemaDefs)
+    assert(stdfile.isEmpty)
+    CwlOutputRecordField(
+        field.getName,
+        types,
+        translateOptional(field.getLabel),
+        translateDoc(field.getDoc),
+        translateOptional(field.getOutputBinding).map {
+          case binding: CommandOutputBindingImpl => CommandOutputBinding(binding, schemaDefs)
+          case other =>
+            throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
+        },
+        translateOptionalArray(field.getSecondaryFiles).map {
+          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
+          case other =>
+            throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
+        },
+        translateOptionalArray(field.getFormat).map(CwlValue.apply(_, schemaDefs)),
+        translateOptional(field.getStreamable).map(_.booleanValue())
+    )
+  }
+}
+
+case class CwlOutputRecord(fields: Map[String, CwlOutputRecordField],
+                           name: Option[String] = None,
+                           label: Option[String] = None,
+                           doc: Option[String] = None)
+    extends CwlRecord {
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case targetSchema: CwlOutputRecord if fields.keySet == targetSchema.fields.keySet =>
+        fields.forall {
+          case (name, fromField) =>
+            fromField.types.exists { fromType =>
+              targetSchema.fields(name).types.exists { toType =>
+                fromType.coercibleTo(toType)
+              }
+            }
+        }
+      case _ => false
+    }
+  }
+}
+
+object CwlOutputRecord {
+  def apply(schema: CommandOutputRecordSchemaImpl,
+            schemaDefs: Map[String, CwlSchema]): CwlOutputRecord = {
+    CwlOutputRecord(
+        translateOptional(schema.getFields)
+          .map(_.asScala.map {
+            case field: CommandOutputRecordFieldImpl =>
+              val cwlField = CwlOutputRecordField(field, schemaDefs)
+              cwlField.name -> cwlField
+            case other =>
+              throw new RuntimeException(s"invalid record field ${other}")
+          }.toMap)
+          .getOrElse(Map.empty),
+        translateOptional(schema.getName),
+        translateOptional(schema.getLabel),
+        translateDoc(schema.getDoc)
     )
   }
 }
@@ -426,7 +550,7 @@ case class CwlEnum(symbols: Set[String],
                    label: Option[String] = None,
                    doc: Option[String] = None,
                    inputBinding: Option[CommandInputBinding] = None)
-    extends CwlSchema {
+    extends CwlInputSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
       case targetSchema: CwlEnum if this.symbols == targetSchema.symbols => true
@@ -462,8 +586,31 @@ object CwlEnum {
         }.toSet,
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc),
-        None
+        translateDoc(schema.getDoc)
+    )
+  }
+
+  def apply(schema: InputEnumSchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlEnum = {
+    CwlEnum(
+        schema.getSymbols.asScala.map {
+          case s: String => s
+          case other     => throw new Exception(s"unexpected symbol value ${other}")
+        }.toSet,
+        translateOptional(schema.getName),
+        translateOptional(schema.getLabel),
+        translateDoc(schema.getDoc)
+    )
+  }
+
+  def apply(schema: OutputEnumSchemaImpl): CwlEnum = {
+    CwlEnum(
+        schema.getSymbols.asScala.map {
+          case s: String => s
+          case other     => throw new Exception(s"unexpected symbol value ${other}")
+        }.toSet,
+        translateOptional(schema.getName),
+        translateOptional(schema.getLabel),
+        translateDoc(schema.getDoc)
     )
   }
 }

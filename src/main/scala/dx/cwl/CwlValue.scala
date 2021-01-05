@@ -77,6 +77,11 @@ sealed trait PrimitiveValue extends CwlValue {
   }
 }
 
+object CwlValueContext extends Enumeration {
+  type CwlValueContext = Value
+  val Input, Output = Value
+}
+
 object CwlValue {
 
   /**
@@ -366,7 +371,7 @@ object CwlValue {
   /**
     * Infers the CwlType for the given value.
     */
-  def inferType(value: CwlValue): CwlType = {
+  def inferType(value: CwlValue, ctx: CwlValueContext.CwlValueContext): CwlType = {
     value match {
       case NullValue         => CwlNull
       case _: BooleanValue   => CwlBoolean
@@ -379,13 +384,19 @@ object CwlValue {
       case _: RandomFile     => CwlFile
       case _: DirectoryValue => CwlDirectory
       case ArrayValue(array) =>
-        val itemTypes = array.map(inferType)
+        val itemTypes = array.map(inferType(_, ctx))
         CwlArray(itemTypes.distinct)
-      case schema: ObjectLike =>
-        CwlRecord(schema.members.map {
+      case schema: ObjectLike if ctx == CwlValueContext.Input =>
+        CwlInputRecord(schema.members.map {
           case (name, value) =>
-            val cwlType = inferType(value)
-            name -> CwlRecordField(name, Vector(cwlType))
+            val cwlType = inferType(value, ctx)
+            name -> CwlInputRecordField(name, Vector(cwlType))
+        })
+      case schema: ObjectLike if ctx == CwlValueContext.Output =>
+        CwlOutputRecord(schema.members.map {
+          case (name, value) =>
+            val cwlType = inferType(value, ctx)
+            name -> CwlOutputRecordField(name, Vector(cwlType))
         })
     }
   }

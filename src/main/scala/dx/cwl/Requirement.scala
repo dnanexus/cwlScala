@@ -11,13 +11,17 @@ import org.w3id.cwl.cwl1_2.{
   InlineJavascriptRequirementImpl,
   InplaceUpdateRequirementImpl,
   LoadListingRequirementImpl,
+  MultipleInputFeatureRequirementImpl,
   NetworkAccessImpl,
   ProcessRequirement,
   ResourceRequirementImpl,
+  ScatterFeatureRequirementImpl,
   SchemaDefRequirementImpl,
   ShellCommandRequirementImpl,
   SoftwarePackageImpl,
   SoftwareRequirementImpl,
+  StepInputExpressionRequirementImpl,
+  SubworkflowFeatureRequirementImpl,
   ToolTimeLimitImpl,
   WorkReuseImpl
 }
@@ -52,19 +56,23 @@ case class GenericHint(attributes: Map[String, Any]) extends Hint
 object Requirement {
   def apply(requirement: ProcessRequirement, schemaDefs: Map[String, CwlSchema]): Requirement = {
     requirement match {
-      case req: InlineJavascriptRequirementImpl => InlineJavascriptRequirement(req)
-      case req: SchemaDefRequirementImpl        => SchemaDefRequirement(req, Map.empty)
-      case req: LoadListingRequirementImpl      => LoadListingRequirement(req)
-      case req: DockerRequirementImpl           => DockerRequirement(req)
-      case req: SoftwareRequirementImpl         => SoftwareRequirement(req)
-      case req: InitialWorkDirRequirementImpl   => InitialWorkDirRequirement(req, schemaDefs)
-      case req: EnvVarRequirementImpl           => EnvVarRequirement(req, schemaDefs)
-      case _: ShellCommandRequirementImpl       => ShellCommandRequirement
-      case req: ResourceRequirementImpl         => ResourceRequirement(req, schemaDefs)
-      case req: WorkReuseImpl                   => WorkReuseRequirement(req, schemaDefs)
-      case req: NetworkAccessImpl               => NetworkAccessRequirement(req, schemaDefs)
-      case req: InplaceUpdateRequirementImpl    => InplaceUpdateRequirement(req)
-      case req: ToolTimeLimitImpl               => ToolTimeLimitRequirement(req, schemaDefs)
+      case req: InlineJavascriptRequirementImpl   => InlineJavascriptRequirement(req)
+      case req: SchemaDefRequirementImpl          => SchemaDefRequirement(req, Map.empty)
+      case req: LoadListingRequirementImpl        => LoadListingRequirement(req)
+      case req: DockerRequirementImpl             => DockerRequirement(req)
+      case req: SoftwareRequirementImpl           => SoftwareRequirement(req)
+      case req: InitialWorkDirRequirementImpl     => InitialWorkDirRequirement(req, schemaDefs)
+      case req: EnvVarRequirementImpl             => EnvVarRequirement(req, schemaDefs)
+      case _: ShellCommandRequirementImpl         => ShellCommandRequirement
+      case req: ResourceRequirementImpl           => ResourceRequirement(req, schemaDefs)
+      case req: WorkReuseImpl                     => WorkReuseRequirement(req, schemaDefs)
+      case req: NetworkAccessImpl                 => NetworkAccessRequirement(req, schemaDefs)
+      case req: InplaceUpdateRequirementImpl      => InplaceUpdateRequirement(req)
+      case req: ToolTimeLimitImpl                 => ToolTimeLimitRequirement(req, schemaDefs)
+      case _: SubworkflowFeatureRequirementImpl   => SubworkflowFeatureRequirement
+      case _: ScatterFeatureRequirementImpl       => ScatterFeatureRequirement
+      case _: MultipleInputFeatureRequirementImpl => MultipleInputFeatureRequirement
+      case _: StepInputExpressionRequirementImpl  => StepInputExpressionRequirement
       case _ =>
         throw new RuntimeException(s"unsupported requirement value ${requirement}")
     }
@@ -550,6 +558,11 @@ object ToolTimeLimitRequirement extends HintSchema {
     ToolTimeLimitRequirement(timeLimit = CwlValue(hint("timelimit"), schemaDefs))
   }
 }
+
+case object SubworkflowFeatureRequirement extends Requirement
+case object ScatterFeatureRequirement extends Requirement
+case object MultipleInputFeatureRequirement extends Requirement
+case object StepInputExpressionRequirement extends Requirement
 
 object RequirementUtils {
   def getJsRequirements(requirements: Vector[Requirement]): (Boolean, Option[String]) = {

@@ -17,7 +17,6 @@ import org.w3id.cwl.cwl1_2.{
   CommandLineToolImpl,
   CommandOutputBindingImpl,
   CommandOutputParameterImpl,
-  LoadListingEnum,
   ProcessRequirement,
   SecondaryFileSchemaImpl
 }
@@ -25,37 +24,12 @@ import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 
 import scala.jdk.CollectionConverters._
 
-// https://www.commonwl.org/v1.2/CommandLineTool.html#LoadListingEnum
-object LoadListing extends Enumeration {
-  type LoadListing = Value
-  val No, Shallow, Deep = Value
-
-  def from(loadListing: LoadListingEnum): LoadListing = {
-    loadListing match {
-      case LoadListingEnum.NO_LISTING      => No
-      case LoadListingEnum.SHALLOW_LISTING => Shallow
-      case LoadListingEnum.DEEP_LISTING    => Deep
-    }
-  }
-}
-
 // https://www.commonwl.org/v1.2/CommandLineTool.html#stdin
 // https://www.commonwl.org/v1.2/CommandLineTool.html#stdout
 // https://www.commonwl.org/v1.2/CommandLineTool.html#stderr
 object StdFile extends Enumeration {
   type StdFile = Value
   val Stdin, Stdout, Stderr = Value
-}
-
-// https://www.commonwl.org/v1.2/CommandLineTool.html#SecondaryFileSchema
-case class SecondaryFile(pattern: CwlValue, required: CwlValue)
-
-object SecondaryFile {
-  def apply(secondaryFile: SecondaryFileSchemaImpl,
-            schemaDefs: Map[String, CwlSchema]): SecondaryFile = {
-    SecondaryFile(CwlValue(secondaryFile.getPattern, schemaDefs),
-                  CwlValue(secondaryFile.getRequired, schemaDefs))
-  }
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandLineBinding
@@ -86,7 +60,6 @@ sealed trait CommandParameter {
   val doc: Option[String]
   val types: Vector[CwlType]
   val secondaryFiles: Vector[SecondaryFile]
-  val format: Vector[CwlValue]
   val streamable: Option[Boolean]
 
   def name: String = id.flatMap(_.name).getOrElse(throw new Exception("parameter has no name"))
@@ -162,7 +135,7 @@ case class CommandOutputParameter(id: Option[Identifier],
                                   types: Vector[CwlType],
                                   outputBinding: Option[CommandOutputBinding],
                                   secondaryFiles: Vector[SecondaryFile],
-                                  format: Vector[CwlValue],
+                                  format: Option[CwlValue],
                                   streamable: Option[Boolean])
     extends CommandParameter
 
@@ -200,7 +173,7 @@ object CommandOutputParameter {
           case other =>
             throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
         },
-        translateOptionalArray(param.getFormat).map(CwlValue(_, schemaDefs)),
+        translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
         streamable
     )
     (outparam, stdfile)
