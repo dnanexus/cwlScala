@@ -744,15 +744,18 @@ sealed trait PathValue extends PrimitiveValue with StringIndexable {
   val path: Option[String]
   val basename: Option[String]
 
+  override val cwlType: CwlPath
+
   def productElementNames: Iterator[String]
 
   override lazy val toJson: JsValue = {
-    JsObject(productElementNames.flatMap { key =>
+    val fields = productElementNames.flatMap { key =>
       get(key) match {
         case None        => None
         case Some(value) => Some(key -> value.toJson)
       }
-    }.toMap)
+    }.toMap
+    JsObject(fields ++ Map("class" -> JsString(cwlType.className)))
   }
 
   override lazy val toString: String = location.orElse(path).getOrElse(s"<${this.cwlType} literal>")
@@ -813,7 +816,7 @@ case class FileValue(location: Option[String] = None,
                      format: Option[String] = None,
                      contents: Option[String] = None)
     extends PathValue {
-  override val cwlType: CwlType = CwlFile
+  override val cwlType: CwlPath = CwlFile
   private val keys: Set[String] = Set("location",
                                       "path",
                                       "basename",
@@ -954,7 +957,7 @@ case class DirectoryValue(location: Option[String] = None,
                           basename: Option[String] = None,
                           listing: Vector[PathValue] = Vector.empty)
     extends PathValue {
-  override val cwlType: CwlType = CwlDirectory
+  override val cwlType: CwlPath = CwlDirectory
   private val keys: Set[String] = Set("location", "path", "basename", "listing")
 
   override def contains(key: String): Boolean = {

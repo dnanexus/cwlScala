@@ -193,9 +193,15 @@ case object CwlDouble extends CwlNumber
 /**
   * Parent trait of the two CWL path types
   */
-sealed trait CwlPath extends CwlPrimitive
-case object CwlFile extends CwlPath
-case object CwlDirectory extends CwlPath
+sealed trait CwlPath extends CwlPrimitive {
+  def className: String
+}
+case object CwlFile extends CwlPath {
+  val className: String = "File"
+}
+case object CwlDirectory extends CwlPath {
+  val className: String = "Directory"
+}
 
 /**
   * Parent of CWL schema types. Note that input and output schema definitions
