@@ -209,16 +209,12 @@ object WorkflowStepOutput {
   }
 }
 
-sealed trait ProcessLink
-case class AnonymousProcessLink(process: Process) extends ProcessLink
-case class NameProcessLink(name: String) extends ProcessLink
-
 case class WorkflowStep(id: Option[Identifier],
                         label: Option[String],
                         doc: Option[String],
                         inputs: Vector[WorkflowStepInput],
                         outputs: Vector[WorkflowStepOutput],
-                        run: ProcessLink,
+                        run: Process,
                         when: Option[CwlValue],
                         scatter: Vector[String],
                         scatterMethod: Option[ScatterMethod.ScatterMethod],
@@ -231,10 +227,9 @@ object WorkflowStep {
             hintSchemas: Map[String, HintSchema] = Map.empty): WorkflowStep = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(step.getRequirements, schemaDefs)
-    val processLink: ProcessLink = step.getRun match {
-      case name: String => NameProcessLink(name)
+    val runProcess = step.getRun match {
       case process: ProcessInterface =>
-        AnonymousProcessLink(Parser.parseDocument(process, None, schemaDefs, hintSchemas))
+        Parser.parseDocument(process, None, schemaDefs, hintSchemas)
       case other =>
         throw new RuntimeException(s"unexpected run value ${other} for step ${step}")
     }
@@ -244,7 +239,7 @@ object WorkflowStep {
         translateDoc(step.getDoc),
         WorkflowStepInput.applyArray(step.getIn, allSchemaDefs),
         WorkflowStepOutput.applyArray(step.getOut),
-        processLink,
+        runProcess,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
         translateOptionalArray(step.getScatter).map(_.toString),
         translateOptional(step.getScatterMethod).map(ScatterMethod.from),
