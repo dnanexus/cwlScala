@@ -10,7 +10,6 @@ import org.w3id.cwl.cwl1_2.{
   CommandOutputBindingImpl,
   CommandOutputParameterImpl
 }
-import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 
 import scala.jdk.CollectionConverters._
 
@@ -192,17 +191,17 @@ object CommandLineTool {
   /**
     * Creates a [[CommandLineTool]] from the [[CommandLineToolImpl]] created by the Java parser.
     * @param tool the Java object
+    * @param ctx the Parser
     * @param source the CWL original source code
-    * @param schemaDefs any schema definitions to use when resolving types
+    * @param name an optional tool name, to use if it is not specified in the document
     * @return a [[CommandLineTool]]
     */
   def apply(tool: CommandLineToolImpl,
+            ctx: Parser,
             source: Option[Path] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty,
             name: Option[String] = None): CommandLineTool = {
     val (requirements, allSchemaDefs) =
-      Requirement.applyRequirements(tool.getRequirements, schemaDefs)
+      Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
 
     // An input may have type `stdin`, which is a file that is created from the
     // standard input piped to the CommandLineTool. A maximum of one input parameter
@@ -289,29 +288,10 @@ object CommandLineTool {
         stdout,
         stderr,
         requirements,
-        Requirement.applyHints(tool.getHints, allSchemaDefs, hintSchemas),
+        Requirement.applyHints(tool.getHints, allSchemaDefs, ctx.hintSchemas),
         translateOptionalArray(tool.getSuccessCodes).map(translateInt).toSet,
         translateOptionalArray(tool.getTemporaryFailCodes).map(translateInt).toSet,
         translateOptionalArray(tool.getPermanentFailCodes).map(translateInt).toSet
     )
-  }
-
-  /**
-    * Parses a CommandLineTool CWL document.
-    * @param path path to the document
-    * @param baseUri base URI to use when loading imports
-    * @param loadingOptions document loading options
-    * @return a [[CommandLineTool]]
-    */
-  def parse(path: Path,
-            baseUri: Option[String] = None,
-            loadingOptions: Option[LoadingOptions] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty): CommandLineTool = {
-    RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull) match {
-      case tool: CommandLineToolImpl => CommandLineTool(tool, Some(path), schemaDefs, hintSchemas)
-      case other =>
-        throw new RuntimeException(s"Expected CommandLineTool, found ${other}")
-    }
   }
 }

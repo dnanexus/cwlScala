@@ -7,6 +7,25 @@ import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 import org.yaml.snakeyaml.Yaml
 
 object Parser {
+  lazy val default: Parser = Parser()
+
+  def create(baseUri: Option[String] = None,
+             loadingOptions: Option[LoadingOptions] = None,
+             schemaDefs: Vector[CwlSchema] = Vector.empty,
+             hintSchemas: Vector[HintSchema] = Vector.empty): Parser = {
+    val schemaDefMap = schemaDefs.collect {
+      case schema if schema.name.isDefined => schema.name.get -> schema
+    }.toMap
+    val hintSchemaMap = hintSchemas.map(s => s.className -> s).toMap
+    Parser(baseUri, loadingOptions, schemaDefMap, hintSchemaMap)
+  }
+}
+
+case class Parser(baseUri: Option[String] = None,
+                  loadingOptions: Option[LoadingOptions] = None,
+                  schemaDefs: Map[String, CwlSchema] = Map.empty,
+                  hintSchemas: Map[String, HintSchema] = Map.empty) {
+  private var cache: Map[Path, Process] = Map.empty
 
   def canParse(inputStream: InputStream): Boolean = {
     try {
@@ -29,81 +48,51 @@ object Parser {
     canParse(new ByteArrayInputStream(sourceCode.getBytes()))
   }
 
-  def parseDocument(doc: java.lang.Object,
-                    source: Option[Path] = None,
-                    schemaDefs: Map[String, CwlSchema] = Map.empty,
-                    hintSchemas: Map[String, HintSchema] = Map.empty,
-                    name: Option[String] = None): Process = {
+  def parse(doc: java.lang.Object,
+            source: Option[Path] = None,
+            name: Option[String] = None): Process = {
     doc match {
       case tool: CommandLineToolImpl =>
-        CommandLineTool(tool, source, schemaDefs, hintSchemas, name)
+        CommandLineTool(tool, this, source, name)
       case workflow: WorkflowImpl =>
-        Workflow(workflow, source, schemaDefs, hintSchemas, name)
+        Workflow(workflow, this, source, name)
       case expressionTool: ExpressionToolImpl =>
-        ExpressionTool(expressionTool, source, schemaDefs, hintSchemas, name)
+        ExpressionTool(expressionTool, this, source, name)
       case operation: OperationImpl =>
-        Operation(operation, source, schemaDefs, hintSchemas, name)
+        Operation(operation, this, source, name)
       case other =>
         throw new RuntimeException(s"unexpected top-level element ${other}")
     }
-  }
-
-  def parse(doc: java.lang.Object,
-            source: Option[Path] = None,
-            schemaDefs: Vector[CwlSchema] = Vector.empty,
-            hintSchemas: Vector[HintSchema] = Vector.empty,
-            name: Option[String] = None): Process = {
-    val schemaDefMap = schemaDefs.collect {
-      case schema if schema.name.isDefined => schema.name.get -> schema
-    }.toMap
-    val hintSchemaMap = hintSchemas.map(s => s.className -> s).toMap
-    parseDocument(doc, source, schemaDefMap, hintSchemaMap, name)
   }
 
   /**
     * Parses a CWL document from a file.
     * @note currently, only CommandLineTool documents are supported.
     * @param path path to the document
-    * @param baseUri base URI to use when importing documents
-    * @param loadingOptions document loading options
-    * @param hintSchemas HintSchemas
     * @param name tool/workflow name, in case it is not specified in the document
     *             if not specified, the name of the file without .cwl is used
     * @return a [[Process]]
     */
-  def parseFile(path: Path,
-                baseUri: Option[String] = None,
-                loadingOptions: Option[LoadingOptions] = None,
-                schemaDefs: Vector[CwlSchema] = Vector.empty,
-                hintSchemas: Vector[HintSchema] = Vector.empty,
-                name: Option[String] = None): Process = {
-    parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull),
-          Some(path),
-          schemaDefs,
-          hintSchemas,
-          name)
+  def parseFile(path: Path, name: Option[String] = None): Process = {
+    if (cache.contains(path)) {
+      cache(path)
+    } else {
+      val doc = parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull),
+                      Some(path),
+                      name)
+      cache += (path -> doc)
+      doc
+    }
   }
 
   /**
     * Parses a CWL document from a string.
     * @note currently, only CommandLineTool documents are supported.
     * @param sourceCode path to the document
-    * @param baseUri base URI to use when importing documents
-    * @param loadingOptions document loading options
-    * @param hintSchemas HintSchemas
     * @param name tool/workflow name, in case it is not specified in the document
     * @return a [[Process]]
     */
-  def parseString(sourceCode: String,
-                  baseUri: Option[String] = None,
-                  loadingOptions: Option[LoadingOptions] = None,
-                  schemaDefs: Vector[CwlSchema] = Vector.empty,
-                  hintSchemas: Vector[HintSchema] = Vector.empty,
-                  name: Option[String] = None): Process = {
-    parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull),
-          None,
-          schemaDefs,
-          hintSchemas,
-          name)
+  def parseString(sourceCode: String, name: Option[String] = None): Process = {
+    parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull), None, name)
   }
 }

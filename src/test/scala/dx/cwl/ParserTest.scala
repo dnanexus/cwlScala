@@ -10,14 +10,16 @@ class ParserTest extends AnyWordSpec with Matchers {
     Paths.get(getClass.getResource(path).getPath)
   }
 
+  private val parser = Parser.default
+
   "parser" should {
     "not parse an invalid document" in {
-      Parser.canParse(getPath("/tools/fail/invalid1.cwl")) shouldBe false
-      Parser.canParse(getPath("/tools/fail/invalid2.cwl")) shouldBe false
+      parser.canParse(getPath("/tools/fail/invalid1.cwl")) shouldBe false
+      parser.canParse(getPath("/tools/fail/invalid2.cwl")) shouldBe false
     }
 
     "parse requirements" in {
-      val doc = CommandLineTool.parse(getPath("/tools/pass/writable-dir.cwl"))
+      val doc = parser.parse(getPath("/tools/pass/writable-dir.cwl"))
       doc.requirements.size shouldBe 2
       doc.requirements.iterator sameElements Vector(
           InlineJavascriptRequirement(None),
@@ -37,9 +39,12 @@ class ParserTest extends AnyWordSpec with Matchers {
     toolsPath.toFile.listFiles().toVector.foreach { toolPath =>
       s"parse tool ${toolPath}" in {
         if (!toolPath.getName.contains("invalid")) {
-          Parser.canParse(toolPath.toPath) shouldBe true
+          parser.canParse(toolPath.toPath) shouldBe true
         }
-        CommandLineTool.parse(toolPath.toPath)
+        parser.parse(toolPath.toPath) match {
+          case _: CommandLineTool => ()
+          case other              => throw new AssertionError(s"expected CommandLineTool, not ${other}")
+        }
       }
     }
   }

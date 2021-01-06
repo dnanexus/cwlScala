@@ -1,6 +1,6 @@
 package dx.cwl
 
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 import dx.cwl.Utils._
 import org.w3id.cwl.cwl1_2.{
   CWLVersion,
@@ -21,7 +21,6 @@ import org.w3id.cwl.cwl1_2.{
   Process => ProcessInterface,
   ScatterMethod => ScatterMethodEnum
 }
-import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 
 import scala.jdk.CollectionConverters._
 
@@ -222,14 +221,12 @@ case class WorkflowStep(id: Option[Identifier],
                         hints: Vector[Hint])
 
 object WorkflowStep {
-  def apply(step: WorkflowStepImpl,
-            schemaDefs: Map[String, CwlSchema],
-            hintSchemas: Map[String, HintSchema] = Map.empty): WorkflowStep = {
+  def apply(step: WorkflowStepImpl, ctx: Parser): WorkflowStep = {
     val (requirements, allSchemaDefs) =
-      Requirement.applyRequirements(step.getRequirements, schemaDefs)
+      Requirement.applyRequirements(step.getRequirements, ctx.schemaDefs)
     val runProcess = step.getRun match {
-      case process: ProcessInterface =>
-        Parser.parseDocument(process, None, schemaDefs, hintSchemas)
+      case process: ProcessInterface => ctx.parse(process, None)
+      case path: String              => ctx.parseFile(Paths.get(path))
       case other =>
         throw new RuntimeException(s"unexpected run value ${other} for step ${step}")
     }
@@ -244,15 +241,13 @@ object WorkflowStep {
         translateOptionalArray(step.getScatter).map(_.toString),
         translateOptional(step.getScatterMethod).map(ScatterMethod.from),
         requirements,
-        Requirement.applyHints(step.getHints, allSchemaDefs, hintSchemas)
+        Requirement.applyHints(step.getHints, allSchemaDefs, ctx.hintSchemas)
     )
   }
 
-  def applyArray(steps: java.util.List[java.lang.Object],
-                 schemaDefs: Map[String, CwlSchema],
-                 hintSchemas: Map[String, HintSchema] = Map.empty): Vector[WorkflowStep] = {
+  def applyArray(steps: java.util.List[java.lang.Object], ctx: Parser): Vector[WorkflowStep] = {
     steps.asScala.toVector.map {
-      case step: WorkflowStepImpl => WorkflowStep(step, schemaDefs, hintSchemas)
+      case step: WorkflowStepImpl => WorkflowStep(step, ctx)
       case other =>
         throw new RuntimeException(s"unexpected WorkflowStep value ${other}")
     }
@@ -273,12 +268,12 @@ case class Workflow(source: Option[String],
 
 object Workflow {
   def apply(workflow: WorkflowImpl,
+            ctx: Parser,
             source: Option[Path] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty,
             name: Option[String] = None): Workflow = {
     val (requirements, allSchemaDefs) =
-      Requirement.applyRequirements(workflow.getRequirements, schemaDefs)
+      Requirement.applyRequirements(workflow.getRequirements, ctx.schemaDefs)
+    val newContext = ctx.copy(schemaDefs = allSchemaDefs)
     Workflow(
         source.map(_.toString),
         translateOptional(workflow.getCwlVersion),
@@ -288,23 +283,10 @@ object Workflow {
         translateOptionalArray(workflow.getIntent).map(translateString),
         WorkflowInputParameter.applyArray(workflow.getInputs, allSchemaDefs),
         WorkflowOutputParameter.applyArray(workflow.getOutputs, allSchemaDefs),
-        WorkflowStep.applyArray(workflow.getSteps, allSchemaDefs, hintSchemas),
+        WorkflowStep.applyArray(workflow.getSteps, newContext),
         requirements,
-        Requirement.applyHints(workflow.getHints, allSchemaDefs, hintSchemas)
+        Requirement.applyHints(workflow.getHints, allSchemaDefs, ctx.hintSchemas)
     )
-  }
-
-  def parse(path: Path,
-            baseUri: Option[String] = None,
-            loadingOptions: Option[LoadingOptions] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty): Workflow = {
-    RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull) match {
-      case workflow: WorkflowImpl =>
-        Workflow(workflow, Some(path), schemaDefs, hintSchemas)
-      case other =>
-        throw new RuntimeException(s"Expected Workflow, found ${other}")
-    }
   }
 }
 
@@ -358,12 +340,11 @@ case class ExpressionTool(source: Option[String],
 
 object ExpressionTool {
   def apply(expressionTool: ExpressionToolImpl,
+            ctx: Parser,
             source: Option[Path] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty,
             name: Option[String] = None): ExpressionTool = {
     val (requirements, allSchemaDefs) =
-      Requirement.applyRequirements(expressionTool.getRequirements, schemaDefs)
+      Requirement.applyRequirements(expressionTool.getRequirements, ctx.schemaDefs)
     ExpressionTool(
         source.map(_.toString),
         translateOptional(expressionTool.getCwlVersion),
@@ -375,7 +356,7 @@ object ExpressionTool {
         ExpressionToolOutputParameter.applyArray(expressionTool.getOutputs, allSchemaDefs),
         CwlValue(expressionTool.getExpression, allSchemaDefs),
         requirements,
-        Requirement.applyHints(expressionTool.getHints, allSchemaDefs, hintSchemas)
+        Requirement.applyHints(expressionTool.getHints, allSchemaDefs, ctx.hintSchemas)
     )
   }
 }
@@ -472,12 +453,11 @@ case class Operation(source: Option[String],
 
 object Operation {
   def apply(operation: OperationImpl,
+            ctx: Parser,
             source: Option[Path] = None,
-            schemaDefs: Map[String, CwlSchema] = Map.empty,
-            hintSchemas: Map[String, HintSchema] = Map.empty,
             name: Option[String] = None): Operation = {
     val (requirements, allSchemaDefs) =
-      Requirement.applyRequirements(operation.getRequirements, schemaDefs)
+      Requirement.applyRequirements(operation.getRequirements, ctx.schemaDefs)
     Operation(
         source.map(_.toString),
         translateOptional(operation.getCwlVersion),
@@ -488,7 +468,7 @@ object Operation {
         OperationInputParameter.applyArray(operation.getInputs, allSchemaDefs),
         OperationOutputParameter.applyArray(operation.getOutputs, allSchemaDefs),
         requirements,
-        Requirement.applyHints(operation.getHints, allSchemaDefs, hintSchemas)
+        Requirement.applyHints(operation.getHints, allSchemaDefs, ctx.hintSchemas)
     )
   }
 }
