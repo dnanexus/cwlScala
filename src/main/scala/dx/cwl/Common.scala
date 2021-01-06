@@ -38,6 +38,17 @@ object Identifier {
   }
 }
 
+trait Parameter {
+  val id: Option[Identifier]
+  val label: Option[String]
+  val doc: Option[String]
+  val types: Vector[CwlType]
+  val secondaryFiles: Vector[SecondaryFile]
+  val streamable: Option[Boolean]
+
+  def name: String = id.flatMap(_.name).getOrElse(throw new Exception("parameter has no name"))
+}
+
 /**
   * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
   */
@@ -48,6 +59,8 @@ trait Process {
   val label: Option[String]
   val doc: Option[String]
   val intent: Vector[String]
+  val inputs: Vector[Parameter]
+  val outputs: Vector[Parameter]
   val requirements: Vector[Requirement]
   val hints: Vector[Hint]
 
