@@ -2,25 +2,9 @@ package dx.cwl
 
 import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
 import java.nio.file.Path
-import org.w3id.cwl.cwl1_2.{CWLVersion, CommandLineToolImpl, WorkflowImpl}
+import org.w3id.cwl.cwl1_2.{CommandLineToolImpl, ExpressionToolImpl, OperationImpl, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 import org.yaml.snakeyaml.Yaml
-
-/**
-  * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
-  */
-trait Process {
-  val source: Option[String]
-  val cwlVersion: Option[CWLVersion]
-  val id: Identifier
-  val label: Option[String]
-  val doc: Option[String]
-  val intent: Vector[String]
-  val requirements: Vector[Requirement]
-  val hints: Vector[Hint]
-
-  def name: String = id.name.getOrElse(throw new Exception("process has no name"))
-}
 
 object Parser {
 
@@ -45,26 +29,35 @@ object Parser {
     canParse(new ByteArrayInputStream(sourceCode.getBytes()))
   }
 
+  def parseDocument(doc: java.lang.Object,
+                    source: Option[Path] = None,
+                    schemaDefs: Map[String, CwlSchema] = Map.empty,
+                    hintSchemas: Map[String, HintSchema] = Map.empty,
+                    name: Option[String] = None): Process = {
+    doc match {
+      case tool: CommandLineToolImpl =>
+        CommandLineTool(tool, source, schemaDefs, hintSchemas, name)
+      case workflow: WorkflowImpl =>
+        Workflow(workflow, source, schemaDefs, hintSchemas, name)
+      case expressionTool: ExpressionToolImpl =>
+        ExpressionTool(expressionTool, source, schemaDefs, hintSchemas, name)
+      case operation: OperationImpl =>
+        Operation(operation, source, schemaDefs, hintSchemas, name)
+      case other =>
+        throw new RuntimeException(s"unexpected top-level element ${other}")
+    }
+  }
+
   def parse(doc: java.lang.Object,
             source: Option[Path] = None,
             schemaDefs: Vector[CwlSchema] = Vector.empty,
             hintSchemas: Vector[HintSchema] = Vector.empty,
             name: Option[String] = None): Process = {
-    doc match {
-      case tool: CommandLineToolImpl =>
-        CommandLineTool(
-            tool,
-            source,
-            schemaDefs.collect {
-              case schema if schema.name.isDefined => schema.name.get -> schema
-            }.toMap,
-            hintSchemas.map(s => s.className -> s).toMap,
-            name
-        )
-      case workflow: WorkflowImpl => Workflow(workflow)
-      case other =>
-        throw new RuntimeException(s"unexpected top-level element ${other}")
-    }
+    val schemaDefMap = schemaDefs.collect {
+      case schema if schema.name.isDefined => schema.name.get -> schema
+    }.toMap
+    val hintSchemaMap = hintSchemas.map(s => s.className -> s).toMap
+    parseDocument(doc, source, schemaDefMap, hintSchemaMap, name)
   }
 
   /**

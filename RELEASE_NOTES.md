@@ -1,5 +1,10 @@
 # Change log
 
+## v0.3.0 (dev)
+
+* Implement workflow support
+* Use separate classes for input and output record schemas
+
 ## v0.2.9 (2021-01-05)
 
 * Add optional name parameter to `Parser.parse*` functions, for tools/workflows that do not specify `id`

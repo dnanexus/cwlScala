@@ -1,6 +1,9 @@
 package dx.cwl
 
-import org.w3id.cwl.cwl1_2.{LoadListingEnum, SecondaryFileSchemaImpl}
+import dx.cwl.Utils.{translateOptional, translateOptionalArray}
+import org.w3id.cwl.cwl1_2.{CWLVersion, LoadListingEnum, SecondaryFileSchemaImpl}
+
+import java.nio.file.Path
 
 case class Identifier(namespace: Option[String], name: Option[String]) {
   def fullyQualifiedName: Option[String] =
@@ -18,6 +21,37 @@ object Identifier {
       case _                                 => throw new Exception(s"invalid identifier ${uri}")
     }
   }
+
+  def apply(id: java.util.Optional[String],
+            name: Option[String] = None,
+            source: Option[Path] = None): Identifier = {
+    translateOptional(id).map(Identifier(_)) match {
+      case Some(id) if id.name.isDefined => id
+      case id if name.isDefined =>
+        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
+      case id if source.isDefined =>
+        val name = Some(source.get.getFileName.toString.dropRight(4))
+        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
+      case _ =>
+        throw new Exception("either tool id or file path must be defined")
+    }
+  }
+}
+
+/**
+  * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
+  */
+trait Process {
+  val source: Option[String]
+  val cwlVersion: Option[CWLVersion]
+  val id: Identifier
+  val label: Option[String]
+  val doc: Option[String]
+  val intent: Vector[String]
+  val requirements: Vector[Requirement]
+  val hints: Vector[Hint]
+
+  def name: String = id.name.getOrElse(throw new Exception("process has no name"))
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#SecondaryFileSchema
@@ -28,6 +62,15 @@ object SecondaryFile {
             schemaDefs: Map[String, CwlSchema]): SecondaryFile = {
     SecondaryFile(CwlValue(secondaryFile.getPattern, schemaDefs),
                   CwlValue(secondaryFile.getRequired, schemaDefs))
+  }
+
+  def applyArray(secondaryFiles: java.lang.Object,
+                 schemaDefs: Map[String, CwlSchema]): Vector[SecondaryFile] = {
+    translateOptionalArray(secondaryFiles).map {
+      case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
+      case other =>
+        throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
+    }
   }
 }
 

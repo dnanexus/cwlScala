@@ -78,6 +78,27 @@ object Requirement {
     }
   }
 
+  def applyRequirements(
+      requirements: java.util.Optional[java.util.List[Object]],
+      schemaDefs: Map[String, CwlSchema] = Map.empty
+  ): (Vector[Requirement], Map[String, CwlSchema]) = {
+    translateOptionalArray(requirements)
+      .foldLeft(Vector.empty[Requirement], schemaDefs) {
+        case ((reqAccu, defAccu), req: ProcessRequirement) =>
+          val cwlRequirement = Requirement(req, defAccu)
+          val newSchemaDefs = cwlRequirement match {
+            // add any new schema defs to the initial set
+            case SchemaDefRequirement(typeDefs) =>
+              defAccu ++ typeDefs.map(d => d.name.get -> d)
+            case _ =>
+              defAccu
+          }
+          (reqAccu :+ cwlRequirement, newSchemaDefs)
+        case (_, req) =>
+          throw new RuntimeException(s"unexpected requirement value ${req}")
+      }
+  }
+
   val DefaultHintSchemas: Map[String, HintSchema] = Vector(
       InlineJavascriptRequirement,
       LoadListingRequirement,
@@ -102,6 +123,21 @@ object Requirement {
       case Some(cls: String) if DefaultHintSchemas.contains(cls) =>
         DefaultHintSchemas(cls).apply(hint, schemaDefs)
       case _ => GenericHint(hint)
+    }
+  }
+
+  def applyHints(requirements: java.util.Optional[java.util.List[Object]],
+                 schemaDefs: Map[String, CwlSchema] = Map.empty,
+                 hintSchemas: Map[String, HintSchema] = Map.empty): Vector[Hint] = {
+    translateOptionalArray(requirements).map {
+      case attrs: java.util.Map[_, _] =>
+        val rawHints = attrs.asScala.toMap match {
+          case hints: Map[_, _] => toStringAnyMap(hints)
+          case other            => throw new Exception(s"invalid hints ${other.getClass}")
+        }
+        Requirement.apply(rawHints, schemaDefs, hintSchemas)
+      case other =>
+        throw new Exception(s"unexpected hints value ${other}")
     }
   }
 

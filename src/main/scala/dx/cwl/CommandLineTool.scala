@@ -1,24 +1,14 @@
 package dx.cwl
 
 import java.nio.file.Path
-import dx.cwl.Utils.{
-  toStringAnyMap,
-  translateDoc,
-  translateInt,
-  translateOptional,
-  translateOptionalArray,
-  translateOptionalObject,
-  translateString
-}
+import dx.cwl.Utils._
 import org.w3id.cwl.cwl1_2.{
   CWLVersion,
   CommandInputParameterImpl,
   CommandLineBindingImpl,
   CommandLineToolImpl,
   CommandOutputBindingImpl,
-  CommandOutputParameterImpl,
-  ProcessRequirement,
-  SecondaryFileSchemaImpl
+  CommandOutputParameterImpl
 }
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 
@@ -96,11 +86,7 @@ object CommandInputParameter {
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         },
-        translateOptionalArray(param.getSecondaryFiles).map {
-          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
-          case other =>
-            throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
-        },
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
         translateOptionalArray(param.getFormat).map(CwlValue(_, schemaDefs)),
         translateOptional(param.getStreamable).map(_.booleanValue()),
         translateOptional(param.getLoadContents).map(_.booleanValue()),
@@ -168,11 +154,7 @@ object CommandOutputParameter {
         translateDoc(param.getDoc),
         types,
         outputBinding,
-        translateOptionalArray(param.getSecondaryFiles).map {
-          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
-          case other =>
-            throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
-        },
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
         translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
         streamable
     )
@@ -220,32 +202,7 @@ object CommandLineTool {
             hintSchemas: Map[String, HintSchema] = Map.empty,
             name: Option[String] = None): CommandLineTool = {
     val (requirements, allSchemaDefs) =
-      translateOptionalArray(tool.getRequirements)
-        .foldLeft(Vector.empty[Requirement], schemaDefs) {
-          case ((reqAccu, defAccu), req: ProcessRequirement) =>
-            val cwlRequirement = Requirement(req, defAccu)
-            val newSchemaDefs = cwlRequirement match {
-              // add any new schema defs to the initial set
-              case SchemaDefRequirement(typeDefs) =>
-                defAccu ++ typeDefs.map(d => d.name.get -> d)
-              case _ =>
-                defAccu
-            }
-            (reqAccu :+ cwlRequirement, newSchemaDefs)
-          case (_, req) =>
-            throw new RuntimeException(s"unexpected requirement value ${req}")
-        }
-
-    val hints = translateOptionalArray(tool.getHints).map {
-      case attrs: java.util.Map[_, _] =>
-        val rawHints = attrs.asScala.toMap match {
-          case hints: Map[_, _] => toStringAnyMap(hints)
-          case other            => throw new Exception(s"invalid hints ${other.getClass}")
-        }
-        Requirement.apply(rawHints, allSchemaDefs, hintSchemas)
-      case other =>
-        throw new Exception(s"unexpected hints value ${other}")
-    }
+      Requirement.applyRequirements(tool.getRequirements, schemaDefs)
 
     // An input may have type `stdin`, which is a file that is created from the
     // standard input piped to the CommandLineTool. A maximum of one input parameter
@@ -317,21 +274,10 @@ object CommandLineTool {
         ExprArgument(CwlValue(expr, allSchemaDefs))
     }
 
-    val id = translateOptional(tool.getId).map(Identifier(_)) match {
-      case Some(id) if id.name.isDefined => id
-      case id if name.isDefined =>
-        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
-      case id if source.isDefined =>
-        val name = Some(source.get.getFileName.toString.dropRight(4))
-        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
-      case _ =>
-        throw new Exception("either tool id or file path must be defined")
-    }
-
     CommandLineTool(
         source.map(_.toString),
         translateOptional(tool.getCwlVersion),
-        id,
+        Identifier(tool.getId, name, source),
         translateOptional(tool.getLabel),
         translateDoc(tool.getDoc),
         translateOptionalArray(tool.getIntent).map(translateString),
@@ -343,7 +289,7 @@ object CommandLineTool {
         stdout,
         stderr,
         requirements,
-        hints,
+        Requirement.applyHints(tool.getHints, allSchemaDefs, hintSchemas),
         translateOptionalArray(tool.getSuccessCodes).map(translateInt).toSet,
         translateOptionalArray(tool.getTemporaryFailCodes).map(translateInt).toSet,
         translateOptionalArray(tool.getPermanentFailCodes).map(translateInt).toSet
