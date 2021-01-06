@@ -33,13 +33,26 @@ class ParserTest extends AnyWordSpec with Matchers {
       )
     }
 
-    val toolsPath = getPath(s"/tools/pass")
+    val toolsPath = getPath("/tools/pass")
     toolsPath.toFile.listFiles().toVector.foreach { toolPath =>
       s"parse tool ${toolPath}" in {
         if (!toolPath.getName.contains("invalid")) {
           Parser.canParse(toolPath.toPath) shouldBe true
         }
         CommandLineTool.parse(toolPath.toPath)
+      }
+    }
+
+    val workflowsPath = getPath("/workflows/pass")
+    workflowsPath.toFile.listFiles().toVector.foreach { workflowPath =>
+      s"parse workflow ${workflowPath}" in {
+        if (workflowPath.getName.contains("-wf")) {
+          // the workflow folder contains tools that the workflows depend on
+          if (!workflowPath.getName.contains("invalid")) {
+            Parser.canParse(workflowPath.toPath) shouldBe true
+          }
+          Workflow.parse(workflowPath.toPath)
+        }
       }
     }
   }
