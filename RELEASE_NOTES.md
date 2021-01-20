@@ -4,6 +4,7 @@
 
 * Implement workflow support
 * Use separate classes for input and output record schemas
+* Use SeqMap for RecordSchema type and Object value
 
 ## v0.2.9 (2021-01-05)
 

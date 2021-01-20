@@ -13,6 +13,7 @@ import spray.json._
 import sun.security.action.GetPropertyAction
 
 import scala.annotation.nowarn
+import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -362,8 +363,8 @@ case class Runtime(outdir: String,
     }
   }
 
-  override def members: Map[String, CwlValue] = {
-    keys.map(key => key -> apply(key)).toMap
+  override def fields: SeqMap[String, CwlValue] = {
+    keys.map(key => key -> apply(key)).to(TreeSeqMap)
   }
 
   override def coercibleTo(targetType: CwlType): Boolean = false
@@ -672,12 +673,12 @@ case class Evaluator(jsEnabled: Boolean = false,
                     s"array ${items} does not evaluate to any of ${innerTypes}"
                 )
             )
-        case ObjectValue(members) =>
+        case ObjectValue(fields) =>
           innerTypes.iterator
             .map {
               case record: CwlInputRecord =>
                 try {
-                  val (types, values) = members.map {
+                  val (types, values) = fields.map {
                     case (key, value) =>
                       val (t, v) = inner(value, record.fields(key).types)
                       (key -> t, key -> v)
@@ -685,7 +686,7 @@ case class Evaluator(jsEnabled: Boolean = false,
                   val recordType = CwlInputRecord(types.map {
                     case (name, t) => name -> CwlInputRecordField(name, Vector(t))
                   }.toMap)
-                  Some((recordType, ObjectValue(values.toMap)))
+                  Some((recordType, ObjectValue(values.to(TreeSeqMap))))
                 } catch {
                   case _: Throwable => None
                 }
@@ -696,7 +697,7 @@ case class Evaluator(jsEnabled: Boolean = false,
             }
             .getOrElse(
                 throw new Exception(
-                    s"object ${members} does not evaluate to any of ${innerTypes}"
+                    s"object ${fields} does not evaluate to any of ${innerTypes}"
                 )
             )
         case _ => value.coerceTo(cwlTypes)

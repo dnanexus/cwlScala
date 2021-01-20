@@ -46,7 +46,7 @@ trait Parameter {
   val secondaryFiles: Vector[SecondaryFile]
   val streamable: Option[Boolean]
 
-  def name: String = id.flatMap(_.name).getOrElse(throw new Exception("parameter has no name"))
+  def getName: Option[String] = id.flatMap(_.name)
 }
 
 /**

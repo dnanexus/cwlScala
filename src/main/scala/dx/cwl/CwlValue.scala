@@ -5,6 +5,7 @@ import org.w3id.cwl.cwl1_2.{DirectoryImpl, FileImpl}
 import spray.json._
 
 import scala.annotation.tailrec
+import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -289,7 +290,12 @@ object CwlValue {
               case schema: CwlEnum   => StringValue.apply(jsValue, Some(schema))
             }
           case _ =>
-            ObjectValue(o.view.mapValues(deserialize(_, schemaDefs)).toMap)
+            ObjectValue(
+                o.map {
+                    case (name, value) => name -> deserialize(value, schemaDefs)
+                  }
+                  .to(TreeSeqMap)
+            )
         }
       case _ =>
         throw new Exception(s"cannot deserialize ${jsValue} without type information")
@@ -387,13 +393,13 @@ object CwlValue {
         val itemTypes = array.map(inferType(_, ctx))
         CwlArray(itemTypes.distinct)
       case schema: ObjectLike if ctx == CwlValueContext.Input =>
-        CwlInputRecord(schema.members.map {
+        CwlInputRecord(schema.fields.map {
           case (name, value) =>
             val cwlType = inferType(value, ctx)
             name -> CwlInputRecordField(name, Vector(cwlType))
         })
       case schema: ObjectLike if ctx == CwlValueContext.Output =>
-        CwlOutputRecord(schema.members.map {
+        CwlOutputRecord(schema.fields.map {
           case (name, value) =>
             val cwlType = inferType(value, ctx)
             name -> CwlOutputRecordField(name, Vector(cwlType))
@@ -1122,21 +1128,21 @@ object ArrayValue {
 }
 
 trait ObjectLike extends CwlValue with StringIndexable {
-  def members: Map[String, CwlValue]
+  def fields: SeqMap[String, CwlValue]
 }
 
-case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
+case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ObjectLike {
 
   override def contains(key: String): Boolean = {
-    members.contains(key)
+    fields.contains(key)
   }
 
   override def get(key: String): Option[CwlValue] = {
-    members.get(key)
+    fields.get(key)
   }
 
   override def toJson: JsValue = {
-    CwlValue.serializeMap(members)
+    CwlValue.serializeMap(fields)
   }
 
   override def coercibleTo(targetType: CwlType): Boolean = {
@@ -1144,8 +1150,8 @@ case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
       case CwlAny => true
       case schema: CwlRecord =>
         schema.fields.values.forall { field =>
-          if (members.contains(field.name)) {
-            members(field.name).coercibleTo(field.types).nonEmpty
+          if (fields.contains(field.name)) {
+            fields(field.name).coercibleTo(field.types).nonEmpty
           } else if (field.optional) {
             true
           } else {
@@ -1159,45 +1165,57 @@ case class ObjectValue(members: Map[String, CwlValue]) extends ObjectLike {
   override protected def coerceToOther(targetType: CwlType): CwlValue = {
     targetType match {
       case schema: CwlRecord =>
-        ObjectValue(schema.fields.values.map { field =>
-          val value = if (members.contains(field.name)) {
-            members(field.name).coerceTo(field.types)._2
-          } else if (field.optional) {
-            NullValue
-          } else {
-            throw new RuntimeException
-          }
-          field.name -> value
-        }.toMap)
+        ObjectValue(
+            schema.fields.values
+              .map { field =>
+                val value = if (fields.contains(field.name)) {
+                  fields(field.name).coerceTo(field.types)._2
+                } else if (field.optional) {
+                  NullValue
+                } else {
+                  throw new RuntimeException
+                }
+                field.name -> value
+              }
+              .to(TreeSeqMap)
+        )
       case _ => throw new RuntimeException
     }
   }
 }
 
 object ObjectValue {
-  lazy val empty: ObjectValue = ObjectValue(Map.empty)
+  lazy val empty: ObjectValue = ObjectValue(SeqMap.empty)
 
   def apply(map: java.util.Map[_, _], schemaDefs: Map[String, CwlSchema]): ObjectValue = {
-    ObjectValue(map.asScala.map {
-      case (key: String, value) =>
-        key -> CwlValue(value.asInstanceOf[java.lang.Object], schemaDefs)
-      case other =>
-        throw new Exception(s"invalid object member ${other}")
-    }.toMap)
+    ObjectValue(
+        map.asScala
+          .map {
+            case (key: String, value) =>
+              key -> CwlValue(value.asInstanceOf[java.lang.Object], schemaDefs)
+            case other =>
+              throw new Exception(s"invalid object member ${other}")
+          }
+          .to(TreeSeqMap)
+    )
   }
 
   def apply(map: java.util.Map[_, _],
             schema: CwlRecord,
             schemaDefs: Map[String, CwlSchema]): ObjectValue = {
-    ObjectValue(schema.fields.view.mapValues { field =>
-      map.get(field.name) match {
-        case null if field.optional => NullValue
-        case null =>
-          throw new Exception(s"missing required field ${field.name} in ${map}")
-        case obj: java.lang.Object =>
-          CwlValue(obj, field.types, schemaDefs)
-      }
-    }.toMap)
+    ObjectValue(
+        schema.fields.view
+          .mapValues { field =>
+            map.get(field.name) match {
+              case null if field.optional => NullValue
+              case null =>
+                throw new Exception(s"missing required field ${field.name} in ${map}")
+              case obj: java.lang.Object =>
+                CwlValue(obj, field.types, schemaDefs)
+            }
+          }
+          .to(TreeSeqMap)
+    )
   }
 
   def apply(obj: Any, cwlType: CwlRecord, schemaDefs: Map[String, CwlSchema]): ObjectValue = {
@@ -1213,14 +1231,18 @@ object ObjectValue {
             schema: CwlRecord,
             schemaDefs: Map[String, CwlSchema]): ObjectValue = {
     val fields = jsValue.asJsObject.fields
-    ObjectValue(schema.fields.view.mapValues { field =>
-      if (fields.contains(field.name)) {
-        CwlValue(fields(field.name), field.types, schemaDefs)
-      } else if (field.optional) {
-        NullValue
-      } else {
-        throw new Exception(s"missing required field ${field.name}")
-      }
-    }.toMap)
+    ObjectValue(
+        schema.fields.view
+          .mapValues { field =>
+            if (fields.contains(field.name)) {
+              CwlValue(fields(field.name), field.types, schemaDefs)
+            } else if (field.optional) {
+              NullValue
+            } else {
+              throw new Exception(s"missing required field ${field.name}")
+            }
+          }
+          .to(TreeSeqMap)
+    )
   }
 }

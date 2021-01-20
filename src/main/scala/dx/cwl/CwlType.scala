@@ -28,6 +28,7 @@ import org.w3id.cwl.cwl1_2.{
 }
 
 import scala.annotation.tailrec
+import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -504,7 +505,7 @@ object CwlOutputRecordField {
   }
 }
 
-case class CwlOutputRecord(fields: Map[String, CwlOutputRecordField],
+case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
                            name: Option[String] = None,
                            label: Option[String] = None,
                            doc: Option[String] = None)
@@ -530,14 +531,18 @@ object CwlOutputRecord {
             schemaDefs: Map[String, CwlSchema]): CwlOutputRecord = {
     CwlOutputRecord(
         translateOptional(schema.getFields)
-          .map(_.asScala.map {
-            case field: CommandOutputRecordFieldImpl =>
-              val cwlField = CwlOutputRecordField(field, schemaDefs)
-              cwlField.name -> cwlField
-            case other =>
-              throw new RuntimeException(s"invalid record field ${other}")
-          }.toMap)
-          .getOrElse(Map.empty),
+          .map(
+              _.asScala
+                .map {
+                  case field: CommandOutputRecordFieldImpl =>
+                    val cwlField = CwlOutputRecordField(field, schemaDefs)
+                    cwlField.name -> cwlField
+                  case other =>
+                    throw new RuntimeException(s"invalid record field ${other}")
+                }
+                .to(TreeSeqMap)
+          )
+          .getOrElse(SeqMap.empty),
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
@@ -545,7 +550,7 @@ object CwlOutputRecord {
   }
 }
 
-case class CwlEnum(symbols: Set[String],
+case class CwlEnum(symbols: Vector[String],
                    name: Option[String] = None,
                    label: Option[String] = None,
                    doc: Option[String] = None,
@@ -566,7 +571,7 @@ object CwlEnum {
         schema.getSymbols.asScala.map {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
-        }.toSet,
+        }.toVector,
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc),
@@ -583,7 +588,7 @@ object CwlEnum {
         schema.getSymbols.asScala.map {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
-        }.toSet,
+        }.toVector,
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
@@ -595,7 +600,7 @@ object CwlEnum {
         schema.getSymbols.asScala.map {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
-        }.toSet,
+        }.toVector,
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
@@ -607,7 +612,7 @@ object CwlEnum {
         schema.getSymbols.asScala.map {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
-        }.toSet,
+        }.toVector,
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
