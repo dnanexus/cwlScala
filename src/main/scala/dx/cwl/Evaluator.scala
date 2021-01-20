@@ -683,9 +683,13 @@ case class Evaluator(jsEnabled: Boolean = false,
                       val (t, v) = inner(value, record.fields(key).types)
                       (key -> t, key -> v)
                   }.unzip
-                  val recordType = CwlInputRecord(types.map {
-                    case (name, t) => name -> CwlInputRecordField(name, Vector(t))
-                  }.toMap)
+                  val recordType = CwlInputRecord(
+                      types
+                        .map {
+                          case (name, t) => name -> CwlInputRecordField(name, Vector(t))
+                        }
+                        .to(TreeSeqMap)
+                  )
                   Some((recordType, ObjectValue(values.to(TreeSeqMap))))
                 } catch {
                   case _: Throwable => None

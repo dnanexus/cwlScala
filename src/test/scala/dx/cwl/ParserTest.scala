@@ -19,7 +19,7 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     "parse requirements" in {
-      val doc = parser.parse(getPath("/tools/pass/writable-dir.cwl"))
+      val doc = parser.parseFile(getPath("/tools/pass/writable-dir.cwl"))
       doc.requirements.size shouldBe 2
       doc.requirements.iterator sameElements Vector(
           InlineJavascriptRequirement(None),
@@ -41,7 +41,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         if (!toolPath.getName.contains("invalid")) {
           parser.canParse(toolPath.toPath) shouldBe true
         }
-        parser.parse(toolPath.toPath) match {
+        parser.parseFile(toolPath.toPath) match {
           case _: CommandLineTool => ()
           case other              => throw new AssertionError(s"expected CommandLineTool, not ${other}")
         }

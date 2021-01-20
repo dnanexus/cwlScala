@@ -2,11 +2,11 @@ package dx.cwl
 
 import java.io.FileInputStream
 import java.nio.file.{Files, Path, Paths}
-
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.yaml.snakeyaml.Yaml
 
+import scala.collection.immutable.SeqMap
 import scala.jdk.CollectionConverters._
 
 class EvaluatorTest extends AnyWordSpec with Matchers {
@@ -28,7 +28,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
     }
   }
 
-  private val bar = Map(
+  private val bar = SeqMap(
       "baz" -> StringValue("zab1"),
       "b az" -> IntValue(2),
       "b'az" -> BooleanValue.True,
@@ -36,7 +36,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       "bork" -> IntValue(1)
   )
 
-  private val ctx = EvaluatorContext(inputs = ObjectValue(Map("bar" -> ObjectValue(bar))))
+  private val ctx = EvaluatorContext(inputs = ObjectValue(SeqMap("bar" -> ObjectValue(bar))))
   private val trace = false
 
   "parameter reference evaluator" should {

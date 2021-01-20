@@ -339,7 +339,7 @@ sealed trait CwlRecordField {
 }
 
 sealed trait CwlRecord extends CwlSchema {
-  val fields: Map[String, CwlRecordField]
+  val fields: SeqMap[String, CwlRecordField]
 }
 
 case class CwlInputRecordField(name: String,
@@ -404,7 +404,7 @@ object CwlInputRecordField {
   }
 }
 
-case class CwlInputRecord(fields: Map[String, CwlInputRecordField],
+case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
                           name: Option[String] = None,
                           label: Option[String] = None,
                           doc: Option[String] = None,
@@ -432,14 +432,18 @@ object CwlInputRecord {
             schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
     CwlInputRecord(
         translateOptional(schema.getFields)
-          .map(_.asScala.map {
-            case field: CommandInputRecordFieldImpl =>
-              val cwlField = CwlInputRecordField(field, schemaDefs)
-              cwlField.name -> cwlField
-            case other =>
-              throw new RuntimeException(s"invalid record field ${other}")
-          }.toMap)
-          .getOrElse(Map.empty),
+          .map(
+              _.asScala
+                .map {
+                  case field: CommandInputRecordFieldImpl =>
+                    val cwlField = CwlInputRecordField(field, schemaDefs)
+                    cwlField.name -> cwlField
+                  case other =>
+                    throw new RuntimeException(s"invalid record field ${other}")
+                }
+                .to(TreeSeqMap)
+          )
+          .getOrElse(SeqMap.empty),
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc),
@@ -454,14 +458,18 @@ object CwlInputRecord {
   def apply(schema: InputRecordSchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
     CwlInputRecord(
         translateOptional(schema.getFields)
-          .map(_.asScala.map {
-            case field: CommandInputRecordFieldImpl =>
-              val cwlField = CwlInputRecordField(field, schemaDefs)
-              cwlField.name -> cwlField
-            case other =>
-              throw new RuntimeException(s"invalid record field ${other}")
-          }.toMap)
-          .getOrElse(Map.empty),
+          .map(
+              _.asScala
+                .map {
+                  case field: CommandInputRecordFieldImpl =>
+                    val cwlField = CwlInputRecordField(field, schemaDefs)
+                    cwlField.name -> cwlField
+                  case other =>
+                    throw new RuntimeException(s"invalid record field ${other}")
+                }
+                .to(TreeSeqMap)
+          )
+          .getOrElse(SeqMap.empty),
         translateOptional(schema.getName),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
