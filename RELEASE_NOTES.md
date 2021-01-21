@@ -1,6 +1,6 @@
 # Change log
 
-## v0.3.0 (dev)
+## v0.3.0 (2021-01-20)
 
 * Implement workflow support
 * Use separate classes for input and output record schemas
