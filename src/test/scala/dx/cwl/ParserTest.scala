@@ -13,8 +13,8 @@ class ParserTest extends AnyWordSpec with Matchers {
 
   "parser" should {
     "not parse an invalid document" in {
-      Parser.default.canParse(getPath("/tools/fail/invalid1.cwl")) shouldBe false
-      Parser.default.canParse(getPath("/tools/fail/invalid2.cwl")) shouldBe false
+      Parser.default.canParse(getPath("/tools/pass/invalid1.cwl")) shouldBe false
+      Parser.default.canParse(getPath("/tools/pass/invalid2.cwl")) shouldBe false
     }
 
     "parse requirements" in {
@@ -57,23 +57,23 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
-//    val failToolsPath = getPath(s"/tools/fail")
-//    val failParser = Parser(Some(failToolsPath.toUri.toString))
-//    failToolsPath.toFile.listFiles(cwlFilter).toVector.foreach { toolPath =>
-//      s"parse tool ${toolPath}" in {
-//        if (toolPath.getName.contains("invalid")) {
-//          assertThrows[Throwable] {
-//            failParser.parseFile(toolPath.toPath)
-//          }
-//        } else {
-//          failParser.canParse(toolPath.toPath) shouldBe true
-//          failParser.parseFile(toolPath.toPath) match {
-//            case _: CommandLineTool => ()
-//            case other =>
-//              throw new AssertionError(s"expected CommandLineTool, not ${other}")
-//          }
-//        }
-//      }
-//    }
+    val failToolsPath = getPath(s"/tools/fail")
+    val failParser = Parser(Some(failToolsPath.toUri.toString))
+    failToolsPath.toFile.listFiles(cwlFilter).toVector.foreach { toolPath =>
+      s"parse tool ${toolPath}" in {
+        if (toolPath.getName.contains("invalid")) {
+          assertThrows[Throwable] {
+            failParser.parseFile(toolPath.toPath)
+          }
+        } else {
+          failParser.canParse(toolPath.toPath) shouldBe true
+          failParser.parseFile(toolPath.toPath) match {
+            case _: CommandLineTool => ()
+            case other =>
+              throw new AssertionError(s"expected CommandLineTool, not ${other}")
+          }
+        }
+      }
+    }
   }
 }

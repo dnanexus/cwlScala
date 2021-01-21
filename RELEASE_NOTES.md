@@ -1,5 +1,9 @@
 # Change log
 
+## v0.3.1 (dev)
+
+* Normalize baseuri so schemadef names and type references match
+
 ## v0.3.0 (2021-01-20)
 
 * Implement workflow support
