@@ -85,22 +85,21 @@ object CwlType {
       case CWLStderr.STDERR => (Vector(CwlFile), Some(StdFile.Stderr))
       case _ =>
         val cwlType: CwlType = t match {
-          case "string"                     => CwlString
-          case "boolean"                    => CwlBoolean
-          case "int"                        => CwlInt
-          case "long"                       => CwlLong
-          case "float"                      => CwlFloat
-          case "double"                     => CwlDouble
-          case "null"                       => CwlNull
-          case "Any"                        => CwlAny
-          case CWLType.FILE                 => CwlFile
-          case CWLType.DIRECTORY            => CwlDirectory
-          case schema: CommandInputSchema   => CwlSchema(schema, schemaDefs)
-          case schema: OutputSchema         => CwlSchema(schema, schemaDefs)
-          case s: String if s.contains("#") =>
+          case "string"                                       => CwlString
+          case "boolean"                                      => CwlBoolean
+          case "int"                                          => CwlInt
+          case "long"                                         => CwlLong
+          case "float"                                        => CwlFloat
+          case "double"                                       => CwlDouble
+          case "null"                                         => CwlNull
+          case "Any"                                          => CwlAny
+          case CWLType.FILE                                   => CwlFile
+          case CWLType.DIRECTORY                              => CwlDirectory
+          case schema: CommandInputSchema                     => CwlSchema(schema, schemaDefs)
+          case schema: OutputSchema                           => CwlSchema(schema, schemaDefs)
+          case schemaName: String if schemaName.contains("#") =>
             // a schema reference
-            val schemaName = s.drop(s.indexOf("#") + 1)
-            schemaDefs.get(schemaName) match {
+            schemaDefs.get(Utils.normalizeUri(schemaName)) match {
               case Some(schemaDef) => schemaDef
               case None =>
                 throw new RuntimeException(s"missing definition for schema ${schemaName}")
@@ -273,7 +272,7 @@ object CwlArray {
     assert(stdfile.isEmpty)
     CwlArray(
         types,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc),
         translateOptional(schema.getInputBinding).map {
@@ -289,7 +288,7 @@ object CwlArray {
     assert(stdfile.isEmpty)
     CwlArray(
         types,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -300,7 +299,7 @@ object CwlArray {
     assert(stdfile.isEmpty)
     CwlArray(
         types,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -311,7 +310,7 @@ object CwlArray {
     assert(stdfile.isEmpty)
     CwlArray(
         types,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -444,7 +443,7 @@ object CwlInputRecord {
                 .to(TreeSeqMap)
           )
           .getOrElse(SeqMap.empty),
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc),
         translateOptional(schema.getInputBinding).map {
@@ -470,7 +469,7 @@ object CwlInputRecord {
                 .to(TreeSeqMap)
           )
           .getOrElse(SeqMap.empty),
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -551,7 +550,7 @@ object CwlOutputRecord {
                 .to(TreeSeqMap)
           )
           .getOrElse(SeqMap.empty),
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -580,7 +579,7 @@ object CwlEnum {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
         }.toVector,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc),
         translateOptional(schema.getInputBinding).map {
@@ -597,7 +596,7 @@ object CwlEnum {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
         }.toVector,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -609,7 +608,7 @@ object CwlEnum {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
         }.toVector,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -621,7 +620,7 @@ object CwlEnum {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
         }.toVector,
-        translateOptional(schema.getName),
+        translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )

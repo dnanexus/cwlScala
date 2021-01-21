@@ -13,6 +13,7 @@ import org.w3id.cwl.cwl1_2.{
   LoadListingRequirementImpl,
   MultipleInputFeatureRequirementImpl,
   NetworkAccessImpl,
+  OutputSchema,
   ProcessRequirement,
   ResourceRequirementImpl,
   ScatterFeatureRequirementImpl,
@@ -200,6 +201,12 @@ object InlineJavascriptRequirement extends HintSchema {
 }
 
 case class SchemaDefRequirement(typeDefinitions: Vector[CwlSchema]) extends Requirement {
+  typeDefinitions.foreach { typeDef =>
+    if (typeDef.name.isEmpty) {
+      throw new Exception(s"schema name must be defined in SchemaDefRequirement ${typeDef}")
+    }
+  }
+
   def asMap: Map[String, CwlSchema] = {
     typeDefinitions.map(schema => schema.name.get -> schema)
   }.toMap
@@ -209,12 +216,8 @@ object SchemaDefRequirement {
   def apply(req: SchemaDefRequirementImpl,
             schemaDefs: Map[String, CwlSchema]): SchemaDefRequirement = {
     val typeDefs: Vector[CwlSchema] = req.getTypes.asScala.map {
-      case schema: CommandInputSchema =>
-        val cwlSchema = CwlSchema(schema, schemaDefs)
-        if (cwlSchema.name.isEmpty) {
-          throw new Exception(s"schema name must be defined in SchemaDefRequirement ${req}")
-        }
-        cwlSchema
+      case schema: CommandInputSchema => CwlSchema(schema, schemaDefs)
+      case schema: OutputSchema       => CwlSchema(schema, schemaDefs)
       case other =>
         throw new Exception(s"unexpected type definition ${other}")
     }.toVector
@@ -419,14 +422,14 @@ object EnvVarRequirement extends HintSchema {
             }.toVector
           case defs: java.util.Collection[_] =>
             defs.asScala.map {
-              case d: Map[_, _] =>
-                val dStrAny = toStringAnyMap(d)
+              case d: java.util.Map[_, _] =>
+                val dStrAny = toStringAnyMap(d.asScala.toMap)
                 EnvironmentDefinition(dStrAny("envName").toString,
                                       CwlValue(dStrAny("envValue"), schemaDefs))
               case other =>
                 throw new Exception(s"invalid envDef value ${other}")
             }.toVector
-          case other => throw new Exception(s"invalid version ${other.getClass}")
+          case other => throw new Exception(s"invalid version ${other}")
         }
     )
   }

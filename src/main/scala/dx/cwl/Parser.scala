@@ -77,7 +77,9 @@ case class Parser(baseUri: Option[String] = None,
     if (cache.contains(path)) {
       cache(path)
     } else {
-      val doc = parse(RootLoader.loadDocument(path, baseUri.orNull, loadingOptions.orNull),
+      val doc = parse(RootLoader.loadDocument(path,
+                                              baseUri.map(Utils.normalizeUri).orNull,
+                                              loadingOptions.orNull),
                       Some(path),
                       name)
       cache += (path -> doc)
@@ -93,6 +95,10 @@ case class Parser(baseUri: Option[String] = None,
     * @return a [[Process]]
     */
   def parseString(sourceCode: String, name: Option[String] = None): Process = {
-    parse(RootLoader.loadDocument(sourceCode, baseUri.orNull, loadingOptions.orNull), None, name)
+    parse(RootLoader.loadDocument(sourceCode,
+                                  baseUri.map(Utils.normalizeUri).orNull,
+                                  loadingOptions.orNull),
+          None,
+          name)
   }
 }

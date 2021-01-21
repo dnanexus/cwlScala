@@ -1,5 +1,6 @@
 package dx.cwl
 
+import java.net.URI
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
@@ -89,6 +90,19 @@ object Utils {
     m.map {
       case (k: String, v) => k -> v
       case (other, _)     => throw new Exception(s"expected string key, not ${other}")
+    }
+  }
+
+  def normalizeUri(uri: String): String = {
+    try {
+      val u = URI.create(uri)
+      if (u.getScheme == "file") {
+        s"file:${u.getPath}#${u.getFragment}"
+      } else {
+        u.toString
+      }
+    } catch {
+      case _: IllegalArgumentException => uri
     }
   }
 }
