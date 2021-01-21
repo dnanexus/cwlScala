@@ -2,6 +2,7 @@
 
 ## v0.3.1 (dev)
 
+* Update cwljava, which fixes most CommandLineTool parsing errors
 * Normalize baseuri so schemadef names and type references match
 
 ## v0.3.0 (2021-01-20)

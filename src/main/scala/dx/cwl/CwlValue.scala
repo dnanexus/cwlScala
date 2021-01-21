@@ -881,7 +881,11 @@ object FileValue {
         translateOptional(file.getNameroot),
         translateOptional(file.getNameext),
         translateOptional(file.getChecksum),
-        translateOptional(file.getSize).map(_.longValue()),
+        translateOptionalObject(file.getSize).map {
+          case n: java.lang.Number => n.longValue()
+          case other =>
+            throw new Exception(s"invalid size value ${other}")
+        },
         translateOptionalArray(file.getSecondaryFiles).map(PathValue.apply),
         translateOptional(file.getFormat),
         translateOptional(file.getContents)
