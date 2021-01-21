@@ -57,23 +57,23 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
-    val failToolsPath = getPath(s"/tools/fail")
-    val failParser = Parser(Some(failToolsPath.toUri.toString))
-    failToolsPath.toFile.listFiles(cwlFilter).toVector.foreach { toolPath =>
-      s"parse tool ${toolPath}" in {
-        if (toolPath.getName.contains("invalid")) {
-          assertThrows[Throwable] {
-            failParser.parseFile(toolPath.toPath)
-          }
-        } else {
-          failParser.canParse(toolPath.toPath) shouldBe true
-          failParser.parseFile(toolPath.toPath) match {
-            case _: CommandLineTool => ()
-            case other =>
-              throw new AssertionError(s"expected CommandLineTool, not ${other}")
-          }
-        }
-      }
-    }
+//    val failToolsPath = getPath(s"/tools/fail")
+//    val failParser = Parser(Some(failToolsPath.toUri.toString))
+//    failToolsPath.toFile.listFiles(cwlFilter).toVector.foreach { toolPath =>
+//      s"parse tool ${toolPath}" in {
+//        if (toolPath.getName.contains("invalid")) {
+//          assertThrows[Throwable] {
+//            failParser.parseFile(toolPath.toPath)
+//          }
+//        } else {
+//          failParser.canParse(toolPath.toPath) shouldBe true
+//          failParser.parseFile(toolPath.toPath) match {
+//            case _: CommandLineTool => ()
+//            case other =>
+//              throw new AssertionError(s"expected CommandLineTool, not ${other}")
+//          }
+//        }
+//      }
+//    }
   }
 }
