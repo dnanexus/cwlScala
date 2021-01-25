@@ -653,12 +653,12 @@ case class Evaluator(jsEnabled: Boolean = false,
     def inner(innerValue: CwlValue, innerTypes: Vector[CwlType]): (CwlType, CwlValue) = {
       innerValue match {
         case StringValue(s) => apply(s, innerTypes, ctx)
-        case ArrayValue(items) =>
+        case array: ArrayValue =>
           innerTypes.iterator
             .map {
               case arrayType: CwlArray =>
                 try {
-                  val (types, values) = items.map(inner(_, arrayType.itemTypes)).unzip
+                  val (types, values) = array.items.map(inner(_, arrayType.itemTypes)).unzip
                   Some((CwlArray(types.distinct), ArrayValue(values)))
                 } catch {
                   case _: Throwable => None
@@ -669,16 +669,20 @@ case class Evaluator(jsEnabled: Boolean = false,
               case Some(value) => value
             }
             .getOrElse(
-                throw new Exception(
-                    s"array ${items} does not evaluate to any of ${innerTypes}"
-                )
+                if (innerTypes.contains(CwlAny)) {
+                  (CwlAny, array)
+                } else {
+                  throw new Exception(
+                      s"array ${array.items} does not evaluate to any of ${innerTypes}"
+                  )
+                }
             )
-        case ObjectValue(fields) =>
+        case obj: ObjectValue =>
           innerTypes.iterator
             .map {
               case record: CwlInputRecord =>
                 try {
-                  val (types, values) = fields.map {
+                  val (types, values) = obj.fields.map {
                     case (key, value) =>
                       val (t, v) = inner(value, record.fields(key).types)
                       (key -> t, key -> v)
@@ -700,9 +704,13 @@ case class Evaluator(jsEnabled: Boolean = false,
               case Some(value) => value
             }
             .getOrElse(
-                throw new Exception(
-                    s"object ${fields} does not evaluate to any of ${innerTypes}"
-                )
+                if (innerTypes.contains(CwlAny)) {
+                  (CwlAny, obj)
+                } else {
+                  throw new Exception(
+                      s"object ${obj.fields} does not evaluate to any of ${innerTypes}"
+                  )
+                }
             )
         case _ => value.coerceTo(cwlTypes)
       }

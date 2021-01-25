@@ -6,8 +6,16 @@ import org.w3id.cwl.cwl1_2.{CWLVersion, LoadListingEnum, SecondaryFileSchemaImpl
 import java.nio.file.Path
 
 case class Identifier(namespace: Option[String], name: Option[String]) {
-  def fullyQualifiedName: Option[String] =
+  def fullyQualifiedName: Option[String] = {
     name.map(n => namespace.map(ns => s"${ns}#${n}").getOrElse(n))
+  }
+
+  def unqualifiedName: Option[String] = {
+    name.map {
+      case n if n.contains('/') => n.substring(n.lastIndexOf('/') + 1)
+      case n                    => n
+    }
+  }
 }
 
 object Identifier {
