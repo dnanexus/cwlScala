@@ -1,10 +1,12 @@
 # Change log
 
-## v0.3.2 (dev)
+## v0.3.2 (2021-01-27)
 
 * Handle CwlAny type in Evaluator
+* Update cwljava, which fixes remaning CommandLineTool parsing errors
+* Convert all tool compliance tests to unit tests
 
-b## v0.3.1 (2021-01-21)
+## v0.3.1 (2021-01-21)
 
 * Update cwljava, which fixes most CommandLineTool parsing errors
 * Normalize baseuri so schemadef names and type references match
