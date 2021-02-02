@@ -1,8 +1,8 @@
 # Change log
 
-## v0.3.3 (dev)
+## v0.3.3 (2021-02-02)
 
-* Rename all `CwlValue.apply(JsValue)` functions to `deserialize` - fixes issue with deserializing string values
+* Rename all `CwlValue.apply(JsValue)` functions to `deserialize` - fixes bug with deserializing string values
 
 ## v0.3.2 (2021-01-27)
 
