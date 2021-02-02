@@ -27,25 +27,33 @@ case class Parser(baseUri: Option[String] = None,
                   hintSchemas: Map[String, HintSchema] = Map.empty) {
   private var cache: Map[Path, Process] = Map.empty
 
-  def canParse(inputStream: InputStream): Boolean = {
+  def detectVersionAndClass(inputStream: InputStream): Option[(String, String)] = {
     try {
       val doc = new Yaml().load[java.util.Map[String, Any]](inputStream)
-      doc.containsKey("cwlVersion") && doc.get("cwlVersion").asInstanceOf[String].startsWith("v1.2")
+      if (doc.containsKey("cwlVersion")) {
+        val version = doc.get("cwlVersion").asInstanceOf[String]
+        if (version.startsWith("v1.2")) {
+          Some(version, doc.get("class").asInstanceOf[String])
+        } else {
+          None
+        }
+      } else {
+        None
+      }
     } catch {
-      case _: Throwable =>
-        false
+      case _: Throwable => None
     }
   }
 
   /**
     * Can a file be parsed as CWL?
     */
-  def canParse(path: Path): Boolean = {
-    canParse(new FileInputStream(path.toFile))
+  def detectVersionAndClass(path: Path): Option[(String, String)] = {
+    detectVersionAndClass(new FileInputStream(path.toFile))
   }
 
-  def canParse(sourceCode: String): Boolean = {
-    canParse(new ByteArrayInputStream(sourceCode.getBytes()))
+  def detectVersionAndClass(sourceCode: String): Option[(String, String)] = {
+    detectVersionAndClass(new ByteArrayInputStream(sourceCode.getBytes()))
   }
 
   def parse(doc: java.lang.Object,

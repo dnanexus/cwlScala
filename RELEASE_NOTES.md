@@ -1,5 +1,9 @@
 # Change log
 
+## v0.3.3 (2021-02-02)
+
+* Rename all `CwlValue.apply(JsValue)` functions to `deserialize` - fixes bug with deserializing string values
+
 ## v0.3.2 (2021-01-27)
 
 * Handle CwlAny type in Evaluator

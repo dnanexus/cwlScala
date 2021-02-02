@@ -285,9 +285,9 @@ object CwlValue {
         o.get("class") match {
           case Some(JsString(schemaName)) if schemaDefs.contains(schemaName) =>
             schemaDefs(schemaName) match {
-              case schema: CwlArray  => ArrayValue.apply(jsValue, schema, schemaDefs)
-              case schema: CwlRecord => ObjectValue.apply(jsValue, schema, schemaDefs)
-              case schema: CwlEnum   => StringValue.apply(jsValue, Some(schema))
+              case schema: CwlArray  => ArrayValue.deserialize(jsValue, schema, schemaDefs)
+              case schema: CwlRecord => ObjectValue.deserialize(jsValue, schema, schemaDefs)
+              case schema: CwlEnum   => StringValue.deserialize(jsValue, schema)
             }
           case _ =>
             ObjectValue(
@@ -314,17 +314,17 @@ object CwlValue {
                   cwlType: CwlType,
                   schemaDefs: Map[String, CwlSchema]): CwlValue = {
     cwlType match {
-      case CwlString         => StringValue.apply(jsValue)
-      case CwlBoolean        => BooleanValue.apply(jsValue)
-      case CwlInt            => IntValue.apply(jsValue)
-      case CwlLong           => LongValue.apply(jsValue)
-      case CwlFloat          => FloatValue.apply(jsValue)
-      case CwlDouble         => DoubleValue.apply(jsValue)
-      case CwlFile           => FileValue.apply(jsValue)
-      case CwlDirectory      => DirectoryValue.apply(jsValue)
-      case schema: CwlArray  => ArrayValue(jsValue, schema, schemaDefs)
-      case schema: CwlRecord => ObjectValue(jsValue, schema, schemaDefs)
-      case schema: CwlEnum   => StringValue(jsValue, Some(schema))
+      case CwlString         => StringValue.deserialize(jsValue)
+      case CwlBoolean        => BooleanValue.deserialize(jsValue)
+      case CwlInt            => IntValue.deserialize(jsValue)
+      case CwlLong           => LongValue.deserialize(jsValue)
+      case CwlFloat          => FloatValue.deserialize(jsValue)
+      case CwlDouble         => DoubleValue.deserialize(jsValue)
+      case CwlFile           => FileValue.deserialize(jsValue)
+      case CwlDirectory      => DirectoryValue.deserialize(jsValue)
+      case schema: CwlArray  => ArrayValue.deserialize(jsValue, schema, schemaDefs)
+      case schema: CwlRecord => ObjectValue.deserialize(jsValue, schema, schemaDefs)
+      case schema: CwlEnum   => StringValue.deserialize(jsValue, schema)
       case CwlOptional(_) if jsValue == JsNull =>
         NullValue
       case CwlOptional(t) =>
@@ -473,8 +473,8 @@ object StringValue {
   lazy val empty: StringValue = StringValue("")
   lazy val opaque: StringValue = StringValue(OpaqueValue)
 
-  def isOpaque(value: StringValue): Boolean = {
-    value.value == OpaqueValue
+  def isOpaque(s: StringValue): Boolean = {
+    s.value == OpaqueValue
   }
 
   def apply(obj: Any): StringValue = {
@@ -492,16 +492,22 @@ object StringValue {
     }
   }
 
-  def apply(jsValue: JsValue, schema: Option[CwlEnum] = None): StringValue = {
-    (schema, jsValue) match {
-      case (None, JsString(s)) => StringValue(s)
-      case (None, _)           => StringValue(jsValue.prettyPrint)
-      case (Some(enum), JsString(symbol)) if enum.symbols.contains(symbol) =>
+  def deserialize(jsValue: JsValue): StringValue = {
+    jsValue match {
+      case JsString(s) => StringValue(s)
+      case _           => StringValue(jsValue.prettyPrint)
+    }
+  }
+
+  @tailrec
+  def deserialize(jsValue: JsValue, enum: CwlEnum): StringValue = {
+    jsValue match {
+      case JsString(symbol) if enum.symbols.contains(symbol) =>
         StringValue(symbol)
-      case (Some(_), JsObject(fields)) if fields.contains("symbol") =>
-        apply(fields("symbol"), schema)
+      case JsObject(fields) if fields.contains("symbol") =>
+        deserialize(fields("symbol"), enum)
       case _ =>
-        throw new Exception(s"invalid ${schema} value ${jsValue}")
+        throw new Exception(s"invalid ${enum} value ${jsValue}")
     }
   }
 }
@@ -535,7 +541,7 @@ object BooleanValue {
     }
   }
 
-  def apply(jsValue: JsValue): BooleanValue = {
+  def deserialize(jsValue: JsValue): BooleanValue = {
     jsValue match {
       case JsBoolean(b)      => BooleanValue(b.booleanValue())
       case JsString("true")  => BooleanValue(true)
@@ -601,7 +607,7 @@ object IntValue {
     }
   }
 
-  def apply(jsValue: JsValue): IntValue = {
+  def deserialize(jsValue: JsValue): IntValue = {
     try {
       jsValue match {
         case JsNumber(n) => IntValue(n.intValue)
@@ -652,7 +658,7 @@ object LongValue {
     }
   }
 
-  def apply(jsValue: JsValue): LongValue = {
+  def deserialize(jsValue: JsValue): LongValue = {
     try {
       jsValue match {
         case JsNumber(n) => LongValue(n.longValue)
@@ -695,7 +701,7 @@ object FloatValue {
     }
   }
 
-  def apply(jsValue: JsValue): FloatValue = {
+  def deserialize(jsValue: JsValue): FloatValue = {
     try {
       jsValue match {
         case JsNumber(n) => FloatValue(n.floatValue)
@@ -738,7 +744,7 @@ object DoubleValue {
     }
   }
 
-  def apply(jsValue: JsValue): DoubleValue = {
+  def deserialize(jsValue: JsValue): DoubleValue = {
     try {
       jsValue match {
         case JsNumber(n) => DoubleValue(n.doubleValue)
@@ -805,7 +811,7 @@ object PathValue {
     }
   }
 
-  def apply(jsValue: JsValue): PathValue = {
+  def deserialize(jsValue: JsValue): PathValue = {
     jsValue match {
       case JsObject(fields) if fields.contains("class") =>
         fields("class") match {
@@ -817,6 +823,23 @@ object PathValue {
       case JsString(path) => FileValue(location = Some(path))
       case _ =>
         throw new Exception(s"invalid path value ${jsValue}")
+    }
+  }
+
+  def unwrapString(jsValue: JsValue): String = {
+    jsValue match {
+      case JsString(s) => s
+      case _ =>
+        throw new Exception(s"expected string, not ${jsValue}")
+    }
+  }
+
+  def unwrapLong(jsValue: JsValue): Long = {
+    jsValue match {
+      case JsNumber(n) => n.toLongExact
+      case JsString(s) => s.toLong
+      case _ =>
+        throw new Exception(s"expected string, not ${jsValue}")
     }
   }
 }
@@ -928,44 +951,27 @@ object FileValue {
     }
   }
 
-  def apply(jsValue: JsValue): FileValue = {
-    def unwrapString(jsValue: JsValue): String = {
-      jsValue match {
-        case JsString(s) => s
-        case _ =>
-          throw new Exception(s"expected string, not ${jsValue}")
-      }
-    }
-
-    def unwrapLong(jsValue: JsValue): Long = {
-      jsValue match {
-        case JsNumber(n) => n.toLongExact
-        case JsString(s) => s.toLong
-        case _ =>
-          throw new Exception(s"expected string, not ${jsValue}")
-      }
-    }
-
+  def deserialize(jsValue: JsValue): FileValue = {
     jsValue match {
       case JsString(uri) => FileValue(location = Some(uri))
       case JsObject(fields) =>
         FileValue(
-            fields.get("location").map(unwrapString),
-            fields.get("path").map(unwrapString),
-            fields.get("basename").map(unwrapString),
-            fields.get("dirname").map(unwrapString),
-            fields.get("nameroot").map(unwrapString),
-            fields.get("nameext").map(unwrapString),
-            fields.get("checksum").map(unwrapString),
-            fields.get("size").map(unwrapLong),
+            fields.get("location").map(PathValue.unwrapString),
+            fields.get("path").map(PathValue.unwrapString),
+            fields.get("basename").map(PathValue.unwrapString),
+            fields.get("dirname").map(PathValue.unwrapString),
+            fields.get("nameroot").map(PathValue.unwrapString),
+            fields.get("nameext").map(PathValue.unwrapString),
+            fields.get("checksum").map(PathValue.unwrapString),
+            fields.get("size").map(PathValue.unwrapLong),
             fields.get("secondaryFiles") match {
-              case Some(JsArray(array)) => array.map(PathValue.apply)
+              case Some(JsArray(array)) => array.map(PathValue.deserialize)
               case None                 => Vector.empty
               case other =>
                 throw new Exception(s"invalid secondaryFiles value ${other}")
             },
-            fields.get("format").map(unwrapString),
-            fields.get("contents").map(unwrapString)
+            fields.get("format").map(PathValue.unwrapString),
+            fields.get("contents").map(PathValue.unwrapString)
         )
       case _ =>
         throw new Exception(s"invalid file value ${jsValue}")
@@ -1033,6 +1039,26 @@ object DirectoryValue {
       case map: java.util.Map[_, _] => apply(map)
       case _ =>
         throw new Exception(s"invalid directory value ${obj}")
+    }
+  }
+
+  def deserialize(jsValue: JsValue): DirectoryValue = {
+    jsValue match {
+      case JsString(uri) => DirectoryValue(location = Some(uri))
+      case JsObject(fields) =>
+        DirectoryValue(
+            fields.get("location").map(PathValue.unwrapString),
+            fields.get("path").map(PathValue.unwrapString),
+            fields.get("basename").map(PathValue.unwrapString),
+            fields.get("listing") match {
+              case Some(JsArray(entries)) => entries.map(PathValue.deserialize)
+              case None                   => Vector.empty
+              case other =>
+                throw new Exception(s"invalid listing ${other}")
+            }
+        )
+      case _ =>
+        throw new Exception(s"invalid file value ${jsValue}")
     }
   }
 }
@@ -1115,13 +1141,17 @@ object ArrayValue {
     }
   }
 
-  def apply(jsValue: JsValue, schema: CwlArray, schemaDefs: Map[String, CwlSchema]): ArrayValue = {
+  @tailrec
+  def deserialize(jsValue: JsValue,
+                  schema: CwlArray,
+                  schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     jsValue match {
       case JsArray(array) =>
-        ArrayValue(array.map(CwlValue(_, schema.itemTypes, schemaDefs)))
+        val (_, values) = array.map(CwlValue.deserialize(_, schema.itemTypes, schemaDefs)).unzip
+        ArrayValue(values)
       case JsObject(fields) if fields.contains("values") =>
         fields("values") match {
-          case array: JsArray => apply(array, schema, schemaDefs)
+          case array: JsArray => deserialize(array, schema, schemaDefs)
           case _ =>
             throw new Exception(s"invalid array value ${jsValue}")
         }
@@ -1231,15 +1261,16 @@ object ObjectValue {
     }
   }
 
-  def apply(jsValue: JsValue,
-            schema: CwlRecord,
-            schemaDefs: Map[String, CwlSchema]): ObjectValue = {
+  def deserialize(jsValue: JsValue,
+                  schema: CwlRecord,
+                  schemaDefs: Map[String, CwlSchema]): ObjectValue = {
     val fields = jsValue.asJsObject.fields
     ObjectValue(
         schema.fields.view
           .mapValues { field =>
             if (fields.contains(field.name)) {
-              CwlValue(fields(field.name), field.types, schemaDefs)
+              val (_, value) = CwlValue.deserialize(fields(field.name), field.types, schemaDefs)
+              value
             } else if (field.optional) {
               NullValue
             } else {
