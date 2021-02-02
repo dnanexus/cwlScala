@@ -732,9 +732,12 @@ case class Evaluator(jsEnabled: Boolean = false,
 object Evaluator {
   lazy val default: Evaluator = Evaluator()
 
-  def create(requirements: Vector[Requirement]): Evaluator = {
-    val (jsEnabled, jsLibrary) = RequirementUtils.getJsRequirements(requirements)
-    val schemaDefs = RequirementUtils.getSchemaDefs(requirements)
+  def create(requirements: Vector[Requirement], hints: Vector[Hint]): Evaluator = {
+    val (jsEnabled, jsLibrary) = HintUtils.getJsHint(requirements) match {
+      case (true, lib) => (true, lib)
+      case (false, _)  => HintUtils.getJsHint(hints)
+    }
+    val schemaDefs = HintUtils.getSchemaDefs(requirements)
     Evaluator(jsEnabled, jsLibrary, schemaDefs)
   }
 }

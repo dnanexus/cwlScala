@@ -46,13 +46,13 @@ trait HintSchema {
   def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint
 }
 
+case class GenericHint(attributes: Map[String, Any]) extends Hint
+
 /**
   * One of the requirements defined in the CWL spec.
   * https://www.commonwl.org/v1.2/CommandLineTool.html#InlineJavascriptRequirement
   */
 sealed trait Requirement extends Hint
-
-case class GenericHint(attributes: Map[String, Any]) extends Hint
 
 object Requirement {
   def apply(requirement: ProcessRequirement, schemaDefs: Map[String, CwlSchema]): Requirement = {
@@ -603,8 +603,8 @@ case object ScatterFeatureRequirement extends Requirement
 case object MultipleInputFeatureRequirement extends Requirement
 case object StepInputExpressionRequirement extends Requirement
 
-object RequirementUtils {
-  def getJsRequirements(requirements: Vector[Requirement]): (Boolean, Option[String]) = {
+object HintUtils {
+  def getJsHint(requirements: Vector[Hint]): (Boolean, Option[String]) = {
     requirements.collect {
       case req: InlineJavascriptRequirement => req
     } match {
@@ -615,7 +615,7 @@ object RequirementUtils {
     }
   }
 
-  def getSchemaDefs(requirements: Vector[Requirement]): Map[String, CwlSchema] = {
+  def getSchemaDefs(requirements: Vector[Hint]): Map[String, CwlSchema] = {
     requirements
       .collect {
         case req: SchemaDefRequirement => req.asMap
