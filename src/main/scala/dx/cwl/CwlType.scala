@@ -43,16 +43,7 @@ sealed trait CwlType {
   /**
     * Returns true if this type is coercible to the specified type
     */
-  def coercibleTo(targetType: CwlType): Boolean = {
-    val nonOptType = CwlOptional.unwrapOptional(targetType)
-    Set[CwlType](this, CwlAny).contains(nonOptType) || canBeCoercedTo(nonOptType)
-  }
-
-  /**
-    * Returns true if this type can be coerced to targetType,
-    * which is a non-optional, non-equal, and non-Any type.
-    */
-  protected def canBeCoercedTo(targetType: CwlType): Boolean = false
+  def coercibleTo(targetType: CwlType): Boolean
 }
 
 object CwlType {
@@ -155,11 +146,18 @@ object CwlType {
   }
 }
 
-case object CwlNull extends CwlType
+case object CwlNull extends CwlType {
+  override def coercibleTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case CwlOptional(_) => true
+      case _              => false
+    }
+  }
+}
 
 case object CwlAny extends CwlType {
-  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
-    targetType != CwlNull
+  override def coercibleTo(targetType: CwlType): Boolean = {
+    CwlOptional.unwrapOptional(targetType) != CwlNull
   }
 }
 
@@ -169,8 +167,11 @@ case object CwlAny extends CwlType {
   * @example {{{string?}}} is translated to {{{CwlOptional(CwlString)}}}
   */
 case class CwlOptional(t: CwlType) extends CwlType {
-  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
-    CwlNull == targetType
+  override def coercibleTo(targetType: CwlType): Boolean = {
+    targetType == this || (targetType match {
+      case CwlAny | CwlNull | CwlOptional(CwlNull) => true
+      case CwlOptional(other)                      => t.coercibleTo(other)
+    })
   }
 }
 
@@ -206,7 +207,16 @@ object CwlOptional {
   * All valid CWL types are primitive, excepting `Any`, `null`, and schema types.
   */
 sealed trait CwlPrimitive extends CwlType {
-  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+  def coercibleTo(targetType: CwlType): Boolean = {
+    val nonOptType = CwlOptional.unwrapOptional(targetType)
+    Set[CwlType](this, CwlAny).contains(nonOptType) || canBeCoercedTo(nonOptType)
+  }
+
+  /**
+    * Returns true if this type can be coerced to targetType,
+    * which is a non-optional, non-equal, and non-Any type.
+    */
+  protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     CwlString == targetType
   }
 }
@@ -262,6 +272,17 @@ sealed trait CwlSchema extends CwlType {
   val name: Option[String]
   val label: Option[String]
   val doc: Option[String]
+
+  def coercibleTo(targetType: CwlType): Boolean = {
+    val nonOptType = CwlOptional.unwrapOptional(targetType)
+    Set[CwlType](this, CwlAny).contains(nonOptType) || canBeCoercedTo(nonOptType)
+  }
+
+  /**
+    * Returns true if this type can be coerced to targetType,
+    * which is a non-optional, non-equal, and non-Any type.
+    */
+  protected def canBeCoercedTo(targetType: CwlType): Boolean = false
 }
 
 sealed trait CwlInputSchema extends CwlSchema {
