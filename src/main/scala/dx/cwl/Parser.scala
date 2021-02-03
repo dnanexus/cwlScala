@@ -4,7 +4,7 @@ import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
 import java.nio.file.Path
 import org.w3id.cwl.cwl1_2.{CommandLineToolImpl, ExpressionToolImpl, OperationImpl, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
-import org.yaml.snakeyaml.Yaml
+import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
 
 object Parser {
   lazy val default: Parser = Parser()
@@ -29,7 +29,9 @@ case class Parser(baseUri: Option[String] = None,
 
   def detectVersionAndClass(inputStream: InputStream): Option[(String, String)] = {
     try {
-      val doc = new Yaml().load[java.util.Map[String, Any]](inputStream)
+      val yamlLoader = new Load(LoadSettings.builder().build())
+      val doc =
+        yamlLoader.loadFromInputStream(inputStream).asInstanceOf[java.util.Map[String, Any]]
       if (doc.containsKey("cwlVersion")) {
         val version = doc.get("cwlVersion").asInstanceOf[String]
         if (version.startsWith("v1.2")) {
