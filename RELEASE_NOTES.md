@@ -1,6 +1,6 @@
 # Change log
 
-## v0.3.4 (dev)
+## v0.3.4 (2021-02-03)
 
 * Fix parsing of SchemaDefRequirement with nested type references
 * Fix coercion of null and optional ctypes
