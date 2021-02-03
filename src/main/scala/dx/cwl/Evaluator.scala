@@ -367,8 +367,6 @@ case class Runtime(outdir: String,
     keys.map(key => key -> apply(key)).to(TreeSeqMap)
   }
 
-  override def coercibleTo(targetType: CwlType): Boolean = false
-
   override def toJson: JsValue = {
     JsObject(
         Map(

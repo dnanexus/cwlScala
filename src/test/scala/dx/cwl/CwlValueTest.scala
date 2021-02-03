@@ -20,4 +20,10 @@ class CwlValueTest extends AnyFlatSpec with Matchers {
     val expected = ArrayValue(Vector(StringValue("hello"), StringValue("goodbye")))
     actual shouldBe expected
   }
+
+  it should "coerce null to optional" in {
+    val t = CwlOptional(CwlString)
+    NullValue.coercibleTo(t) shouldBe true
+    NullValue.coerceTo(t) shouldBe NullValue
+  }
 }
