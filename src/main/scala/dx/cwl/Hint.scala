@@ -2,7 +2,6 @@ package dx.cwl
 
 import dx.cwl.Utils._
 import org.w3id.cwl.cwl1_2.{
-  CommandInputSchema,
   DirentImpl,
   DockerRequirementImpl,
   EnvVarRequirementImpl,
@@ -13,7 +12,6 @@ import org.w3id.cwl.cwl1_2.{
   LoadListingRequirementImpl,
   MultipleInputFeatureRequirementImpl,
   NetworkAccessImpl,
-  OutputSchema,
   ProcessRequirement,
   ResourceRequirementImpl,
   ScatterFeatureRequirementImpl,
@@ -83,21 +81,27 @@ object Requirement {
       requirements: java.util.Optional[java.util.List[Object]],
       schemaDefs: Map[String, CwlSchema] = Map.empty
   ): (Vector[Requirement], Map[String, CwlSchema]) = {
-    translateOptionalArray(requirements)
-      .foldLeft(Vector.empty[Requirement], schemaDefs) {
-        case ((reqAccu, defAccu), req: ProcessRequirement) =>
-          val cwlRequirement = Requirement(req, defAccu)
-          val newSchemaDefs = cwlRequirement match {
-            // add any new schema defs to the initial set
-            case SchemaDefRequirement(typeDefs) =>
-              defAccu ++ typeDefs.map(d => d.name.get -> d)
-            case _ =>
-              defAccu
-          }
-          (reqAccu :+ cwlRequirement, newSchemaDefs)
-        case (_, req) =>
-          throw new RuntimeException(s"unexpected requirement value ${req}")
-      }
+    val reqArray = translateOptionalArray(requirements)
+    // first we have to collect the SchemaDefRequirements and parse them
+    // in dependency order - since one schema may refer to another
+    val allSchemaDefs = schemaDefs ++ SchemaDefRequirement.translateTypes(
+        reqArray.collect {
+          case req: SchemaDefRequirementImpl => req
+        },
+        schemaDefs
+    )
+    val cwlRequirements = reqArray.flatMap {
+      case _: SchemaDefRequirementImpl => None
+      case req: ProcessRequirement     => Some(Requirement(req, allSchemaDefs))
+      case req =>
+        throw new RuntimeException(s"unexpected requirement value ${req}")
+    }
+    val allRequirements = if (allSchemaDefs.nonEmpty) {
+      cwlRequirements :+ SchemaDefRequirement(allSchemaDefs.values.toVector)
+    } else {
+      cwlRequirements
+    }
+    (allRequirements, allSchemaDefs)
   }
 
   val DefaultHintSchemas: Map[String, HintSchema] = Vector(
@@ -213,15 +217,14 @@ case class SchemaDefRequirement(typeDefinitions: Vector[CwlSchema]) extends Requ
 }
 
 object SchemaDefRequirement {
+  def translateTypes(reqs: Vector[SchemaDefRequirementImpl],
+                     schemaDefs: Map[String, CwlSchema]): Map[String, CwlSchema] = {
+    CwlSchema.translateAll(reqs.flatMap(_.getTypes.asScala), schemaDefs)
+  }
+
   def apply(req: SchemaDefRequirementImpl,
             schemaDefs: Map[String, CwlSchema]): SchemaDefRequirement = {
-    val typeDefs: Vector[CwlSchema] = req.getTypes.asScala.map {
-      case schema: CommandInputSchema => CwlSchema(schema, schemaDefs)
-      case schema: OutputSchema       => CwlSchema(schema, schemaDefs)
-      case other =>
-        throw new Exception(s"unexpected type definition ${other}")
-    }.toVector
-    SchemaDefRequirement(typeDefs)
+    SchemaDefRequirement(translateTypes(Vector(req), schemaDefs).values.toVector)
   }
 }
 

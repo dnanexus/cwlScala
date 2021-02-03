@@ -2,24 +2,28 @@ package dx.cwl
 
 import dx.cwl.Utils.{translateDoc, translateOptional, translateOptionalArray}
 import org.w3id.cwl.cwl1_2.{
+  ArraySchema,
   CWLType,
-  CommandInputArraySchemaImpl,
-  CommandInputEnumSchemaImpl,
+  CommandInputArraySchema,
+  CommandInputEnumSchema,
+  CommandInputRecordField,
   CommandInputRecordFieldImpl,
-  CommandInputRecordSchemaImpl,
-  CommandInputSchema,
+  CommandInputRecordSchema,
   CommandLineBindingImpl,
-  CommandOutputArraySchemaImpl,
   CommandOutputBindingImpl,
-  CommandOutputEnumSchemaImpl,
+  CommandOutputRecordField,
   CommandOutputRecordFieldImpl,
-  CommandOutputRecordSchemaImpl,
-  InputArraySchemaImpl,
-  InputEnumSchemaImpl,
-  InputRecordFieldImpl,
-  InputRecordSchemaImpl,
-  OutputArraySchemaImpl,
-  OutputEnumSchemaImpl,
+  EnumSchema,
+  IOSchema,
+  InputArraySchema,
+  InputEnumSchema,
+  InputRecordField,
+  InputRecordSchema,
+  InputSchema,
+  OutputArraySchema,
+  OutputEnumSchema,
+  OutputRecordField,
+  OutputRecordSchema,
   OutputSchema,
   SecondaryFileSchemaImpl,
   stderr => CWLStderr,
@@ -67,48 +71,87 @@ object CwlType {
     * @param schemaDefs schema definitions to use for resolving non-standard types
     * @return a tuple [[(Vector[CwlType], Option[StdFile.StdFile])]].
     */
+  def translate(
+      t: java.lang.Object,
+      schemaDefs: Map[String, CwlSchema] = Map.empty,
+      rawSchemaDefs: Map[String, IOSchema] = Map.empty
+  ): (Vector[CwlType], Option[StdFile.StdFile], Map[String, CwlSchema]) = {
+    def inner(
+        innerType: java.lang.Object,
+        innerSchemaDefs: Map[String, CwlSchema]
+    ): (Vector[CwlType], Option[StdFile.StdFile], Map[String, CwlSchema]) = {
+      innerType match {
+        case a: java.util.List[_] =>
+          a.asInstanceOf[java.util.List[java.lang.Object]]
+            .asScala
+            .foldLeft(Vector.empty[CwlType], Option.empty[StdFile.StdFile], innerSchemaDefs) {
+              case ((cwlTypes, stdfile, newSchemaDefs), t) =>
+                val (newTypes, newStdfile, updatedSchemaDefs) = inner(t, newSchemaDefs)
+                val updatedStdfile = (stdfile, newStdfile) match {
+                  case (None, None)         => None
+                  case (s, None)            => s
+                  case (None, s)            => s
+                  case (s1, s2) if s1 == s2 => s1
+                  case (s1, s2) =>
+                    throw new RuntimeException(s"found multiple different std types ${s1},${s2}")
+                }
+                (cwlTypes ++ newTypes, updatedStdfile, updatedSchemaDefs)
+            }
+        case CWLStdin.STDIN   => (Vector(CwlFile), Some(StdFile.Stdin), innerSchemaDefs)
+        case CWLStdout.STDOUT => (Vector(CwlFile), Some(StdFile.Stdout), innerSchemaDefs)
+        case CWLStderr.STDERR => (Vector(CwlFile), Some(StdFile.Stderr), innerSchemaDefs)
+        case schema: IOSchema =>
+          val (newType, newSchemaDefs) =
+            CwlSchema.translateSchema(schema, innerSchemaDefs, rawSchemaDefs)
+          val updatedSchemaDefs = if (newType.name.isDefined) {
+            innerSchemaDefs ++ newSchemaDefs + (newType.name.get -> newType)
+          } else {
+            innerSchemaDefs ++ newSchemaDefs
+          }
+          (Vector(newType), None, updatedSchemaDefs)
+        case schemaName: String if schemaName.contains("#") =>
+          // a schema reference
+          val name = Utils.normalizeUri(schemaName)
+          schemaDefs.get(name).orElse(innerSchemaDefs.get(name)) match {
+            case Some(schemaDef) => (Vector(schemaDef), None, innerSchemaDefs)
+            case None if rawSchemaDefs.contains(name) =>
+              val (types, stdfile, updatedSchemaDefs) = inner(rawSchemaDefs(name), innerSchemaDefs)
+              val newSchemaDef = types match {
+                case Vector(s: CwlSchema) => s
+                case other =>
+                  throw new RuntimeException(s"expected single CwlSchema, not ${other}")
+              }
+              (types, stdfile, updatedSchemaDefs + (name -> newSchemaDef))
+            case None =>
+              throw new RuntimeException(s"missing definition for schema ${schemaName}")
+          }
+        case _ =>
+          val cwlType: CwlType = innerType match {
+            case "string"          => CwlString
+            case "boolean"         => CwlBoolean
+            case "int"             => CwlInt
+            case "long"            => CwlLong
+            case "float"           => CwlFloat
+            case "double"          => CwlDouble
+            case "null"            => CwlNull
+            case "Any"             => CwlAny
+            case CWLType.FILE      => CwlFile
+            case CWLType.DIRECTORY => CwlDirectory
+            case other =>
+              throw new RuntimeException(s"unexpected type ${other}")
+          }
+          (Vector(cwlType), None, innerSchemaDefs)
+      }
+    }
+    inner(t, Map.empty)
+  }
+
   def apply(
       t: java.lang.Object,
       schemaDefs: Map[String, CwlSchema] = Map.empty
   ): (Vector[CwlType], Option[StdFile.StdFile]) = {
-    t match {
-      case a: java.util.List[_] =>
-        val (cwlTypes, stdfile) =
-          a.asInstanceOf[java.util.List[java.lang.Object]].asScala.map(apply(_, schemaDefs)).unzip
-        val stdfiles = stdfile.flatten.toSet
-        if (stdfiles.size > 1) {
-          throw new Exception(s"found multiple different std types ${stdfiles.mkString(",")}")
-        }
-        (cwlTypes.flatten.toVector, stdfiles.headOption)
-      case CWLStdin.STDIN   => (Vector(CwlFile), Some(StdFile.Stdin))
-      case CWLStdout.STDOUT => (Vector(CwlFile), Some(StdFile.Stdout))
-      case CWLStderr.STDERR => (Vector(CwlFile), Some(StdFile.Stderr))
-      case _ =>
-        val cwlType: CwlType = t match {
-          case "string"                                       => CwlString
-          case "boolean"                                      => CwlBoolean
-          case "int"                                          => CwlInt
-          case "long"                                         => CwlLong
-          case "float"                                        => CwlFloat
-          case "double"                                       => CwlDouble
-          case "null"                                         => CwlNull
-          case "Any"                                          => CwlAny
-          case CWLType.FILE                                   => CwlFile
-          case CWLType.DIRECTORY                              => CwlDirectory
-          case schema: CommandInputSchema                     => CwlSchema(schema, schemaDefs)
-          case schema: OutputSchema                           => CwlSchema(schema, schemaDefs)
-          case schemaName: String if schemaName.contains("#") =>
-            // a schema reference
-            schemaDefs.get(Utils.normalizeUri(schemaName)) match {
-              case Some(schemaDef) => schemaDef
-              case None =>
-                throw new RuntimeException(s"missing definition for schema ${schemaName}")
-            }
-          case other =>
-            throw new RuntimeException(s"unexpected type ${other}")
-        }
-        (Vector(cwlType), None)
-    }
+    val (types, stdfile, _) = translate(t, schemaDefs, Map.empty)
+    (types, stdfile)
   }
 }
 
@@ -226,24 +269,102 @@ sealed trait CwlInputSchema extends CwlSchema {
 }
 
 object CwlSchema {
-  def apply(schema: CommandInputSchema, schemaDefs: Map[String, CwlSchema]): CwlSchema = {
+  def apply(schema: InputSchema, schemaDefs: Map[String, CwlSchema]): CwlSchema = {
     schema match {
-      case schema: CommandInputArraySchemaImpl  => CwlArray(schema, schemaDefs)
-      case schema: CommandInputRecordSchemaImpl => CwlInputRecord(schema, schemaDefs)
-      case schema: CommandInputEnumSchemaImpl   => CwlEnum(schema, schemaDefs)
+      case schema: CommandInputArraySchema  => CwlArray(schema, schemaDefs)
+      case schema: InputArraySchema         => CwlArray(schema, schemaDefs)
+      case schema: CommandInputRecordSchema => CwlInputRecord(schema, schemaDefs)
+      case schema: InputRecordSchema        => CwlInputRecord(schema, schemaDefs)
+      case schema: CommandInputEnumSchema   => CwlEnum(schema, schemaDefs)
+      case schema: InputEnumSchema          => CwlEnum(schema, schemaDefs)
       case _ =>
         throw new Exception(s"unexpected input schema ${schema}")
     }
   }
 
-  def apply(schema: OutputSchema, schemaDefs: Map[String, CwlSchema]): CwlSchema = {
+  def apply(schema: OutputSchema,
+            schemaDefs: Map[String, CwlSchema],
+            rawSchemaDefs: Map[String, OutputSchema] = Map.empty): CwlSchema = {
     schema match {
-      case arraySchema: CommandOutputArraySchemaImpl   => CwlArray(arraySchema, schemaDefs)
-      case recordSchema: CommandOutputRecordSchemaImpl => CwlOutputRecord(recordSchema, schemaDefs)
-      case enumSchema: CommandOutputEnumSchemaImpl     => CwlEnum(enumSchema)
+      case schema: OutputArraySchema  => CwlArray(schema, schemaDefs)
+      case schema: OutputRecordSchema => CwlOutputRecord(schema, schemaDefs)
+      case schema: OutputEnumSchema   => CwlEnum(schema, schemaDefs)
       case _ =>
         throw new Exception(s"unexpected output schema ${schema}")
     }
+  }
+
+  def translateSchema(
+      schema: IOSchema,
+      schemaDefs: Map[String, CwlSchema],
+      rawSchemaDefs: Map[String, IOSchema]
+  ): (CwlSchema, Map[String, CwlSchema]) = {
+    schema match {
+      case arraySchema: ArraySchema =>
+        CwlArray.translate(arraySchema, schemaDefs, rawSchemaDefs)
+      case recordSchema: InputRecordSchema =>
+        CwlInputRecord.translate(recordSchema, schemaDefs, rawSchemaDefs)
+      case recordSchema: OutputRecordSchema =>
+        CwlOutputRecord.translate(recordSchema, schemaDefs, rawSchemaDefs)
+      case enumSchema: EnumSchema =>
+        (CwlEnum(enumSchema, schemaDefs), Map.empty)
+      case _ =>
+        throw new Exception(s"unexpected input schema ${schema}")
+    }
+  }
+
+  def translateSchemas(schemas: Map[String, IOSchema],
+                       schemaDefs: Map[String, CwlSchema]): Map[String, CwlSchema] = {
+    schemas.foldLeft(Map.empty[String, CwlSchema]) {
+      case (accu, (name, _)) if schemaDefs.contains(name) || accu.contains(name) => accu
+      case (accu, (name, schema)) =>
+        val (newSchema, newSchemaDefs) = translateSchema(schema, schemaDefs ++ accu, schemas)
+        accu ++ newSchemaDefs + (name -> newSchema)
+    }
+  }
+
+  def translateAll(schemas: Vector[java.lang.Object],
+                   schemaDefs: Map[String, CwlSchema]): Map[String, CwlSchema] = {
+    // schemas may reference each other, so first we build a maps of
+    // name -> schema for input and output schema types, then recursively
+    // translate each schema
+    val (inputSchemas, outputSchemas) = schemas
+      .foldLeft(Map.empty[String, InputSchema], Map.empty[String, OutputSchema]) {
+        case ((i, o), schema: InputArraySchema) =>
+          translateOptional(schema.getName) match {
+            case Some(name) => (i + (name -> schema), o)
+            case _          => (i, o)
+          }
+        case ((i, o), schema: InputRecordSchema) =>
+          translateOptional(schema.getName) match {
+            case Some(name) => (i + (name -> schema), o)
+            case _          => (i, o)
+          }
+        case ((i, o), schema: InputEnumSchema) =>
+          translateOptional(schema.getName) match {
+            case Some(name) => (i + (name -> schema), o)
+            case _          => (i, o)
+          }
+        case ((i, o), schema: OutputArraySchema) =>
+          translateOptional(schema.getName) match {
+            case Some(name) => (i, o + (name -> schema))
+            case _          => (i, o)
+          }
+        case ((i, o), schema: OutputRecordSchema) =>
+          translateOptional(schema.getName) match {
+            case Some(name) => (i, o + (name -> schema))
+            case _          => (i, o)
+          }
+        case ((i, o), schema: OutputEnumSchema) =>
+          translateOptional(schema.getName) match {
+            case Some(name) => (i, o + (name -> schema))
+            case _          => (i, o)
+          }
+        case (accu, _) => accu
+      }
+    val translatedInputSchemas = translateSchemas(inputSchemas, schemaDefs)
+    val translatedOutputSchemas = translateSchemas(outputSchemas, schemaDefs)
+    translatedInputSchemas ++ translatedOutputSchemas
   }
 }
 
@@ -267,53 +388,47 @@ case class CwlArray(itemTypes: Vector[CwlType],
 }
 
 object CwlArray {
-  def apply(schema: CommandInputArraySchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlArray = {
-    val (types, stdfile) = CwlType(schema.getItems, schemaDefs)
-    assert(stdfile.isEmpty)
-    CwlArray(
-        types,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc),
-        translateOptional(schema.getInputBinding).map {
+  private def create(schema: ArraySchema,
+                     types: Vector[CwlType],
+                     schemaDefs: Map[String, CwlSchema]): CwlArray = {
+    val (name, label, doc) = schema match {
+      case schema: InputArraySchema  => (schema.getName, schema.getLabel, schema.getDoc)
+      case schema: OutputArraySchema => (schema.getName, schema.getLabel, schema.getDoc)
+      case other                     => throw new RuntimeException(s"unexpected array schema ${other}")
+    }
+    val inputBinding = schema match {
+      case c: CommandInputArraySchema =>
+        translateOptional(c.getInputBinding).map {
           case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
+      case _ => None
+    }
+    CwlArray(
+        types,
+        translateOptional(name).map(Utils.normalizeUri),
+        translateOptional(label),
+        translateDoc(doc),
+        inputBinding
     )
   }
 
-  def apply(schema: CommandOutputArraySchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlArray = {
+  def apply(schema: ArraySchema, schemaDefs: Map[String, CwlSchema]): CwlArray = {
     val (types, stdfile) = CwlType(schema.getItems, schemaDefs)
     assert(stdfile.isEmpty)
-    CwlArray(
-        types,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc)
-    )
+    create(schema, types, schemaDefs)
   }
 
-  def apply(schema: InputArraySchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlArray = {
-    val (types, stdfile) = CwlType(schema.getItems, schemaDefs)
+  def translate(
+      schema: ArraySchema,
+      schemaDefs: Map[String, CwlSchema],
+      rawSchemaDefs: Map[String, IOSchema]
+  ): (CwlArray, Map[String, CwlSchema]) = {
+    val (types, stdfile, newSchemaDefs) =
+      CwlType.translate(schema.getItems, schemaDefs, rawSchemaDefs)
     assert(stdfile.isEmpty)
-    CwlArray(
-        types,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc)
-    )
-  }
-
-  def apply(schema: OutputArraySchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlArray = {
-    val (types, stdfile) = CwlType(schema.getItems, schemaDefs)
-    assert(stdfile.isEmpty)
-    CwlArray(
-        types,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc)
-    )
+    (create(schema, types, schemaDefs ++ newSchemaDefs), newSchemaDefs)
   }
 }
 
@@ -354,20 +469,24 @@ case class CwlInputRecordField(name: String,
     extends CwlRecordField
 
 object CwlInputRecordField {
-  def apply(field: CommandInputRecordFieldImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
-    val (types, stdfile) = CwlType(field.getType, schemaDefs)
-    assert(stdfile.isEmpty)
+  private def create(field: InputRecordField,
+                     types: Vector[CwlType],
+                     schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
+    val inputBinding = field match {
+      case c: CommandInputRecordField =>
+        translateOptional(c.getInputBinding).map {
+          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case other =>
+            throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
+        }
+      case _ => None
+    }
     CwlInputRecordField(
         field.getName,
         types,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
-        translateOptional(field.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
-          case other =>
-            throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
-        },
+        inputBinding,
         translateOptionalArray(field.getSecondaryFiles).map {
           case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
           case other =>
@@ -380,26 +499,21 @@ object CwlInputRecordField {
     )
   }
 
-  def apply(field: InputRecordFieldImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
+  def apply(field: InputRecordField, schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
     val (types, stdfile) = CwlType(field.getType, schemaDefs)
     assert(stdfile.isEmpty)
-    CwlInputRecordField(
-        field.getName,
-        types,
-        translateOptional(field.getLabel),
-        translateDoc(field.getDoc),
-        None,
-        translateOptionalArray(field.getSecondaryFiles).map {
-          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
-          case other =>
-            throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
-        },
-        translateOptionalArray(field.getFormat).map(CwlValue.apply(_, schemaDefs)),
-        translateOptional(field.getStreamable).map(_.booleanValue()),
-        translateOptional(field.getLoadContents).map(_.booleanValue()),
-        translateOptional(field.getLoadListing).map(LoadListing.from)
-    )
+    create(field, types, schemaDefs)
+  }
+
+  def translate(
+      field: InputRecordField,
+      schemaDefs: Map[String, CwlSchema],
+      rawSchemaDefs: Map[String, IOSchema]
+  ): (CwlInputRecordField, Map[String, CwlSchema]) = {
+    val (types, stdfile, newSchemaDefs) =
+      CwlType.translate(field.getType, schemaDefs, rawSchemaDefs)
+    assert(stdfile.isEmpty)
+    (create(field, types, schemaDefs ++ newSchemaDefs), newSchemaDefs)
   }
 }
 
@@ -427,52 +541,64 @@ case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
 }
 
 object CwlInputRecord {
-  def apply(schema: CommandInputRecordSchemaImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
-    CwlInputRecord(
-        translateOptional(schema.getFields)
-          .map(
-              _.asScala
-                .map {
-                  case field: CommandInputRecordFieldImpl =>
-                    val cwlField = CwlInputRecordField(field, schemaDefs)
-                    cwlField.name -> cwlField
-                  case other =>
-                    throw new RuntimeException(s"invalid record field ${other}")
-                }
-                .to(TreeSeqMap)
-          )
-          .getOrElse(SeqMap.empty),
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc),
-        translateOptional(schema.getInputBinding).map {
+  private def create(schema: InputRecordSchema,
+                     fields: SeqMap[String, CwlInputRecordField],
+                     schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
+    val inputBinding = schema match {
+      case c: CommandInputRecordSchema =>
+        translateOptional(c.getInputBinding).map {
           case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
+      case _ => None
+    }
+    CwlInputRecord(
+        fields,
+        translateOptional(schema.getName).map(Utils.normalizeUri),
+        translateOptional(schema.getLabel),
+        translateDoc(schema.getDoc),
+        inputBinding
     )
   }
 
-  def apply(schema: InputRecordSchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
-    CwlInputRecord(
-        translateOptional(schema.getFields)
-          .map(
-              _.asScala
-                .map {
-                  case field: CommandInputRecordFieldImpl =>
-                    val cwlField = CwlInputRecordField(field, schemaDefs)
-                    cwlField.name -> cwlField
-                  case other =>
-                    throw new RuntimeException(s"invalid record field ${other}")
-                }
-                .to(TreeSeqMap)
-          )
-          .getOrElse(SeqMap.empty),
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc)
-    )
+  def apply(schema: InputRecordSchema, schemaDefs: Map[String, CwlSchema]): CwlInputRecord = {
+    val fields = translateOptional(schema.getFields)
+      .map(
+          _.asScala
+            .map {
+              case field: CommandInputRecordFieldImpl =>
+                val cwlField = CwlInputRecordField(field, schemaDefs)
+                cwlField.name -> cwlField
+              case other =>
+                throw new RuntimeException(s"invalid record field ${other}")
+            }
+            .to(TreeSeqMap)
+      )
+      .getOrElse(SeqMap.empty[String, CwlInputRecordField])
+    create(schema, fields, schemaDefs)
+  }
+
+  def translate(
+      schema: InputRecordSchema,
+      schemaDefs: Map[String, CwlSchema],
+      rawSchemaDefs: Map[String, IOSchema]
+  ): (CwlRecord, Map[String, CwlSchema]) = {
+    val (fields, newSchemaDefs) = translateOptional(schema.getFields)
+      .map { fields =>
+        val (cwlFields, newSchemaDefs) =
+          fields.asScala.foldLeft(Vector.empty[CwlInputRecordField], Map.empty[String, CwlSchema]) {
+            case ((fieldAccu, schemaDefAccu), field: InputRecordField) =>
+              val (cwlField, newSchemaDefs) =
+                CwlInputRecordField.translate(field, schemaDefs ++ schemaDefAccu, rawSchemaDefs)
+              (fieldAccu :+ cwlField, schemaDefAccu ++ newSchemaDefs)
+            case other =>
+              throw new RuntimeException(s"invalid record field ${other}")
+          }
+        (cwlFields.map(f => f.name -> f).to(TreeSeqMap), newSchemaDefs)
+      }
+      .getOrElse((SeqMap.empty[String, CwlInputRecordField], Map.empty[String, CwlSchema]))
+    (create(schema, fields, schemaDefs), newSchemaDefs)
   }
 }
 
@@ -487,20 +613,24 @@ case class CwlOutputRecordField(name: String,
     extends CwlRecordField
 
 object CwlOutputRecordField {
-  def apply(field: CommandOutputRecordFieldImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
-    val (types, stdfile) = CwlType(field.getType, schemaDefs)
-    assert(stdfile.isEmpty)
+  private def create(field: OutputRecordField,
+                     types: Vector[CwlType],
+                     schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
+    val outputBinding = field match {
+      case c: CommandOutputRecordField =>
+        translateOptional(c.getOutputBinding).map {
+          case binding: CommandOutputBindingImpl => CommandOutputBinding(binding, schemaDefs)
+          case other =>
+            throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
+        }
+      case _ => None
+    }
     CwlOutputRecordField(
         field.getName,
         types,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
-        translateOptional(field.getOutputBinding).map {
-          case binding: CommandOutputBindingImpl => CommandOutputBinding(binding, schemaDefs)
-          case other =>
-            throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
-        },
+        outputBinding,
         translateOptionalArray(field.getSecondaryFiles).map {
           case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
           case other =>
@@ -509,6 +639,23 @@ object CwlOutputRecordField {
         translateOptionalArray(field.getFormat).map(CwlValue.apply(_, schemaDefs)),
         translateOptional(field.getStreamable).map(_.booleanValue())
     )
+  }
+
+  def apply(field: OutputRecordField, schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
+    val (types, stdfile) = CwlType(field.getType, schemaDefs)
+    assert(stdfile.isEmpty)
+    create(field, types, schemaDefs)
+  }
+
+  def translate(
+      field: OutputRecordField,
+      schemaDefs: Map[String, CwlSchema],
+      rawSchemaDefs: Map[String, IOSchema]
+  ): (CwlOutputRecordField, Map[String, CwlSchema]) = {
+    val (types, stdfile, newSchemaDefs) =
+      CwlType.translate(field.getType, schemaDefs, rawSchemaDefs)
+    assert(stdfile.isEmpty)
+    (create(field, types, schemaDefs ++ newSchemaDefs), newSchemaDefs)
   }
 }
 
@@ -534,26 +681,54 @@ case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
 }
 
 object CwlOutputRecord {
-  def apply(schema: CommandOutputRecordSchemaImpl,
-            schemaDefs: Map[String, CwlSchema]): CwlOutputRecord = {
+  private def create(schema: OutputRecordSchema,
+                     fields: SeqMap[String, CwlOutputRecordField]): CwlOutputRecord = {
     CwlOutputRecord(
-        translateOptional(schema.getFields)
-          .map(
-              _.asScala
-                .map {
-                  case field: CommandOutputRecordFieldImpl =>
-                    val cwlField = CwlOutputRecordField(field, schemaDefs)
-                    cwlField.name -> cwlField
-                  case other =>
-                    throw new RuntimeException(s"invalid record field ${other}")
-                }
-                .to(TreeSeqMap)
-          )
-          .getOrElse(SeqMap.empty),
+        fields,
         translateOptional(schema.getName).map(Utils.normalizeUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
+  }
+
+  def apply(schema: OutputRecordSchema, schemaDefs: Map[String, CwlSchema]): CwlOutputRecord = {
+    val fields = translateOptional(schema.getFields)
+      .map(
+          _.asScala
+            .map {
+              case field: CommandOutputRecordFieldImpl =>
+                val cwlField = CwlOutputRecordField(field, schemaDefs)
+                cwlField.name -> cwlField
+              case other =>
+                throw new RuntimeException(s"invalid record field ${other}")
+            }
+            .to(TreeSeqMap)
+      )
+      .getOrElse(SeqMap.empty[String, CwlOutputRecordField])
+    create(schema, fields)
+  }
+
+  def translate(
+      schema: OutputRecordSchema,
+      schemaDefs: Map[String, CwlSchema],
+      rawSchemaDefs: Map[String, IOSchema]
+  ): (CwlRecord, Map[String, CwlSchema]) = {
+    val (fields, newSchemaDefs) = translateOptional(schema.getFields)
+      .map { fields =>
+        val (cwlFields, newSchemaDefs) =
+          fields.asScala
+            .foldLeft(Vector.empty[CwlOutputRecordField], Map.empty[String, CwlSchema]) {
+              case ((fieldAccu, schemaDefAccu), field: OutputRecordField) =>
+                val (cwlField, newSchemaDefs) =
+                  CwlOutputRecordField.translate(field, schemaDefs ++ schemaDefAccu, rawSchemaDefs)
+                (fieldAccu :+ cwlField, schemaDefAccu ++ newSchemaDefs)
+              case other =>
+                throw new RuntimeException(s"invalid record field ${other}")
+            }
+        (cwlFields.map(f => f.name -> f).to(TreeSeqMap), newSchemaDefs)
+      }
+      .getOrElse((SeqMap.empty[String, CwlOutputRecordField], Map.empty[String, CwlSchema]))
+    (create(schema, fields), newSchemaDefs)
   }
 }
 
@@ -573,56 +748,30 @@ case class CwlEnum(symbols: Vector[String],
 }
 
 object CwlEnum {
-  def apply(schema: CommandInputEnumSchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlEnum = {
-    CwlEnum(
-        schema.getSymbols.asScala.map {
-          case s: String => s
-          case other     => throw new Exception(s"unexpected symbol value ${other}")
-        }.toVector,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc),
-        translateOptional(schema.getInputBinding).map {
+  def apply(schema: EnumSchema, schemaDefs: Map[String, CwlSchema]): CwlEnum = {
+    val (name, label, doc) = schema match {
+      case schema: InputEnumSchema  => (schema.getName, schema.getLabel, schema.getDoc)
+      case schema: OutputEnumSchema => (schema.getName, schema.getLabel, schema.getDoc)
+      case other                    => throw new RuntimeException(s"unexpected array schema ${other}")
+    }
+    val inputBinding = schema match {
+      case c: CommandInputEnumSchema =>
+        translateOptional(c.getInputBinding).map {
           case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
-    )
-  }
-
-  def apply(schema: CommandOutputEnumSchemaImpl): CwlEnum = {
+      case _ => None
+    }
     CwlEnum(
         schema.getSymbols.asScala.map {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
         }.toVector,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc)
-    )
-  }
-
-  def apply(schema: InputEnumSchemaImpl, schemaDefs: Map[String, CwlSchema]): CwlEnum = {
-    CwlEnum(
-        schema.getSymbols.asScala.map {
-          case s: String => s
-          case other     => throw new Exception(s"unexpected symbol value ${other}")
-        }.toVector,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc)
-    )
-  }
-
-  def apply(schema: OutputEnumSchemaImpl): CwlEnum = {
-    CwlEnum(
-        schema.getSymbols.asScala.map {
-          case s: String => s
-          case other     => throw new Exception(s"unexpected symbol value ${other}")
-        }.toVector,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
-        translateOptional(schema.getLabel),
-        translateDoc(schema.getDoc)
+        translateOptional(name).map(Utils.normalizeUri),
+        translateOptional(label),
+        translateDoc(doc),
+        inputBinding
     )
   }
 }
