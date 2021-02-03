@@ -149,8 +149,8 @@ object CwlType {
 case object CwlNull extends CwlType {
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
-      case CwlOptional(_) => true
-      case _              => false
+      case CwlNull | CwlOptional(_) => true
+      case _                        => false
     }
   }
 }
@@ -168,10 +168,11 @@ case object CwlAny extends CwlType {
   */
 case class CwlOptional(t: CwlType) extends CwlType {
   override def coercibleTo(targetType: CwlType): Boolean = {
-    targetType == this || (targetType match {
+    targetType match {
       case CwlAny | CwlNull | CwlOptional(CwlNull) => true
       case CwlOptional(other)                      => t.coercibleTo(other)
-    })
+      case _                                       => false
+    }
   }
 }
 
