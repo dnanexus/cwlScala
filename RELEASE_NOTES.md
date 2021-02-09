@@ -1,5 +1,10 @@
 # Change log
 
+## v0.3.5 (dev)
+
+* Parser bugfixes
+* Incorporate `cwljava/39`, which fixes workflow parsing issues
+
 ## v0.3.4 (2021-02-03)
 
 * Fix parsing of SchemaDefRequirement with nested type references
