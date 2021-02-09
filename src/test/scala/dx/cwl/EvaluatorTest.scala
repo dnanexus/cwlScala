@@ -4,7 +4,7 @@ import java.io.FileInputStream
 import java.nio.file.{Files, Path, Paths}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.yaml.snakeyaml.Yaml
+import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
 
 import scala.collection.immutable.SeqMap
 import scala.jdk.CollectionConverters._
@@ -15,8 +15,10 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
   }
 
   private def loadYamlTestCases(resource: String): Vector[Any] = {
-    new Yaml()
-      .load[java.util.List[Any]](new FileInputStream(getPath(resource).toFile))
+    val yamlLoader = new Load(LoadSettings.builder().build())
+    yamlLoader
+      .loadFromInputStream(new FileInputStream(getPath(resource).toFile))
+      .asInstanceOf[java.util.List[Any]]
       .asScala
       .toVector
   }

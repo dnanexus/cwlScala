@@ -87,7 +87,7 @@ val typesafeVersion = "1.3.3"
 val sprayVersion = "1.3.5"
 val scalacticVersion = "3.1.1"
 val scalatestVersion = "3.1.1"
-val yamlVersion = "1.24"
+val yamlVersion = "2.2.1"
 val rhinoVersion = "1.7.13"
 val antlr4Version = "4.8"
 val junitVersion = "4.12"
@@ -96,7 +96,7 @@ libraryDependencies ++= Seq(
     "com.typesafe" % "config" % typesafeVersion,
     "io.spray" %% "spray-json" % sprayVersion,
     // cwljava dependencies
-    "org.yaml" % "snakeyaml" % yamlVersion,
+    "org.snakeyaml" % "snakeyaml-engine" % yamlVersion,
     // rhino dependencies
     "org.mozilla" % "rhino" % rhinoVersion,
     // antlr4 dependencies
