@@ -95,14 +95,21 @@ object Utils {
 
   def normalizeUri(uri: String): String = {
     try {
-      val u = URI.create(uri)
-      (u.getScheme, u.getFragment) match {
-        case ("file", null) => s"file:${u.getPath}"
-        case ("file", frag) => s"file:${u.getPath}#${frag}"
-        case _              => u.toString
+      normalizeUri(URI.create(uri))
+    } catch {
+      case _: Throwable => uri
+    }
+  }
+
+  def normalizeUri(uri: URI): String = {
+    try {
+      (uri.getScheme, uri.getFragment) match {
+        case ("file", null) => s"file:${uri.getPath}"
+        case ("file", frag) => s"file:${uri.getPath}#${frag}"
+        case _              => uri.toString
       }
     } catch {
-      case _: IllegalArgumentException => uri
+      case _: IllegalArgumentException => uri.toString
     }
   }
 }

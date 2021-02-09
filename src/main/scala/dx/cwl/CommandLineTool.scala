@@ -157,7 +157,7 @@ case class BindingArgument(binding: CommandInputBinding) extends Argument
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputBinding
 case class CommandLineTool(source: Option[String],
                            cwlVersion: Option[CWLVersion],
-                           id: Identifier,
+                           id: Option[Identifier],
                            label: Option[String],
                            doc: Option[String],
                            intent: Vector[String],
@@ -265,7 +265,7 @@ object CommandLineTool {
     CommandLineTool(
         source.map(_.toString),
         translateOptional(tool.getCwlVersion),
-        Identifier(tool.getId, name, source),
+        Identifier.get(tool.getId, name, source),
         translateOptional(tool.getLabel),
         translateDoc(tool.getDoc),
         translateOptionalArray(tool.getIntent).map(translateString),

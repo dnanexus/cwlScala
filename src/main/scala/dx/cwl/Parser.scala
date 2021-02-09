@@ -1,15 +1,17 @@
 package dx.cwl
 
 import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 import org.w3id.cwl.cwl1_2.{CommandLineToolImpl, ExpressionToolImpl, OperationImpl, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
-import org.yaml.snakeyaml.Yaml
+import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
+
+import java.net.URI
 
 object Parser {
   lazy val default: Parser = Parser()
 
-  def create(baseUri: Option[String] = None,
+  def create(baseUri: Option[URI] = None,
              loadingOptions: Option[LoadingOptions] = None,
              schemaDefs: Vector[CwlSchema] = Vector.empty,
              hintSchemas: Vector[HintSchema] = Vector.empty): Parser = {
@@ -21,15 +23,18 @@ object Parser {
   }
 }
 
-case class Parser(baseUri: Option[String] = None,
+case class Parser(baseUri: Option[URI] = None,
                   loadingOptions: Option[LoadingOptions] = None,
                   schemaDefs: Map[String, CwlSchema] = Map.empty,
                   hintSchemas: Map[String, HintSchema] = Map.empty) {
   private var cache: Map[Path, Process] = Map.empty
+  private lazy val normalizedBaseUri = baseUri.map(Utils.normalizeUri).orNull
 
   def detectVersionAndClass(inputStream: InputStream): Option[(String, String)] = {
     try {
-      val doc = new Yaml().load[java.util.Map[String, Any]](inputStream)
+      val yamlLoader = new Load(LoadSettings.builder().build())
+      val doc =
+        yamlLoader.loadFromInputStream(inputStream).asInstanceOf[java.util.Map[String, Any]]
       if (doc.containsKey("cwlVersion")) {
         val version = doc.get("cwlVersion").asInstanceOf[String]
         if (version.startsWith("v1.2")) {
@@ -85,9 +90,7 @@ case class Parser(baseUri: Option[String] = None,
     if (cache.contains(path)) {
       cache(path)
     } else {
-      val doc = parse(RootLoader.loadDocument(path,
-                                              baseUri.map(Utils.normalizeUri).orNull,
-                                              loadingOptions.orNull),
+      val doc = parse(RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
                       Some(path),
                       name)
       cache += (path -> doc)
@@ -103,10 +106,19 @@ case class Parser(baseUri: Option[String] = None,
     * @return a [[Process]]
     */
   def parseString(sourceCode: String, name: Option[String] = None): Process = {
-    parse(RootLoader.loadDocument(sourceCode,
-                                  baseUri.map(Utils.normalizeUri).orNull,
-                                  loadingOptions.orNull),
-          None,
-          name)
+    parse(RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull), None, name)
+  }
+
+  def parseImport(relPath: String): Process = {
+    val path = baseUri.map(uri => Paths.get(uri.resolve(relPath))).getOrElse(Paths.get(relPath))
+    if (cache.contains(path)) {
+      cache(path)
+    } else {
+      val doc = parse(RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
+                      Some(path),
+                      None)
+      cache += (path -> doc)
+      doc
+    }
   }
 }
