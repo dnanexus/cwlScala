@@ -39,7 +39,7 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     val toolsPath = getPath(s"/tools/v1.2")
-    val toolsParser = Parser(Some(toolsPath.toUri.toString))
+    val toolsParser = Parser(Some(toolsPath.toUri))
     toolsPath.toFile.listFiles(cwlFilter).toVector.foreach { toolPath =>
       s"parse tool ${toolPath}" in {
         if (toolPath.getName.contains("invalid")) {
@@ -66,29 +66,29 @@ class ParserTest extends AnyWordSpec with Matchers {
     // TODO: these tests do not currently work due to a bug that causes
     //  workflows to be parsed as CommandLineTools
     //  https://github.com/common-workflow-lab/cwljava/issues/37
-//    val workflowsPath = getPath(s"/workflows/v1.2")
-//    val workflowParser = Parser.create(Some(workflowsPath.toUri.toString))
-//    workflowsPath.toFile.listFiles(cwlFilter).toVector.foreach { wfPath =>
-//      s"parse workflow ${wfPath}" in {
-//        if (wfPath.getName.contains("invalid")) {
-//          assertThrows[Throwable] {
-//            workflowParser.parseFile(wfPath.toPath)
-//          }
-//        } else {
-//          val isWorkflow = workflowParser.detectVersionAndClass(wfPath.toPath) match {
-//            case Some((_, cls)) => cls == "Workflow"
-//            case None           => false
-//          }
-//          if (isWorkflow) {
-//            workflowParser.parseFile(wfPath.toPath) match {
-//              case _: Workflow => ()
-//              case other =>
-//                throw new AssertionError(s"expected Workflow, not ${other}")
-//            }
-//          }
-//        }
-//      }
-//    }
+    val workflowsPath = getPath(s"/workflows/v1.2")
+    val workflowParser = Parser.create(Some(workflowsPath.toUri))
+    workflowsPath.toFile.listFiles(cwlFilter).toVector.foreach { wfPath =>
+      s"parse workflow ${wfPath}" in {
+        if (wfPath.getName.contains("invalid")) {
+          assertThrows[Throwable] {
+            workflowParser.parseFile(wfPath.toPath)
+          }
+        } else {
+          val isWorkflow = workflowParser.detectVersionAndClass(wfPath.toPath) match {
+            case Some((_, cls)) => cls == "Workflow"
+            case None           => false
+          }
+          if (isWorkflow) {
+            workflowParser.parseFile(wfPath.toPath) match {
+              case _: Workflow => ()
+              case other =>
+                throw new AssertionError(s"expected Workflow, not ${other}")
+            }
+          }
+        }
+      }
+    }
 
   }
 }

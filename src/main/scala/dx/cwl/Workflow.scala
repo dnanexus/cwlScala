@@ -1,6 +1,6 @@
 package dx.cwl
 
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import dx.cwl.Utils._
 import org.w3id.cwl.cwl1_2.{
   CWLVersion,
@@ -204,8 +204,11 @@ object WorkflowStepOutput {
   def applyArray(steps: java.util.List[java.lang.Object]): Vector[WorkflowStepOutput] = {
     steps.asScala.toVector.map {
       case param: WorkflowStepOutputImpl => WorkflowStepOutput(param)
+      case param: String                 => WorkflowStepOutput(Some(Identifier(param)))
       case other =>
-        throw new RuntimeException(s"unexpected WorkflowStepOutput value ${other}")
+        throw new RuntimeException(
+            s"unexpected WorkflowStepOutput value ${other}"
+        )
     }
   }
 }
@@ -228,7 +231,7 @@ object WorkflowStep {
       Requirement.applyRequirements(step.getRequirements, ctx.schemaDefs)
     val runProcess = step.getRun match {
       case process: ProcessInterface => ctx.parse(process, None)
-      case path: String              => ctx.parseFile(Paths.get(path))
+      case path: String              => ctx.parseImport(path)
       case other =>
         throw new RuntimeException(s"unexpected run value ${other} for step ${step}")
     }
@@ -257,7 +260,7 @@ object WorkflowStep {
 }
 case class Workflow(source: Option[String],
                     cwlVersion: Option[CWLVersion],
-                    id: Identifier,
+                    id: Option[Identifier],
                     label: Option[String],
                     doc: Option[String],
                     intent: Vector[String],
@@ -279,7 +282,7 @@ object Workflow {
     Workflow(
         source.map(_.toString),
         translateOptional(workflow.getCwlVersion),
-        Identifier(workflow.getId, name, source),
+        Identifier.get(workflow.getId, name, source),
         translateOptional(workflow.getLabel),
         translateDoc(workflow.getDoc),
         translateOptionalArray(workflow.getIntent).map(translateString),
@@ -330,7 +333,7 @@ object ExpressionToolOutputParameter {
 
 case class ExpressionTool(source: Option[String],
                           cwlVersion: Option[CWLVersion],
-                          id: Identifier,
+                          id: Option[Identifier],
                           label: Option[String],
                           doc: Option[String],
                           intent: Vector[String],
@@ -351,7 +354,7 @@ object ExpressionTool {
     ExpressionTool(
         source.map(_.toString),
         translateOptional(expressionTool.getCwlVersion),
-        Identifier(expressionTool.getId, name, source),
+        Identifier.get(expressionTool.getId, name, source),
         translateOptional(expressionTool.getLabel),
         translateDoc(expressionTool.getDoc),
         translateOptionalArray(expressionTool.getIntent).map(translateString),
@@ -446,7 +449,7 @@ object OperationOutputParameter {
 
 case class Operation(source: Option[String],
                      cwlVersion: Option[CWLVersion],
-                     id: Identifier,
+                     id: Option[Identifier],
                      label: Option[String],
                      doc: Option[String],
                      intent: Vector[String],
@@ -466,7 +469,7 @@ object Operation {
     Operation(
         source.map(_.toString),
         translateOptional(operation.getCwlVersion),
-        Identifier(operation.getId, name, source),
+        Identifier.get(operation.getId, name, source),
         translateOptional(operation.getLabel),
         translateDoc(operation.getDoc),
         translateOptionalArray(operation.getIntent).map(translateString),

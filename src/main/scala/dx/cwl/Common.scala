@@ -33,15 +33,23 @@ object Identifier {
   def apply(id: java.util.Optional[String],
             name: Option[String] = None,
             source: Option[Path] = None): Identifier = {
-    translateOptional(id).map(Identifier(_)) match {
-      case Some(id) if id.name.isDefined => id
-      case id if name.isDefined =>
-        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
-      case id if source.isDefined =>
-        val name = Some(source.get.getFileName.toString.dropRight(4))
-        id.map(_.copy(name = name)).getOrElse(Identifier(namespace = None, name = name))
+    get(id, name, source) match {
       case _ =>
         throw new Exception("either tool id or file path must be defined")
+    }
+  }
+
+  def get(id: java.util.Optional[String],
+          name: Option[String] = None,
+          source: Option[Path] = None): Option[Identifier] = {
+    translateOptional(id).map(Identifier(_)) match {
+      case Some(id) if id.name.isDefined => Some(id)
+      case id if name.isDefined =>
+        id.map(_.copy(name = name)).orElse(Some(Identifier(namespace = None, name = name)))
+      case id if source.isDefined =>
+        val name = Some(source.get.getFileName.toString.dropRight(4))
+        id.map(_.copy(name = name)).orElse(Some(Identifier(namespace = None, name = name)))
+      case _ => None
     }
   }
 }
@@ -63,7 +71,7 @@ trait Parameter {
 trait Process {
   val source: Option[String]
   val cwlVersion: Option[CWLVersion]
-  val id: Identifier
+  val id: Option[Identifier]
   val label: Option[String]
   val doc: Option[String]
   val intent: Vector[String]
@@ -72,7 +80,7 @@ trait Process {
   val requirements: Vector[Requirement]
   val hints: Vector[Hint]
 
-  def name: String = id.name.getOrElse(throw new Exception("process has no name"))
+  def name: String = id.flatMap(_.name).getOrElse(throw new Exception("process has no name"))
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#SecondaryFileSchema
