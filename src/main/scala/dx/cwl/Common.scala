@@ -54,24 +54,28 @@ object Identifier {
   }
 }
 
-trait Parameter {
+trait Identifiable {
   val id: Option[Identifier]
+
+  def getName: Option[String] = id.flatMap(_.name)
+
+  def name: String = id.flatMap(_.name).getOrElse(throw new Exception("process has no name"))
+}
+
+trait Parameter extends Identifiable {
   val label: Option[String]
   val doc: Option[String]
   val types: Vector[CwlType]
   val secondaryFiles: Vector[SecondaryFile]
   val streamable: Option[Boolean]
-
-  def getName: Option[String] = id.flatMap(_.name)
 }
 
 /**
   * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
   */
-trait Process {
+trait Process extends Identifiable {
   val source: Option[String]
   val cwlVersion: Option[CWLVersion]
-  val id: Option[Identifier]
   val label: Option[String]
   val doc: Option[String]
   val intent: Vector[String]
@@ -79,8 +83,6 @@ trait Process {
   val outputs: Vector[Parameter]
   val requirements: Vector[Requirement]
   val hints: Vector[Hint]
-
-  def name: String = id.flatMap(_.name).getOrElse(throw new Exception("process has no name"))
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#SecondaryFileSchema
