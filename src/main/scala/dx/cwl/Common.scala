@@ -59,7 +59,9 @@ trait Identifiable {
 
   def getName: Option[String] = id.flatMap(_.name)
 
-  def name: String = id.flatMap(_.name).getOrElse(throw new Exception("process has no name"))
+  def hasName: Boolean = getName.isDefined
+
+  def name: String = id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))
 }
 
 trait Parameter extends Identifiable {

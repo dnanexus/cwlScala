@@ -168,6 +168,7 @@ case class WorkflowStepInput(id: Option[Identifier],
                              pickValue: Option[PickValueMethod.PickValueMethod],
                              loadContents: Option[Boolean],
                              loadListing: Option[LoadListing.LoadListing])
+    extends Identifiable
 
 object WorkflowStepInput {
   def apply(step: WorkflowStepInputImpl, schemaDefs: Map[String, CwlSchema]): WorkflowStepInput = {
@@ -194,7 +195,7 @@ object WorkflowStepInput {
   }
 }
 
-case class WorkflowStepOutput(id: Option[Identifier])
+case class WorkflowStepOutput(id: Option[Identifier]) extends Identifiable
 
 object WorkflowStepOutput {
   def apply(step: WorkflowStepOutputImpl): WorkflowStepOutput = {
@@ -224,6 +225,7 @@ case class WorkflowStep(id: Option[Identifier],
                         scatterMethod: Option[ScatterMethod.ScatterMethod],
                         requirements: Vector[Requirement],
                         hints: Vector[Hint])
+    extends Identifiable
 
 object WorkflowStep {
   def apply(step: WorkflowStepImpl, ctx: Parser): WorkflowStep = {

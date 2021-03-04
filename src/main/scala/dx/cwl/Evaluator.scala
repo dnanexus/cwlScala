@@ -730,6 +730,16 @@ case class Evaluator(jsEnabled: Boolean = false,
 object Evaluator {
   lazy val default: Evaluator = Evaluator()
 
+  /**
+    * Create Evaluator from JavaScript and SchemaDef requirements/hints given.
+    * @param requirements Vector of Requirements in increasing order of priority.
+    *                     If multiple JavaScript requirements are given, the last
+    *                     one takes priority. If multiple SchemaDef requirements are
+    *                     given, they are merged with later definitions overriding
+    *                     earlier ones.
+    * @param hints Vector of Hints in increasing order of priority.
+    * @return
+    */
   def create(requirements: Vector[Requirement], hints: Vector[Hint]): Evaluator = {
     val (jsEnabled, jsLibrary) = HintUtils.getJsHint(requirements) match {
       case (true, lib) => (true, lib)

@@ -607,19 +607,31 @@ case object MultipleInputFeatureRequirement extends Requirement
 case object StepInputExpressionRequirement extends Requirement
 
 object HintUtils {
-  def getJsHint(requirements: Vector[Hint]): (Boolean, Option[String]) = {
-    requirements.collect {
+
+  /**
+    * Gets the JavaScript hint from a list of Hints. If there are multiple
+    * JavaScript hints, the *last* one is selected.
+    * @param hints Vector of Hints
+    * @return
+    */
+  def getJsHint(hints: Vector[Hint]): (Boolean, Option[String]) = {
+    hints.reverseIterator.collectFirst {
       case req: InlineJavascriptRequirement => req
     } match {
-      case Vector()    => (false, None)
-      case Vector(req) => (true, req.expressionLib)
-      case _ =>
-        throw new Exception("found multiple InlineJavascriptRequirements")
+      case Some(req) => (true, req.expressionLib)
+      case _         => (false, None)
     }
   }
 
-  def getSchemaDefs(requirements: Vector[Hint]): Map[String, CwlSchema] = {
-    requirements
+  /**
+    * Gets the SchemaDef hints from a list of hints. If there are
+    * multiple SchemaDef hints, all are merged, with later ones
+    * overriding earlier ones.
+    * @param hints Vector of Hints
+    * @return
+    */
+  def getSchemaDefs(hints: Vector[Hint]): Map[String, CwlSchema] = {
+    hints
       .collect {
         case req: SchemaDefRequirement => req.asMap
       }
