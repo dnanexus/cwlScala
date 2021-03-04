@@ -48,11 +48,11 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       val testCase = x.asInstanceOf[java.util.Map[String, Any]].asScala
       val id = getString(testCase("id"))
       s"evaluate ${id}" in {
-        val (cwlTypes, _) = CwlType(getString(testCase("type")))
+        val (cwlType, _) = CwlType.translate(getString(testCase("type")))
         val outputBinding =
           testCase("outputBinding").asInstanceOf[java.util.Map[String, Any]].asScala
         val expr = getString(outputBinding("outputEval"))
-        evaluator(expr, cwlTypes, ctx)
+        evaluator(expr, cwlType, ctx)
       }
     }
   }
@@ -89,11 +89,11 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       val testCase = x.asInstanceOf[java.util.Map[String, Any]].asScala
       val id = getString(testCase("id"))
       s"evaluate ${id}" in {
-        val (cwlTypes, _) = CwlType(getString(testCase("type")))
+        val (cwlType, _) = CwlType.translate(getString(testCase("type")))
         val outputBinding =
           testCase("outputBinding").asInstanceOf[java.util.Map[String, Any]].asScala
         val expr = getString(outputBinding("outputEval"))
-        evaluator(expr, cwlTypes, ctx)
+        evaluator(expr, cwlType, ctx)
       }
     }
   }

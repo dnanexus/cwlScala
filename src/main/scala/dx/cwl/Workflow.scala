@@ -35,7 +35,7 @@ object WorkflowInputBinding {
 case class WorkflowInputParameter(id: Option[Identifier],
                                   label: Option[String],
                                   doc: Option[String],
-                                  types: Vector[CwlType],
+                                  cwlType: CwlType,
                                   default: Option[CwlValue],
                                   inputBinding: Option[WorkflowInputBinding],
                                   secondaryFiles: Vector[SecondaryFile],
@@ -48,7 +48,7 @@ case class WorkflowInputParameter(id: Option[Identifier],
 object WorkflowInputParameter {
   def apply(param: WorkflowInputParameterImpl,
             schemaDefs: Map[String, CwlSchema]): WorkflowInputParameter = {
-    val (types, stdfile) = CwlType(param.getType, schemaDefs)
+    val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     assert(stdfile.isEmpty)
     val inputBinding = translateOptional(param.getInputBinding).map {
       case binding: InputBindingImpl => WorkflowInputBinding(binding)
@@ -107,7 +107,7 @@ object PickValueMethod extends Enumeration {
 case class WorkflowOutputParameter(id: Option[Identifier],
                                    label: Option[String],
                                    doc: Option[String],
-                                   types: Vector[CwlType],
+                                   cwlType: CwlType,
                                    secondaryFiles: Vector[SecondaryFile],
                                    format: Option[CwlValue],
                                    streamable: Option[Boolean],
@@ -119,7 +119,7 @@ case class WorkflowOutputParameter(id: Option[Identifier],
 object WorkflowOutputParameter {
   def apply(param: WorkflowOutputParameterImpl,
             schemaDefs: Map[String, CwlSchema]): WorkflowOutputParameter = {
-    val (types, stdfile) = CwlType(param.getType, schemaDefs)
+    val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     assert(stdfile.isEmpty)
     WorkflowOutputParameter(
         translateOptional(param.getId).map(Identifier.apply),
@@ -300,7 +300,7 @@ object Workflow {
 case class ExpressionToolOutputParameter(id: Option[Identifier],
                                          label: Option[String],
                                          doc: Option[String],
-                                         types: Vector[CwlType],
+                                         cwlType: CwlType,
                                          secondaryFiles: Vector[SecondaryFile],
                                          format: Option[CwlValue],
                                          streamable: Option[Boolean])
@@ -309,7 +309,7 @@ case class ExpressionToolOutputParameter(id: Option[Identifier],
 object ExpressionToolOutputParameter {
   def apply(param: ExpressionToolOutputParameterImpl,
             schemaDefs: Map[String, CwlSchema]): ExpressionToolOutputParameter = {
-    val (types, stdfile) = CwlType(param.getType, schemaDefs)
+    val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     assert(stdfile.isEmpty)
     ExpressionToolOutputParameter(
         translateOptional(param.getId).map(Identifier.apply),
@@ -372,7 +372,7 @@ object ExpressionTool {
 case class OperationInputParameter(id: Option[Identifier],
                                    label: Option[String],
                                    doc: Option[String],
-                                   types: Vector[CwlType],
+                                   cwlType: CwlType,
                                    default: Option[CwlValue],
                                    secondaryFiles: Vector[SecondaryFile],
                                    format: Vector[CwlValue],
@@ -384,7 +384,7 @@ case class OperationInputParameter(id: Option[Identifier],
 object OperationInputParameter {
   def apply(param: OperationInputParameterImpl,
             schemaDefs: Map[String, CwlSchema]): OperationInputParameter = {
-    val (types, stdfile) = CwlType(param.getType, schemaDefs)
+    val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     assert(stdfile.isEmpty)
     OperationInputParameter(
         translateOptional(param.getId).map(Identifier.apply),
@@ -415,7 +415,7 @@ object OperationInputParameter {
 case class OperationOutputParameter(id: Option[Identifier],
                                     label: Option[String],
                                     doc: Option[String],
-                                    types: Vector[CwlType],
+                                    cwlType: CwlType,
                                     secondaryFiles: Vector[SecondaryFile],
                                     format: Option[CwlValue],
                                     streamable: Option[Boolean])
@@ -424,7 +424,7 @@ case class OperationOutputParameter(id: Option[Identifier],
 object OperationOutputParameter {
   def apply(param: OperationOutputParameterImpl,
             schemaDefs: Map[String, CwlSchema]): OperationOutputParameter = {
-    val (types, stdfile) = CwlType(param.getType, schemaDefs)
+    val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     assert(stdfile.isEmpty)
     OperationOutputParameter(
         translateOptional(param.getId).map(Identifier.apply),

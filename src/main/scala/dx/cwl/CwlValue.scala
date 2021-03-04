@@ -24,21 +24,6 @@ sealed trait CwlValue {
   def coercibleTo(targetType: CwlType): Boolean = false
 
   def coerceTo(targetType: CwlType): CwlValue = ???
-
-  /**
-    * Coerces this value to the first of the given types to which
-    * it is coercible, or throws an Exception if it is not coercible to
-    * any of the given types.
-    * @param targetTypes the types to attempt coercion
-    * @return
-    */
-  def coerceTo(targetTypes: Vector[CwlType]): (CwlType, CwlValue) = {
-    targetTypes.iterator
-      .collectFirst {
-        case t if coercibleTo(t) => (t, coerceTo(t))
-      }
-      .getOrElse(throw new Exception(s"${this} is not coercible to any of ${targetTypes}"))
-  }
 }
 
 case object NullValue extends CwlValue {
@@ -54,10 +39,10 @@ case object NullValue extends CwlValue {
   }
 
   override def coerceTo(targetType: CwlType): CwlValue = {
-    targetType match {
-      case CwlNull | CwlOptional(_) => this
-      case _ =>
-        throw new Exception(s"null is not coercible to ${targetType}")
+    if (targetType == CwlNull || CwlOptional.isOptional(targetType)) {
+      NullValue
+    } else {
+      throw new Exception(s"null is not coercible to ${targetType}")
     }
   }
 }
@@ -77,8 +62,25 @@ sealed trait PrimitiveValue extends CwlValue {
 
   override def coerceTo(targetType: CwlType): CwlValue = {
     targetType match {
-      case this.cwlType | CwlAny        => this
-      case CwlOptional(t)               => coerceTo(t)
+      case this.cwlType | CwlAny => this
+      case CwlOptional(t)        => coerceTo(t)
+      case CwlMulti(types) =>
+        types.iterator
+          .map { t =>
+            try {
+              Some(coerceTo(t))
+            } catch {
+              case _: Throwable => None
+            }
+          }
+          .collectFirst {
+            case Some(result) => result
+          }
+          .getOrElse(
+              throw new Exception(
+                  s"cannot coerce ${this} to any of types ${types.mkString(",")}"
+              )
+          )
       case _ if coercibleTo(targetType) => coerceToOther(targetType)
       case _ =>
         throw new Exception(s"${this} is not coercible to ${targetType}")
@@ -235,36 +237,6 @@ object CwlValue {
   }
 
   /**
-    * Translates a Java value to a [[CwlValue]] of one of the specified types. Each type
-    * is tried in order, and the result is the first one to return a value.
-    * @param value the value to translate
-    * @param cwlTypes the target types
-    * @param schemaDefs any schema definitions to use when resolving Map-type
-    *                   values that specify their `class`
-    * @return a [[CwlValue]]
-    */
-  def apply(value: java.lang.Object,
-            cwlTypes: Vector[CwlType],
-            schemaDefs: Map[String, CwlSchema]): CwlValue = {
-    cwlTypes.iterator
-      .map { t =>
-        try {
-          Some(apply(value, t, schemaDefs))
-        } catch {
-          case _: Throwable => None
-        }
-      }
-      .collectFirst {
-        case Some(value) => value
-      }
-      .getOrElse(
-          throw new Exception(
-              s"cannot translate ${value} to any of types ${cwlTypes.mkString(",")}"
-          )
-      )
-  }
-
-  /**
     * Serializes a [[Map[String, CwlValue]] to a [[JsObject]] using the
     * `toJson` method of the values.
     */
@@ -310,17 +282,10 @@ object CwlValue {
     }
   }
 
-  /**
-    * Deserializes a JSON value to a [[CwlValue]] given type information.
-    * @param jsValue the JSON value
-    * @param cwlType the target type
-    * @param schemaDefs schema defintions to use when resolving types
-    * @return a [[CwlValue]]
-    */
   @tailrec
-  def deserialize(jsValue: JsValue,
-                  cwlType: CwlType,
-                  schemaDefs: Map[String, CwlSchema]): CwlValue = {
+  private def deserializeSingle(jsValue: JsValue,
+                                cwlType: CwlType,
+                                schemaDefs: Map[String, CwlSchema]): CwlValue = {
     cwlType match {
       case CwlString         => StringValue.deserialize(jsValue)
       case CwlBoolean        => BooleanValue.deserialize(jsValue)
@@ -336,7 +301,7 @@ object CwlValue {
       case CwlOptional(_) if jsValue == JsNull =>
         NullValue
       case CwlOptional(t) =>
-        deserialize(jsValue, t, schemaDefs)
+        deserializeSingle(jsValue, t, schemaDefs)
       case CwlNull if jsValue == JsNull =>
         NullValue
       case CwlAny if jsValue != JsNull =>
@@ -347,32 +312,45 @@ object CwlValue {
   }
 
   /**
-    * Deserializes a JSON value to a [[CwlValue]] given type information. Each type
-    * * is tried in order, and the result is the first one to return a value.
+    * Deserializes a JSON value to a [[CwlValue]] given type information.
     * @param jsValue the JSON value
-    * @param cwlTypes the target types
+    * @param cwlType the target type
     * @param schemaDefs schema defintions to use when resolving types
-    * @return tuple ([[CwlType]], [[CwlValue]])
+    * @return ([[CwlType]], [[CwlValue]]), where the CwlType is the actual
+    *         type of the return value
     */
   def deserialize(jsValue: JsValue,
-                  cwlTypes: Vector[CwlType],
+                  cwlType: CwlType,
                   schemaDefs: Map[String, CwlSchema]): (CwlType, CwlValue) = {
-    cwlTypes.iterator
-      .map { t =>
-        try {
-          Some((t, deserialize(jsValue, t, schemaDefs)))
-        } catch {
-          case _: Throwable => None
-        }
-      }
-      .collectFirst {
-        case Some(result) => result
-      }
-      .getOrElse(
-          throw new Exception(
-              s"cannot deserialize ${jsValue} to any of types ${cwlTypes.mkString(",")}"
+    cwlType match {
+      case CwlOptional(t) => deserialize(jsValue, t, schemaDefs)
+      case CwlMulti(types) =>
+        types.iterator
+          .map {
+            case CwlAny => None
+            case t =>
+              try {
+                Some((t, deserialize(jsValue, t, schemaDefs)._2))
+              } catch {
+                case _: Throwable => None
+              }
+          }
+          .collectFirst {
+            case Some(result) => result
+          }
+          .getOrElse(
+              if (types.contains(CwlAny)) {
+                (CwlAny, deserialize(jsValue, schemaDefs))
+              } else {
+                throw new Exception(
+                    s"cannot deserialize ${jsValue} to any of types ${types.mkString(",")}"
+                )
+              }
           )
-      )
+      case _ =>
+        val cwlValue = deserializeSingle(jsValue, cwlType, schemaDefs)
+        (cwlType, cwlValue)
+    }
   }
 
   def deserializeMap(map: Map[String, JsValue],
@@ -398,19 +376,22 @@ object CwlValue {
       case _: RandomFile     => CwlFile
       case _: DirectoryValue => CwlDirectory
       case ArrayValue(array) =>
-        val itemTypes = array.map(inferType(_, ctx))
-        CwlArray(itemTypes.distinct)
+        val itemType = array.map(inferType(_, ctx)).distinct match {
+          case Vector(t) => t
+          case types     => CwlType.flatten(types)
+        }
+        CwlArray(itemType)
       case schema: ObjectLike if ctx == CwlValueContext.Input =>
         CwlInputRecord(schema.fields.map {
           case (name, value) =>
             val cwlType = inferType(value, ctx)
-            name -> CwlInputRecordField(name, Vector(cwlType))
+            name -> CwlInputRecordField(name, cwlType)
         })
       case schema: ObjectLike if ctx == CwlValueContext.Output =>
         CwlOutputRecord(schema.fields.map {
           case (name, value) =>
             val cwlType = inferType(value, ctx)
-            name -> CwlOutputRecordField(name, Vector(cwlType))
+            name -> CwlOutputRecordField(name, cwlType)
         })
     }
   }
@@ -1084,7 +1065,38 @@ case class RandomFile(stdfile: StdFile.StdFile) extends PrimitiveValue {
   }
 }
 
-case class ArrayValue(items: Vector[CwlValue]) extends CwlValue with IntIndexable {
+sealed trait ContainerValue extends CwlValue {
+  protected def coerceToOther(targetType: CwlType): CwlValue
+
+  override def coerceTo(targetType: CwlType): CwlValue = {
+    targetType match {
+      case CwlAny         => this
+      case CwlOptional(t) => coerceTo(t)
+      case CwlMulti(types) =>
+        types.iterator
+          .map { t =>
+            try {
+              Some(coerceTo(t))
+            } catch {
+              case _: Throwable => None
+            }
+          }
+          .collectFirst {
+            case Some(result) => result
+          }
+          .getOrElse(
+              throw new Exception(
+                  s"cannot coerce ${this} to any of types ${types.mkString(",")}"
+              )
+          )
+      case _ if coercibleTo(targetType) => coerceToOther(targetType)
+      case _ =>
+        throw new Exception(s"${this} is not coercible to ${targetType}")
+    }
+  }
+}
+
+case class ArrayValue(items: Vector[CwlValue]) extends ContainerValue with IntIndexable {
   override def length: Int = {
     items.size
   }
@@ -1099,16 +1111,15 @@ case class ArrayValue(items: Vector[CwlValue]) extends CwlValue with IntIndexabl
 
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
-      case schema: CwlArray => items.forall(i => schema.itemTypes.exists(i.coercibleTo))
+      case schema: CwlArray => items.forall(_.coercibleTo(schema.itemType))
       case _                => false
     }
   }
 
-  override def coerceTo(targetType: CwlType): CwlValue = {
+  override def coerceToOther(targetType: CwlType): CwlValue = {
     targetType match {
-      case CwlOptional(t) => coerceTo(t)
       case arrayType: CwlArray if coercibleTo(arrayType) =>
-        ArrayValue(items.map(_.coerceTo(arrayType.itemTypes)).map(_._2))
+        ArrayValue(items.map(_.coerceTo(arrayType.itemType)))
       case _ =>
         throw new Exception(s"${this} is not coercible to ${targetType}")
     }
@@ -1129,7 +1140,7 @@ object ArrayValue {
             schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     ArrayValue(
         array.asScala.toVector.map(obj =>
-          CwlValue(obj.asInstanceOf[java.lang.Object], cwlType.itemTypes, schemaDefs)
+          CwlValue(obj.asInstanceOf[java.lang.Object], cwlType.itemType, schemaDefs)
         )
     )
   }
@@ -1149,7 +1160,7 @@ object ArrayValue {
                   schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     jsValue match {
       case JsArray(array) =>
-        val (_, values) = array.map(CwlValue.deserialize(_, schema.itemTypes, schemaDefs)).unzip
+        val (_, values) = array.map(CwlValue.deserialize(_, schema.itemType, schemaDefs)).unzip
         ArrayValue(values)
       case JsObject(fields) if fields.contains("values") =>
         fields("values") match {
@@ -1167,7 +1178,7 @@ trait ObjectLike extends CwlValue with StringIndexable {
   def fields: SeqMap[String, CwlValue]
 }
 
-case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ObjectLike {
+case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ContainerValue with ObjectLike {
 
   override def contains(key: String): Boolean = {
     fields.contains(key)
@@ -1188,7 +1199,7 @@ case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ObjectLike {
         schema.fields.values.forall { field =>
           if (fields.contains(field.name)) {
             val value = fields(field.name)
-            field.types.exists(value.coercibleTo)
+            value.coercibleTo(field.cwlType)
           } else if (field.optional) {
             true
           } else {
@@ -1199,15 +1210,14 @@ case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ObjectLike {
     }
   }
 
-  override def coerceTo(targetType: CwlType): CwlValue = {
+  override def coerceToOther(targetType: CwlType): CwlValue = {
     targetType match {
-      case CwlOptional(t) => coerceTo(t)
       case schema: CwlRecord if coercibleTo(schema) =>
         ObjectValue(
             schema.fields.values
               .map { field =>
                 val value = if (fields.contains(field.name)) {
-                  fields(field.name).coerceTo(field.types)._2
+                  fields(field.name).coerceTo(field.cwlType)
                 } else if (field.optional) {
                   NullValue
                 } else {
@@ -1250,7 +1260,7 @@ object ObjectValue {
               case null =>
                 throw new Exception(s"missing required field ${field.name} in ${map}")
               case obj: java.lang.Object =>
-                CwlValue(obj, field.types, schemaDefs)
+                CwlValue(obj, field.cwlType, schemaDefs)
             }
           }
           .to(TreeSeqMap)
@@ -1274,7 +1284,7 @@ object ObjectValue {
         schema.fields.view
           .mapValues { field =>
             if (fields.contains(field.name)) {
-              val (_, value) = CwlValue.deserialize(fields(field.name), field.types, schemaDefs)
+              val (_, value) = CwlValue.deserialize(fields(field.name), field.cwlType, schemaDefs)
               value
             } else if (field.optional) {
               NullValue

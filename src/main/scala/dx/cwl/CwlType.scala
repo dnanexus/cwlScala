@@ -62,11 +62,11 @@ object CwlType {
     * @param schemaDefs schema definitions to use for resolving non-standard types
     * @return a tuple [[(Vector[CwlType], Option[StdFile.StdFile])]].
     */
-  def translate(
+  private[cwl] def translateRaw(
       t: java.lang.Object,
       schemaDefs: Map[String, CwlSchema] = Map.empty,
       rawSchemaDefs: Map[String, IOSchema] = Map.empty
-  ): (Vector[CwlType], Option[StdFile.StdFile], Map[String, CwlSchema]) = {
+  ): (CwlType, Option[StdFile.StdFile], Map[String, CwlSchema]) = {
     def inner(
         innerType: java.lang.Object,
         innerSchemaDefs: Map[String, CwlSchema]
@@ -134,23 +134,54 @@ object CwlType {
           (Vector(cwlType), None, innerSchemaDefs)
       }
     }
-    inner(t, Map.empty)
+    val (types, stdFile, updatedSchemas) = inner(t, Map.empty)
+    (flatten(types), stdFile, updatedSchemas)
   }
 
-  def apply(
+  /**
+    * Simplifies a Set of alternative types
+    * 1) if CwlNull is in the set, convert all types to optional and remove CwlNull
+    * 2) if CwlAny or CwlOptional(CwlAny) is in the set, reduce the set to that
+    * single type (since Any is a superset of all non-null types)
+    * @param types set of alternative types
+    * @return
+    */
+  def flatten(types: Vector[CwlType]): CwlType = {
+    @tailrec
+    def inner(innerTypes: Vector[CwlType]): Vector[CwlType] = {
+      if (innerTypes.size > 1 && innerTypes.contains(CwlNull)) {
+        inner(innerTypes.diff(Vector(CwlNull)).map(CwlOptional.ensureOptional))
+      } else if (innerTypes.contains(CwlOptional(CwlAny))) {
+        Vector(CwlOptional(CwlAny))
+      } else if (innerTypes.contains(CwlAny)) {
+        Vector(CwlAny)
+      } else {
+        innerTypes
+      }
+    }
+    val flattened = inner(types)
+    if (flattened.size == 1) {
+      flattened.head
+    } else {
+      CwlMulti(flattened)
+    }
+  }
+
+  def translate(
       t: java.lang.Object,
       schemaDefs: Map[String, CwlSchema] = Map.empty
-  ): (Vector[CwlType], Option[StdFile.StdFile]) = {
-    val (types, stdfile, _) = translate(t, schemaDefs, Map.empty)
-    (types, stdfile)
+  ): (CwlType, Option[StdFile.StdFile]) = {
+    val (cwlType, stdfile, _) = translateRaw(t, schemaDefs, Map.empty)
+    (cwlType, stdfile)
   }
 }
 
 case object CwlNull extends CwlType {
   override def coercibleTo(targetType: CwlType): Boolean = {
     targetType match {
-      case CwlNull | CwlOptional(_) => true
-      case _                        => false
+      case CwlNull | CwlOptional(_)            => true
+      case multi: CwlMulti if multi.isOptional => true
+      case _                                   => false
     }
   }
 }
@@ -171,6 +202,7 @@ case class CwlOptional(t: CwlType) extends CwlType {
     targetType match {
       case CwlAny | CwlNull | CwlOptional(CwlNull) => true
       case CwlOptional(other)                      => t.coercibleTo(other)
+      case multi: CwlMulti if multi.isOptional     => multi.types.exists(coercibleTo)
       case _                                       => false
     }
   }
@@ -179,19 +211,16 @@ case class CwlOptional(t: CwlType) extends CwlType {
 object CwlOptional {
   def isOptional(t: CwlType): Boolean = {
     t match {
-      case CwlOptional(_) => true
-      case _              => false
+      case CwlOptional(_)  => true
+      case multi: CwlMulti => multi.isOptional
+      case _               => false
     }
   }
 
-  def anyOptional(types: Vector[CwlType]): Boolean = {
-    types.exists(isOptional)
-  }
-
-  @tailrec
   def unwrapOptional(t: CwlType): CwlType = {
     t match {
       case CwlOptional(innerType) => unwrapOptional(innerType)
+      case CwlMulti(types)        => CwlMulti(types.map(unwrapOptional))
       case _                      => t
     }
   }
@@ -199,9 +228,24 @@ object CwlOptional {
   def ensureOptional(t: CwlType): CwlType = {
     t match {
       case optType: CwlOptional => optType
+      case CwlMulti(types)      => CwlMulti(types.map(ensureOptional))
       case _                    => CwlOptional(t)
     }
   }
+}
+
+/**
+  * A meta-type that matches any one of several types.
+  */
+case class CwlMulti(types: Vector[CwlType]) extends CwlType {
+  override def coercibleTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case CwlMulti(otherTypes) => otherTypes.exists(coercibleTo)
+      case _                    => types.exists(_.coercibleTo(targetType))
+    }
+  }
+
+  lazy val isOptional: Boolean = types.exists(CwlOptional.isOptional)
 }
 
 /**
@@ -210,12 +254,17 @@ object CwlOptional {
 sealed trait CwlPrimitive extends CwlType {
   def coercibleTo(targetType: CwlType): Boolean = {
     val nonOptType = CwlOptional.unwrapOptional(targetType)
-    Set[CwlType](this, CwlAny).contains(nonOptType) || canBeCoercedTo(nonOptType)
+    nonOptType == this || (nonOptType match {
+      case CwlAny          => true
+      case CwlMulti(types) => types.exists(coercibleTo)
+      case _               => canBeCoercedTo(nonOptType)
+    })
   }
 
   /**
     * Returns true if this type can be coerced to targetType,
-    * which is a non-optional, non-equal, and non-Any type.
+    * which is a non-optional, non-equal, non-Any, and
+    * non-Multi type.
     */
   protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     CwlString == targetType
@@ -276,7 +325,11 @@ sealed trait CwlSchema extends CwlType {
 
   def coercibleTo(targetType: CwlType): Boolean = {
     val nonOptType = CwlOptional.unwrapOptional(targetType)
-    Set[CwlType](this, CwlAny).contains(nonOptType) || canBeCoercedTo(nonOptType)
+    nonOptType == this || (nonOptType match {
+      case CwlAny          => true
+      case CwlMulti(types) => types.exists(coercibleTo)
+      case _               => canBeCoercedTo(nonOptType)
+    })
   }
 
   /**
@@ -390,7 +443,7 @@ object CwlSchema {
   }
 }
 
-case class CwlArray(itemTypes: Vector[CwlType],
+case class CwlArray(itemType: CwlType,
                     name: Option[String] = None,
                     label: Option[String] = None,
                     doc: Option[String] = None,
@@ -398,20 +451,15 @@ case class CwlArray(itemTypes: Vector[CwlType],
     extends CwlInputSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
-      case targetSchema: CwlArray =>
-        itemTypes.exists { fromType =>
-          targetSchema.itemTypes.exists { toType =>
-            fromType.coercibleTo(toType)
-          }
-        }
-      case _ => false
+      case targetSchema: CwlArray => itemType.coercibleTo(targetSchema.itemType)
+      case _                      => false
     }
   }
 }
 
 object CwlArray {
   private def create(schema: ArraySchema,
-                     types: Vector[CwlType],
+                     cwlType: CwlType,
                      schemaDefs: Map[String, CwlSchema]): CwlArray = {
     val (name, label, doc) = schema match {
       case schema: InputArraySchema  => (schema.getName, schema.getLabel, schema.getDoc)
@@ -428,7 +476,7 @@ object CwlArray {
       case _ => None
     }
     CwlArray(
-        types,
+        cwlType,
         translateOptional(name).map(Utils.normalizeUri),
         translateOptional(label),
         translateDoc(doc),
@@ -437,9 +485,9 @@ object CwlArray {
   }
 
   def apply(schema: ArraySchema, schemaDefs: Map[String, CwlSchema]): CwlArray = {
-    val (types, stdfile) = CwlType(schema.getItems, schemaDefs)
+    val (cwlType, stdfile) = CwlType.translate(schema.getItems, schemaDefs)
     assert(stdfile.isEmpty)
-    create(schema, types, schemaDefs)
+    create(schema, cwlType, schemaDefs)
   }
 
   def translate(
@@ -448,7 +496,7 @@ object CwlArray {
       rawSchemaDefs: Map[String, IOSchema]
   ): (CwlArray, Map[String, CwlSchema]) = {
     val (types, stdfile, newSchemaDefs) =
-      CwlType.translate(schema.getItems, schemaDefs, rawSchemaDefs)
+      CwlType.translateRaw(schema.getItems, schemaDefs, rawSchemaDefs)
     assert(stdfile.isEmpty)
     (create(schema, types, schemaDefs ++ newSchemaDefs), newSchemaDefs)
   }
@@ -456,7 +504,7 @@ object CwlArray {
 
 sealed trait CwlRecordField {
   val name: String
-  val types: Vector[CwlType]
+  val cwlType: CwlType
   val label: Option[String]
   val doc: Option[String]
   val secondaryFiles: Vector[SecondaryFile]
@@ -466,12 +514,7 @@ sealed trait CwlRecordField {
   /**
     * the field is optional if any of the allowed types are optional
     */
-  lazy val optional: Boolean = {
-    types.exists {
-      case CwlOptional(_) => true
-      case _              => false
-    }
-  }
+  lazy val optional: Boolean = CwlOptional.isOptional(cwlType)
 }
 
 sealed trait CwlRecord extends CwlSchema {
@@ -479,7 +522,7 @@ sealed trait CwlRecord extends CwlSchema {
 }
 
 case class CwlInputRecordField(name: String,
-                               types: Vector[CwlType],
+                               cwlType: CwlType,
                                label: Option[String] = None,
                                doc: Option[String] = None,
                                inputBinding: Option[CommandInputBinding] = None,
@@ -492,7 +535,7 @@ case class CwlInputRecordField(name: String,
 
 object CwlInputRecordField {
   private def create(field: InputRecordField,
-                     types: Vector[CwlType],
+                     cwlType: CwlType,
                      schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
     val inputBinding = field match {
       case c: CommandInputRecordField =>
@@ -505,7 +548,7 @@ object CwlInputRecordField {
     }
     CwlInputRecordField(
         field.getName,
-        types,
+        cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
         inputBinding,
@@ -522,9 +565,9 @@ object CwlInputRecordField {
   }
 
   def apply(field: InputRecordField, schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
-    val (types, stdfile) = CwlType(field.getType, schemaDefs)
+    val (cwlType, stdfile) = CwlType.translate(field.getType, schemaDefs)
     assert(stdfile.isEmpty)
-    create(field, types, schemaDefs)
+    create(field, cwlType, schemaDefs)
   }
 
   def translate(
@@ -532,10 +575,10 @@ object CwlInputRecordField {
       schemaDefs: Map[String, CwlSchema],
       rawSchemaDefs: Map[String, IOSchema]
   ): (CwlInputRecordField, Map[String, CwlSchema]) = {
-    val (types, stdfile, newSchemaDefs) =
-      CwlType.translate(field.getType, schemaDefs, rawSchemaDefs)
+    val (cwlType, stdfile, newSchemaDefs) =
+      CwlType.translateRaw(field.getType, schemaDefs, rawSchemaDefs)
     assert(stdfile.isEmpty)
-    (create(field, types, schemaDefs ++ newSchemaDefs), newSchemaDefs)
+    (create(field, cwlType, schemaDefs ++ newSchemaDefs), newSchemaDefs)
   }
 }
 
@@ -551,11 +594,8 @@ case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
       case targetSchema: CwlInputRecord if fields.keySet == targetSchema.fields.keySet =>
         fields.forall {
           case (name, fromField) =>
-            fromField.types.exists { fromType =>
-              targetSchema.fields(name).types.exists { toType =>
-                fromType.coercibleTo(toType)
-              }
-            }
+            val toField = targetSchema.fields(name)
+            fromField.cwlType.coercibleTo(toField.cwlType)
         }
       case _ => false
     }
@@ -625,7 +665,7 @@ object CwlInputRecord {
 }
 
 case class CwlOutputRecordField(name: String,
-                                types: Vector[CwlType],
+                                cwlType: CwlType,
                                 label: Option[String] = None,
                                 doc: Option[String] = None,
                                 outputBinding: Option[CommandOutputBinding] = None,
@@ -636,7 +676,7 @@ case class CwlOutputRecordField(name: String,
 
 object CwlOutputRecordField {
   private def create(field: OutputRecordField,
-                     types: Vector[CwlType],
+                     cwlType: CwlType,
                      schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
     val outputBinding = field match {
       case c: CommandOutputRecordField =>
@@ -649,7 +689,7 @@ object CwlOutputRecordField {
     }
     CwlOutputRecordField(
         field.getName,
-        types,
+        cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
         outputBinding,
@@ -664,9 +704,9 @@ object CwlOutputRecordField {
   }
 
   def apply(field: OutputRecordField, schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
-    val (types, stdfile) = CwlType(field.getType, schemaDefs)
+    val (cwlType, stdfile) = CwlType.translate(field.getType, schemaDefs)
     assert(stdfile.isEmpty)
-    create(field, types, schemaDefs)
+    create(field, cwlType, schemaDefs)
   }
 
   def translate(
@@ -675,7 +715,7 @@ object CwlOutputRecordField {
       rawSchemaDefs: Map[String, IOSchema]
   ): (CwlOutputRecordField, Map[String, CwlSchema]) = {
     val (types, stdfile, newSchemaDefs) =
-      CwlType.translate(field.getType, schemaDefs, rawSchemaDefs)
+      CwlType.translateRaw(field.getType, schemaDefs, rawSchemaDefs)
     assert(stdfile.isEmpty)
     (create(field, types, schemaDefs ++ newSchemaDefs), newSchemaDefs)
   }
@@ -691,11 +731,8 @@ case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
       case targetSchema: CwlOutputRecord if fields.keySet == targetSchema.fields.keySet =>
         fields.forall {
           case (name, fromField) =>
-            fromField.types.exists { fromType =>
-              targetSchema.fields(name).types.exists { toType =>
-                fromType.coercibleTo(toType)
-              }
-            }
+            val toField = targetSchema.fields(name)
+            fromField.cwlType.coercibleTo(toField.cwlType)
         }
       case _ => false
     }

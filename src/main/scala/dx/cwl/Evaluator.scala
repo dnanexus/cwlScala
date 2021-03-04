@@ -12,7 +12,7 @@ import org.commonwl.cwl.refparser.v1_2.{CwlParameterReferenceLexer, CwlParameter
 import spray.json._
 import sun.security.action.GetPropertyAction
 
-import scala.annotation.nowarn
+import scala.annotation.{nowarn, tailrec}
 import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
 
@@ -501,7 +501,7 @@ case class Evaluator(jsEnabled: Boolean = false,
   private lazy val jsPreamble: String = jsLibrary.map(lib => s"${lib}\n").getOrElse("")
 
   def applyEcmaScript(script: String,
-                      cwlTypes: Vector[CwlType],
+                      cwlType: CwlType,
                       ctx: EvaluatorContext): (CwlType, CwlValue) = {
     val engine = Engine(ctx.toScope)
     val result =
@@ -511,51 +511,56 @@ case class Evaluator(jsEnabled: Boolean = false,
         case ex: Throwable =>
           throw new Exception(s"could not evaluate ECMA script ${script}", ex)
       }
-    CwlValue.deserialize(result, cwlTypes, schemaDefs)
+    CwlValue.deserialize(result, cwlType, schemaDefs)
   }
 
-  private def checkCoercibleTo(value: CwlValue, cwlTypes: Vector[CwlType]): (CwlType, CwlValue) = {
-    val firstType = cwlTypes
-      .collectFirst {
-        case t if value.coercibleTo(t) => t
-      }
-      .getOrElse(
-          throw new Exception(s"${value} is not coercible to any of ${cwlTypes}")
-      )
-    (firstType, value)
-  }
-
-  def applyEcmaString(ecmaString: EcmaString,
-                      cwlTypes: Vector[CwlType],
-                      ctx: EvaluatorContext): (CwlType, CwlValue) = {
-    ecmaString match {
-      case StringLiteral(s) =>
-        checkCoercibleTo(StringValue(s), cwlTypes)
-      case CompoundString(parts) =>
-        checkCoercibleTo(
-            StringValue(parts.map(applyEcmaString(_, cwlTypes, ctx).toString).mkString("")),
-            cwlTypes
-        )
-      case EcmaExpr(expr) =>
-        val script = s"${jsPreamble}${expr};"
-        applyEcmaScript(script, cwlTypes, ctx)
-      case EcmaFunctionBody(body) =>
-        val script = s"""${jsPreamble}function __anon__() {
-                        |  ${body};
-                        |}
-                        |__anon__();""".stripMargin
-        applyEcmaScript(script, cwlTypes, ctx)
+  @tailrec
+  private def checkCoercibleTo(value: CwlValue, cwlType: CwlType): (CwlType, CwlValue) = {
+    (cwlType, value) match {
+      case (CwlNull, NullValue)                              => (cwlType, value)
+      case (_, NullValue) if CwlOptional.isOptional(cwlType) => (cwlType, value)
+      case (_, NullValue) =>
+        throw new Exception(s"null is not coercible to non-optional type ${cwlType}")
+      case (CwlOptional(t), _) => checkCoercibleTo(value, t)
+      case (CwlMulti(types), _) =>
+        types
+          .collectFirst {
+            case t if value.coercibleTo(t) => (t, value)
+          }
+          .getOrElse(
+              throw new Exception(s"${value} is not coercible to any of ${types}")
+          )
+      case _ if value.coercibleTo(cwlType) => (cwlType, value)
+      case _ =>
+        throw new Exception(s"${value} is not coercible to ${cwlType}")
     }
   }
 
   def applyEcmaString(ecmaString: EcmaString,
                       cwlType: CwlType,
                       ctx: EvaluatorContext): (CwlType, CwlValue) = {
-    applyEcmaString(ecmaString, Vector(cwlType), ctx)
+    ecmaString match {
+      case StringLiteral(s) =>
+        checkCoercibleTo(StringValue(s), cwlType)
+      case CompoundString(parts) =>
+        checkCoercibleTo(
+            StringValue(parts.map(applyEcmaString(_, cwlType, ctx).toString).mkString("")),
+            cwlType
+        )
+      case EcmaExpr(expr) =>
+        val script = s"${jsPreamble}${expr};"
+        applyEcmaScript(script, cwlType, ctx)
+      case EcmaFunctionBody(body) =>
+        val script = s"""${jsPreamble}function __anon__() {
+                        |  ${body};
+                        |}
+                        |__anon__();""".stripMargin
+        applyEcmaScript(script, cwlType, ctx)
+    }
   }
 
   def applyParameterValue(expr: ParameterValue,
-                          cwlTypes: Vector[CwlType],
+                          cwlType: CwlType,
                           ctx: EvaluatorContext): (CwlType, CwlValue) = {
     checkCoercibleTo(
         expr match {
@@ -563,7 +568,7 @@ case class Evaluator(jsEnabled: Boolean = false,
           case CompoundValue(parts) =>
             StringValue(
                 parts
-                  .map(applyParameterValue(_, Vector(CwlString, CwlNull), ctx).toString)
+                  .map(applyParameterValue(_, CwlOptional(CwlString), ctx).toString)
                   .mkString("")
             )
           case ParameterReference(rootSymbol, segments) =>
@@ -593,43 +598,33 @@ case class Evaluator(jsEnabled: Boolean = false,
                 throw new Exception(s"symbol ${other} not found in context")
             }
         },
-        cwlTypes
+        cwlType
     )
-  }
-
-  def applyParameterValue(expr: ParameterValue,
-                          cwlType: CwlType,
-                          ctx: EvaluatorContext): CwlValue = {
-    applyParameterValue(expr, Vector(cwlType), ctx)._2
   }
 
   /**
     * The evaluator to use - simple parameter reference evaluator or Rhino
     * Javascript evaluator, depending on the value of `jsEnabled`.
     */
-  private lazy val eval: (String, Vector[CwlType], EvaluatorContext) => (CwlType, CwlValue) = {
+  private lazy val eval: (String, CwlType, EvaluatorContext) => (CwlType, CwlValue) = {
     if (jsEnabled) {
       val parser = EcmaStringParser(trace)
-      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
-        applyEcmaString(parser(s), cwlTypes, ctx)
+      (s: String, cwlType: CwlType, ctx: EvaluatorContext) =>
+        applyEcmaString(parser(s), cwlType, ctx)
     } else {
       val parser = ParameterReferenceParser(trace)
-      (s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext) =>
-        applyParameterValue(parser(s), cwlTypes, ctx)
+      (s: String, cwlType: CwlType, ctx: EvaluatorContext) =>
+        applyParameterValue(parser(s), cwlType, ctx)
     }
   }
 
-  def apply(s: String, cwlTypes: Vector[CwlType], ctx: EvaluatorContext): (CwlType, CwlValue) = {
+  def apply(s: String, cwlType: CwlType, ctx: EvaluatorContext): (CwlType, CwlValue) = {
     if (!s.contains('$')) {
       // if an value does not contain a '$', there are no expressions to evaluate
-      checkCoercibleTo(StringValue(s), cwlTypes)
+      checkCoercibleTo(StringValue(s), cwlType)
     } else {
-      eval(s, cwlTypes, ctx)
+      eval(s, cwlType, ctx)
     }
-  }
-
-  def apply(s: String, cwlType: CwlType, ctx: EvaluatorContext): CwlValue = {
-    apply(s, Vector(cwlType), ctx)._2
   }
 
   /**
@@ -639,81 +634,72 @@ case class Evaluator(jsEnabled: Boolean = false,
     * @return the result string value
     */
   def applyString(s: String, ctx: EvaluatorContext = EvaluatorContext.empty): String = {
-    apply(s, CwlString, ctx) match {
+    apply(s, CwlString, ctx)._2 match {
       case StringValue(value) => value
       case _                  => throw new Exception("expected string")
     }
   }
 
-  def evaluate(value: CwlValue,
-               cwlTypes: Vector[CwlType],
-               ctx: EvaluatorContext): (CwlType, CwlValue) = {
-    def inner(innerValue: CwlValue, innerTypes: Vector[CwlType]): (CwlType, CwlValue) = {
-      innerValue match {
-        case StringValue(s) => apply(s, innerTypes, ctx)
-        case array: ArrayValue =>
-          innerTypes.iterator
+  def evaluate(value: CwlValue, cwlType: CwlType, ctx: EvaluatorContext): (CwlType, CwlValue) = {
+    def evaluateObject(obj: ObjectValue,
+                       fields: Map[String, CwlRecordField]): (Map[String, CwlType], ObjectValue) = {
+      val (types, values) = obj.fields.map {
+        case (key, value) =>
+          val (t, v) = inner(value, fields(key).cwlType)
+          (key -> t, key -> v)
+      }.unzip
+      (types.toMap, ObjectValue(values.to(TreeSeqMap)))
+    }
+
+    def inner(innerValue: CwlValue, innerType: CwlType): (CwlType, CwlValue) = {
+      (innerType, innerValue) match {
+        case (_, StringValue(s)) => apply(s, innerType, ctx)
+        case (arrayType: CwlArray, array: ArrayValue) =>
+          val (types, values) = array.items.map(inner(_, arrayType.itemType)).unzip
+          (CwlArray(CwlType.flatten(types.distinct)), ArrayValue(values))
+        case (recordType: CwlInputRecord, obj: ObjectValue) =>
+          val (types, value) = evaluateObject(obj, recordType.fields)
+          val fields = types
             .map {
-              case arrayType: CwlArray =>
+              case (name, t) => name -> CwlInputRecordField(name, t)
+            }
+            .to(TreeSeqMap)
+          (CwlInputRecord(fields), value)
+        case (recordType: CwlOutputRecord, obj: ObjectValue) =>
+          val (types, value) = evaluateObject(obj, recordType.fields)
+          val fields = types
+            .map {
+              case (name, t) => name -> CwlOutputRecordField(name, t)
+            }
+            .to(TreeSeqMap)
+          (CwlOutputRecord(fields), value)
+        case (CwlMulti(types), _) =>
+          types.iterator
+            .map {
+              case CwlAny => None
+              case t =>
                 try {
-                  val (types, values) = array.items.map(inner(_, arrayType.itemTypes)).unzip
-                  Some((CwlArray(types.distinct), ArrayValue(values)))
+                  Some(inner(innerValue, t))
                 } catch {
                   case _: Throwable => None
                 }
-              case _ => None
             }
             .collectFirst {
               case Some(value) => value
             }
             .getOrElse(
-                if (innerTypes.contains(CwlAny)) {
-                  (CwlAny, array)
+                if (types.contains(CwlAny)) {
+                  (CwlAny, innerValue)
                 } else {
                   throw new Exception(
-                      s"array ${array.items} does not evaluate to any of ${innerTypes}"
+                      s"${innerValue} does not evaluate to any of ${types}"
                   )
                 }
             )
-        case obj: ObjectValue =>
-          innerTypes.iterator
-            .map {
-              case record: CwlInputRecord =>
-                try {
-                  val (types, values) = obj.fields.map {
-                    case (key, value) =>
-                      val (t, v) = inner(value, record.fields(key).types)
-                      (key -> t, key -> v)
-                  }.unzip
-                  val recordType = CwlInputRecord(
-                      types
-                        .map {
-                          case (name, t) => name -> CwlInputRecordField(name, Vector(t))
-                        }
-                        .to(TreeSeqMap)
-                  )
-                  Some((recordType, ObjectValue(values.to(TreeSeqMap))))
-                } catch {
-                  case _: Throwable => None
-                }
-              case _ => None
-            }
-            .collectFirst {
-              case Some(value) => value
-            }
-            .getOrElse(
-                if (innerTypes.contains(CwlAny)) {
-                  (CwlAny, obj)
-                } else {
-                  throw new Exception(
-                      s"object ${obj.fields} does not evaluate to any of ${innerTypes}"
-                  )
-                }
-            )
-        case _ => value.coerceTo(cwlTypes)
+        case _ => (innerType, value.coerceTo(innerType))
       }
     }
-    inner(value, cwlTypes)
+    inner(value, cwlType)
   }
 
   def evaluateMap(
@@ -722,7 +708,7 @@ case class Evaluator(jsEnabled: Boolean = false,
   ): Map[String, (CwlType, CwlValue)] = {
     map.foldLeft(Map.empty[String, (CwlType, CwlValue)]) {
       case (accu, (key, (cwlType, cwlValue))) =>
-        accu + (key -> evaluate(cwlValue, Vector(cwlType), ctx))
+        accu + (key -> evaluate(cwlValue, cwlType, ctx))
     }
   }
 }

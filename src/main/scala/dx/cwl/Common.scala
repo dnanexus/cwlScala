@@ -67,7 +67,7 @@ trait Identifiable {
 trait Parameter extends Identifiable {
   val label: Option[String]
   val doc: Option[String]
-  val types: Vector[CwlType]
+  val cwlType: CwlType
   val secondaryFiles: Vector[SecondaryFile]
   val streamable: Option[Boolean]
 }

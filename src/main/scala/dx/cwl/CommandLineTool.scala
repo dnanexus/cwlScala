@@ -47,7 +47,7 @@ object CommandInputBinding {
 case class CommandInputParameter(id: Option[Identifier],
                                  label: Option[String],
                                  doc: Option[String],
-                                 types: Vector[CwlType],
+                                 cwlType: CwlType,
                                  default: Option[CwlValue],
                                  inputBinding: Option[CommandInputBinding],
                                  secondaryFiles: Vector[SecondaryFile],
@@ -62,7 +62,7 @@ object CommandInputParameter {
       param: CommandInputParameterImpl,
       schemaDefs: Map[String, CwlSchema]
   ): (CommandInputParameter, Boolean) = {
-    val (types, stdfile) = CwlType(param.getType, schemaDefs)
+    val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     val inparam = CommandInputParameter(
         translateOptional(param.getId).map(Identifier.apply),
         translateOptional(param.getLabel),
@@ -106,7 +106,7 @@ object CommandOutputBinding {
 case class CommandOutputParameter(id: Option[Identifier],
                                   label: Option[String],
                                   doc: Option[String],
-                                  types: Vector[CwlType],
+                                  cwlType: CwlType,
                                   outputBinding: Option[CommandOutputBinding],
                                   secondaryFiles: Vector[SecondaryFile],
                                   format: Option[CwlValue],
@@ -118,7 +118,7 @@ object CommandOutputParameter {
       param: CommandOutputParameterImpl,
       schemaDefs: Map[String, CwlSchema]
   ): (CommandOutputParameter, Option[StdFile.StdFile]) = {
-    val (types, stdfile) = CwlType(param.getType, schemaDefs)
+    val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     val outputBinding = translateOptional(param.getOutputBinding) match {
       case Some(_) if stdfile.nonEmpty =>
         throw new RuntimeException(s"outputBinding not allowed for type ${stdfile.get}")
