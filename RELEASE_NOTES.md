@@ -1,10 +1,10 @@
 # Change log
 
-## v0.4.0 (dev)
+## v0.4.0 (2021-03-04)
 
 * Parser bugfixes
 * Incorporate `cwljava/39`, which fixes workflow parsing issues
-* Allow duplicate Requirements/hints and specify priority rules
+* Allow duplicate Requirements/Hints and specify priority rules
 * *Breaking change*: added new `CwlMulti` type and removed all uses of `Vector[CwlType]`
 
 ## v0.3.4 (2021-02-03)
