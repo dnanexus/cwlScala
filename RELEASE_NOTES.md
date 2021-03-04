@@ -4,6 +4,7 @@
 
 * Parser bugfixes
 * Incorporate `cwljava/39`, which fixes workflow parsing issues
+* Allow duplicate Requirements/hints and specify priority rules
 
 ## v0.3.4 (2021-02-03)
 
