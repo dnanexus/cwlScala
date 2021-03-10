@@ -794,10 +794,10 @@ object PathValue {
 
   def deserialize(jsValue: JsValue): PathValue = {
     jsValue match {
-      case JsObject(fields) if fields.contains("class") =>
-        fields("class") match {
-          case JsString("File")      => FileValue(fields)
-          case JsString("Directory") => DirectoryValue(fields)
+      case obj: JsObject if obj.fields.contains("class") =>
+        obj.fields("class") match {
+          case JsString("File")      => FileValue.deserialize(obj)
+          case JsString("Directory") => DirectoryValue.deserialize(obj)
           case _ =>
             throw new Exception(s"invalid path object ${jsValue}")
         }
