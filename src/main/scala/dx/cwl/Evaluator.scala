@@ -12,8 +12,11 @@ import org.commonwl.cwl.refparser.v1_2.{CwlParameterReferenceLexer, CwlParameter
 import spray.json._
 import sun.security.action.GetPropertyAction
 
+import java.io.File
+import java.net.URI
+import java.util.UUID
 import scala.annotation.{nowarn, tailrec}
-import scala.collection.immutable.{SeqMap, TreeSeqMap}
+import scala.collection.immutable.{ArraySeq, SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -440,6 +443,7 @@ object Runtime {
 case class EvaluatorContext(self: CwlValue = NullValue,
                             inputs: ObjectValue = ObjectValue.empty,
                             runtime: Runtime = Runtime.empty) {
+
   def toScope: Scope = {
     Scope.create(
         Map(
@@ -466,17 +470,132 @@ case class EvaluatorContext(self: CwlValue = NullValue,
 
 object EvaluatorContext {
   lazy val empty: EvaluatorContext = EvaluatorContext()
+  val MaxContentsSize: Long = 64 * 1024
+  private lazy val nameRegexp = "(.*)(\\..*)".r
+
+  /**
+    * Apply "implementation must" rules from the spec.
+    */
+  def finalizeInputValue(value: CwlValue, param: InputParameter, inputDir: Path): CwlValue = {
+    def finalizePaths(paths: Seq[File]): Vector[PathValue] = {
+      paths.map { f =>
+        if (f.isDirectory) {
+          finalizePath(DirectoryValue(f.getAbsolutePath), noShallowListings = true)
+        } else {
+          finalizePath(FileValue(f.getAbsolutePath))
+        }
+      }.toVector
+    }
+    def finalizePath(pathValue: PathValue, noShallowListings: Boolean = false): PathValue = {
+      val (newLocation, newPath) = (pathValue.location, pathValue.path) match {
+        case (Some(location), Some(path)) => (URI.create(location), Paths.get(path))
+        case (Some(location), None) =>
+          val uri = URI.create(location)
+          (uri, Paths.get(uri))
+        case (None, Some(path)) =>
+          val p = Paths.get(path)
+          (p.toUri, p)
+        case (None, None) =>
+          val randPath = Iterator
+            .continually(UUID.randomUUID().toString)
+            .map(inputDir.resolve)
+            .collectFirst {
+              case p if !p.toFile.exists() => p
+            }
+            .get
+          (randPath.toUri, randPath)
+      }
+      val newBasename = pathValue.basename match {
+        case Some(basename) => basename
+        case None           => Paths.get(newLocation.getPath).getFileName.toString
+      }
+      pathValue match {
+        case f: FileValue =>
+          val (nameRoot, nameExt) = newBasename match {
+            case nameRegexp(root, ext) => (root, ext)
+            case _                     => (newBasename, "")
+          }
+          val dirname = newPath.getParent
+          val newChecksum = f.checksum // TODO
+          val newSize = f.size.getOrElse(newPath.toFile.length())
+          val newSecondaryFiles = f.secondaryFiles.map(finalizePath(_))
+          val newContents = param.loadContents match {
+            case Some(true) if f.contents.isEmpty =>
+              Some(Utils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
+            case _ => f.contents
+          }
+          FileValue(
+              Some(newLocation.toString),
+              Some(newPath.toString),
+              Some(newBasename),
+              Some(dirname.toString),
+              Some(nameRoot),
+              Some(nameExt),
+              newChecksum,
+              Some(newSize),
+              newSecondaryFiles,
+              f.format,
+              newContents
+          )
+        case d: DirectoryValue =>
+          val newListing = param.loadListing match {
+            case Some(LoadListing.Shallow) if !noShallowListings && d.listing.isEmpty =>
+              finalizePaths(ArraySeq.unsafeWrapArray(newPath.toFile.listFiles()))
+            case Some(LoadListing.Deep) if d.listing.isEmpty =>
+              finalizePaths(ArraySeq.unsafeWrapArray(newPath.toFile.listFiles()))
+            case _ => d.listing
+          }
+          DirectoryValue(
+              Some(newLocation.toASCIIString),
+              Some(newPath.toString),
+              Some(newBasename),
+              newListing
+          )
+      }
+    }
+    (param.cwlType, value) match {
+      case (t, NullValue) if CwlOptional.isOptional(t) => NullValue
+      case (_, NullValue) =>
+        throw new Exception(s"missing required input ${param.name}")
+      case (CwlFile, f: FileValue)           => finalizePath(f)
+      case (CwlDirectory, d: DirectoryValue) => finalizePath(d)
+      case _                                 => value
+    }
+  }
+
+  /**
+    * Creates an `inputs` map from the given input values.
+    * @param inputs all the process inputs
+    * @param inputDir the directory in which to create files/directories that
+    *                 have no location - defaults to the current directory
+    * @return
+    */
+  def createInputs(inputs: Map[InputParameter, CwlValue],
+                   inputDir: Path = Paths.get(".")): ObjectValue = {
+    ObjectValue(
+        inputs
+          .map {
+            case (param, value) => param.name -> finalizeInputValue(value, param, inputDir)
+          }
+          .to(TreeSeqMap)
+    )
+  }
 
   /**
     * Creates an `inputs` map from all the inputs that contain a default value.
     * @param inputs all the process inputs
     * @return
     */
-  def createStaticInputs(inputs: Vector[CommandInputParameter]): Map[String, CwlValue] = {
-    inputs.collect {
-      case param if param.id.isDefined && param.default.isDefined =>
-        param.id.get.name.get -> param.default.get
-    }.toMap
+  def createStaticInputs(inputs: Vector[InputParameter],
+                         inputDir: Path = Paths.get(".")): ObjectValue = {
+    ObjectValue(
+        inputs
+          .collect {
+            case param if param.id.isDefined && param.default.isDefined =>
+              param.id.get.name.get -> finalizeInputValue(param.default.get, param, inputDir)
+          }
+          .to(TreeSeqMap)
+    )
   }
 }
 

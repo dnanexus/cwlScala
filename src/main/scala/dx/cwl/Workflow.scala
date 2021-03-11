@@ -43,7 +43,7 @@ case class WorkflowInputParameter(id: Option[Identifier],
                                   streamable: Option[Boolean],
                                   loadContents: Option[Boolean],
                                   loadListing: Option[LoadListing.LoadListing])
-    extends Parameter
+    extends InputParameter
 
 object WorkflowInputParameter {
   def apply(param: WorkflowInputParameterImpl,
@@ -379,7 +379,7 @@ case class OperationInputParameter(id: Option[Identifier],
                                    streamable: Option[Boolean],
                                    loadContents: Option[Boolean],
                                    loadListing: Option[LoadListing.LoadListing])
-    extends Parameter
+    extends InputParameter
 
 object OperationInputParameter {
   def apply(param: OperationInputParameterImpl,

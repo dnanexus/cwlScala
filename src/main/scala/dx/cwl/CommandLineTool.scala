@@ -55,7 +55,7 @@ case class CommandInputParameter(id: Option[Identifier],
                                  streamable: Option[Boolean],
                                  loadContents: Option[Boolean],
                                  loadListing: Option[LoadListing.LoadListing])
-    extends Parameter
+    extends InputParameter
 
 object CommandInputParameter {
   def apply(

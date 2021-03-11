@@ -72,6 +72,13 @@ trait Parameter extends Identifiable {
   val streamable: Option[Boolean]
 }
 
+trait InputParameter extends Parameter {
+  val default: Option[CwlValue]
+  val format: Vector[CwlValue]
+  val loadContents: Option[Boolean]
+  val loadListing: Option[LoadListing.LoadListing]
+}
+
 /**
   * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
   */
