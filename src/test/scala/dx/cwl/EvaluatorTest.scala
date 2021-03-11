@@ -55,6 +55,60 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
         evaluator(expr, cwlType, ctx)
       }
     }
+
+    "evaluate input details" in {
+      val tmpdir = Files.createTempDirectory("test")
+      val f = tmpdir.resolve("test.txt")
+      Files.write(f, "test".getBytes())
+      val d = tmpdir.resolve("dir")
+      Files.createDirectories(d)
+      val f2 = d.resolve("test2.txt")
+      Files.write(f2, "test2".getBytes())
+      tmpdir.toFile.deleteOnExit()
+      val ctx2 = EvaluatorContext(inputs = EvaluatorContext.createInputs(
+          Map(
+              CommandInputParameter(
+                  Some(Identifier(namespace = None, name = Some("f"))),
+                  None,
+                  None,
+                  CwlFile,
+                  None,
+                  None,
+                  Vector.empty,
+                  Vector.empty,
+                  None,
+                  Some(true),
+                  None
+              ) -> FileValue(location = Some(f.toString)),
+              CommandInputParameter(
+                  Some(Identifier(namespace = None, name = Some("d"))),
+                  None,
+                  None,
+                  CwlDirectory,
+                  None,
+                  None,
+                  Vector.empty,
+                  Vector.empty,
+                  None,
+                  Some(true),
+                  Some(LoadListing.Shallow)
+              ) -> DirectoryValue(location = Some(d.toString))
+          )
+      )
+      )
+      evaluator("$(inputs.f.path)", CwlString, ctx2)._2 shouldBe StringValue(f.toString)
+      evaluator("$(inputs.f.basename)", CwlString, ctx2)._2 shouldBe StringValue("test.txt")
+      evaluator("$(inputs.f.dirname)", CwlString, ctx2)._2 shouldBe StringValue(tmpdir.toString)
+      evaluator("$(inputs.f.nameroot)", CwlString, ctx2)._2 shouldBe StringValue("test")
+      evaluator("$(inputs.f.nameext)", CwlString, ctx2)._2 shouldBe StringValue(".txt")
+      evaluator("$(inputs.f.size)", CwlLong, ctx2)._2 shouldBe LongValue(4)
+      evaluator("$(inputs.f.contents)", CwlString, ctx2)._2 shouldBe StringValue("test")
+
+      evaluator("$(inputs.d.path)", CwlString, ctx2)._2 shouldBe StringValue(d.toString)
+      evaluator("$(inputs.d.basename)", CwlString, ctx2)._2 shouldBe StringValue("dir")
+      evaluator("$(inputs.d.listing[0].path)", CwlString, ctx2)._2 shouldBe StringValue(f2.toString)
+      evaluator("$(inputs.d.listing[0].contents)", CwlString, ctx2)._2 shouldBe StringValue("test2")
+    }
   }
 
   private case class SplitTest(s: String, expected: EcmaString)

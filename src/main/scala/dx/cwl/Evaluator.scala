@@ -490,8 +490,13 @@ object EvaluatorContext {
       val (newLocation, newPath) = (pathValue.location, pathValue.path) match {
         case (Some(location), Some(path)) => (URI.create(location), Paths.get(path))
         case (Some(location), None) =>
-          val uri = URI.create(location)
-          (uri, Paths.get(uri))
+          URI.create(location) match {
+            case u if u.getScheme != null =>
+              (u, inputDir.resolve(Paths.get(u.getPath).getFileName))
+            case u =>
+              val p = Paths.get(u.getPath)
+              (p.toUri, p)
+          }
         case (None, Some(path)) =>
           val p = Paths.get(path)
           (p.toUri, p)
