@@ -488,24 +488,25 @@ object EvaluatorContext {
     }
     def finalizePath(pathValue: PathValue, noShallowListings: Boolean = false): PathValue = {
       val (newLocation, newPath) = (pathValue.location, pathValue.path) match {
-        case (Some(location), Some(path)) => (URI.create(location), Paths.get(path))
+        case (Some(location), Some(path)) =>
+          (URI.create(location), Paths.get(path).toAbsolutePath)
         case (Some(location), None) =>
           URI.create(location) match {
             case u if u.getScheme != null =>
               (u, inputDir.resolve(Paths.get(u.getPath).getFileName))
             case u =>
-              val p = Paths.get(u.getPath)
+              val p = Paths.get(u.getPath).toAbsolutePath
               (p.toUri, p)
           }
         case (None, Some(path)) =>
-          val p = Paths.get(path)
+          val p = Paths.get(path).toAbsolutePath
           (p.toUri, p)
         case (None, None) =>
           val randPath = Iterator
             .continually(UUID.randomUUID().toString)
             .map(inputDir.resolve)
             .collectFirst {
-              case p if !p.toFile.exists() => p
+              case p if !p.toFile.exists() => p.toAbsolutePath
             }
             .get
           (randPath.toUri, randPath)
@@ -520,12 +521,17 @@ object EvaluatorContext {
             case nameRegexp(root, ext) => (root, ext)
             case _                     => (newBasename, "")
           }
-          val dirname = newPath.getParent
+          val dirname = Option(newPath.getParent).getOrElse(inputDir)
           val newChecksum = f.checksum // TODO
-          val newSize = f.size.getOrElse(newPath.toFile.length())
+          val fileExists = newPath.toFile.exists()
+          val newSize = f.size match {
+            case Some(size)         => Some(size)
+            case None if fileExists => Some(newPath.toFile.length())
+            case None               => None
+          }
           val newSecondaryFiles = f.secondaryFiles.map(finalizePath(_))
           val newContents = param.loadContents match {
-            case Some(true) if f.contents.isEmpty =>
+            case Some(true) if f.contents.isEmpty && fileExists =>
               Some(Utils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
             case _ => f.contents
           }
@@ -537,7 +543,7 @@ object EvaluatorContext {
               Some(nameRoot),
               Some(nameExt),
               newChecksum,
-              Some(newSize),
+              newSize,
               newSecondaryFiles,
               f.format,
               newContents
