@@ -114,7 +114,7 @@ case class WorkflowOutputParameter(id: Option[Identifier],
                                    outputSource: Vector[String],
                                    linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                                    pickValue: Option[PickValueMethod.PickValueMethod])
-    extends Parameter
+    extends OutputParameter
 
 object WorkflowOutputParameter {
   def apply(param: WorkflowOutputParameterImpl,
@@ -304,7 +304,7 @@ case class ExpressionToolOutputParameter(id: Option[Identifier],
                                          secondaryFiles: Vector[SecondaryFile],
                                          format: Option[CwlValue],
                                          streamable: Option[Boolean])
-    extends Parameter
+    extends OutputParameter
 
 object ExpressionToolOutputParameter {
   def apply(param: ExpressionToolOutputParameterImpl,
@@ -419,7 +419,7 @@ case class OperationOutputParameter(id: Option[Identifier],
                                     secondaryFiles: Vector[SecondaryFile],
                                     format: Option[CwlValue],
                                     streamable: Option[Boolean])
-    extends Parameter
+    extends OutputParameter
 
 object OperationOutputParameter {
   def apply(param: OperationOutputParameterImpl,

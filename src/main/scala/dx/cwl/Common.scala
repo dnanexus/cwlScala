@@ -79,6 +79,10 @@ trait InputParameter extends Parameter {
   val loadListing: Option[LoadListing.LoadListing]
 }
 
+trait OutputParameter extends Parameter {
+  val format: Option[CwlValue]
+}
+
 /**
   * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
   */
@@ -88,8 +92,8 @@ trait Process extends Identifiable {
   val label: Option[String]
   val doc: Option[String]
   val intent: Vector[String]
-  val inputs: Vector[Parameter]
-  val outputs: Vector[Parameter]
+  val inputs: Vector[InputParameter]
+  val outputs: Vector[OutputParameter]
   val requirements: Vector[Requirement]
   val hints: Vector[Hint]
 }

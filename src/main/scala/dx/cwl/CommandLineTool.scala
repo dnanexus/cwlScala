@@ -111,7 +111,7 @@ case class CommandOutputParameter(id: Option[Identifier],
                                   secondaryFiles: Vector[SecondaryFile],
                                   format: Option[CwlValue],
                                   streamable: Option[Boolean])
-    extends Parameter
+    extends OutputParameter
 
 object CommandOutputParameter {
   def apply(
