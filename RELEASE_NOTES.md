@@ -1,5 +1,10 @@
 # Change log
 
+## v0.4.1 (2021-03-11)
+
+* Adds `EvaluatorContext.createInputs` to create an `EvaluatorContext` from input values
+* Performs "finalization" of input values (setting of missing attributes on File and Directory values) when using `EvaluatorContext.createInputs` or `EvaluatorContext.createStaticInputs`
+
 ## v0.4.0 (2021-03-04)
 
 * Parser bugfixes
