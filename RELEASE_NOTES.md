@@ -1,5 +1,10 @@
 # Change log
 
+## v0.4.2 (dev)
+
+* *Breaking change*: schema types now have `id: Option[Identifier]` rather than `name: Option[String]`
+* bugfixes
+
 ## v0.4.1 (2021-03-11)
 
 * Adds `EvaluatorContext.createInputs` to create an `EvaluatorContext` from input values
