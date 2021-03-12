@@ -94,25 +94,34 @@ object CwlType {
         case schema: IOSchema =>
           val (newType, newSchemaDefs) =
             CwlSchema.translateSchema(schema, innerSchemaDefs, rawSchemaDefs)
-          val updatedSchemaDefs = if (newType.name.isDefined) {
-            innerSchemaDefs ++ newSchemaDefs + (newType.name.get -> newType)
+          val updatedSchemaDefs = if (newType.hasName) {
+            innerSchemaDefs ++ newSchemaDefs + (newType.name -> newType)
           } else {
             innerSchemaDefs ++ newSchemaDefs
           }
           (Vector(newType), None, updatedSchemaDefs)
         case schemaName: String if schemaName.contains("#") =>
           // a schema reference
-          val name = Utils.normalizeUri(schemaName)
-          schemaDefs.get(name).orElse(innerSchemaDefs.get(name)) match {
+          val id = Identifier.fromUri(schemaName)
+          val fqn = id.fullyQualifiedName.getOrElse(
+              throw new Exception(s"invalid schema name ${schemaName}")
+          )
+          val schemaDef = schemaDefs
+            .get(fqn)
+            .orElse(id.name.flatMap(schemaDefs.get))
+            .orElse(innerSchemaDefs.get(fqn))
+            .orElse(id.name.flatMap(innerSchemaDefs.get))
+          schemaDef match {
             case Some(schemaDef) => (Vector(schemaDef), None, innerSchemaDefs)
-            case None if rawSchemaDefs.contains(name) =>
-              val (types, stdfile, updatedSchemaDefs) = inner(rawSchemaDefs(name), innerSchemaDefs)
+            case None if rawSchemaDefs.contains(fqn) || id.name.exists(rawSchemaDefs.contains) =>
+              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.name.get))
+              val (types, stdfile, updatedSchemaDefs) = inner(rawSchemaDef, innerSchemaDefs)
               val newSchemaDef = types match {
                 case Vector(s: CwlSchema) => s
                 case other =>
                   throw new RuntimeException(s"expected single CwlSchema, not ${other}")
               }
-              (types, stdfile, updatedSchemaDefs + (name -> newSchemaDef))
+              (types, stdfile, updatedSchemaDefs + (fqn -> newSchemaDef))
             case None =>
               throw new RuntimeException(s"missing definition for schema ${schemaName}")
           }
@@ -318,8 +327,7 @@ case object CwlDirectory extends CwlPath {
   * both use the same objects, but `inputBinding` will always be `None` for
   * output types.
   */
-sealed trait CwlSchema extends CwlType {
-  val name: Option[String]
+sealed trait CwlSchema extends CwlType with Identifiable {
   val label: Option[String]
   val doc: Option[String]
 
@@ -444,7 +452,7 @@ object CwlSchema {
 }
 
 case class CwlArray(itemType: CwlType,
-                    name: Option[String] = None,
+                    id: Option[Identifier] = None,
                     label: Option[String] = None,
                     doc: Option[String] = None,
                     inputBinding: Option[CommandInputBinding] = None)
@@ -477,7 +485,7 @@ object CwlArray {
     }
     CwlArray(
         cwlType,
-        translateOptional(name).map(Utils.normalizeUri),
+        translateOptional(name).map(Identifier.fromUri),
         translateOptional(label),
         translateDoc(doc),
         inputBinding
@@ -583,7 +591,7 @@ object CwlInputRecordField {
 }
 
 case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
-                          name: Option[String] = None,
+                          id: Option[Identifier] = None,
                           label: Option[String] = None,
                           doc: Option[String] = None,
                           inputBinding: Option[CommandInputBinding] = None)
@@ -617,7 +625,7 @@ object CwlInputRecord {
     }
     CwlInputRecord(
         fields,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
+        translateOptional(schema.getName).map(Identifier.fromUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc),
         inputBinding
@@ -722,7 +730,7 @@ object CwlOutputRecordField {
 }
 
 case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
-                           name: Option[String] = None,
+                           id: Option[Identifier] = None,
                            label: Option[String] = None,
                            doc: Option[String] = None)
     extends CwlRecord {
@@ -744,7 +752,7 @@ object CwlOutputRecord {
                      fields: SeqMap[String, CwlOutputRecordField]): CwlOutputRecord = {
     CwlOutputRecord(
         fields,
-        translateOptional(schema.getName).map(Utils.normalizeUri),
+        translateOptional(schema.getName).map(Identifier.fromUri),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -792,7 +800,7 @@ object CwlOutputRecord {
 }
 
 case class CwlEnum(symbols: Vector[String],
-                   name: Option[String] = None,
+                   id: Option[Identifier] = None,
                    label: Option[String] = None,
                    doc: Option[String] = None,
                    inputBinding: Option[CommandInputBinding] = None)
@@ -827,7 +835,7 @@ object CwlEnum {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
         }.toVector,
-        translateOptional(name).map(Utils.normalizeUri),
+        translateOptional(name).map(Identifier.fromUri),
         translateOptional(label),
         translateDoc(doc),
         inputBinding

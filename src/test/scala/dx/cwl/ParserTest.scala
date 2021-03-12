@@ -34,6 +34,22 @@ class ParserTest extends AnyWordSpec with Matchers {
       )
     }
 
+    "parse schema" in {
+      val doc =
+        Parser.default.parseFile(getPath("/tools/v1.2/anon_enum_inside_array_inside_schemadef.cwl"))
+      val schemaDefRequirement = doc.requirements.collect {
+        case req: SchemaDefRequirement => req
+      }
+      schemaDefRequirement.size shouldBe 1
+      val typeDefs = schemaDefRequirement.head.typeDefinitions
+      typeDefs.size shouldBe 3
+      val records = typeDefs.collect {
+        case rec: CwlInputRecord => rec
+      }
+      records.size shouldBe 1
+      records.head.name shouldBe "vcf2maf_params"
+    }
+
     val cwlFilter = new FilenameFilter {
       override def accept(dir: File, name: String): Boolean = name.endsWith(".cwl")
     }
@@ -63,9 +79,6 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
-    // TODO: these tests do not currently work due to a bug that causes
-    //  workflows to be parsed as CommandLineTools
-    //  https://github.com/common-workflow-lab/cwljava/issues/37
     val workflowsPath = getPath(s"/workflows/v1.2")
     val workflowParser = Parser.create(Some(workflowsPath.toUri))
     workflowsPath.toFile.listFiles(cwlFilter).toVector.foreach { wfPath =>

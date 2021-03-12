@@ -102,23 +102,30 @@ object Utils {
     }
   }
 
-  def normalizeUri(uri: String): String = {
+  def normalizeAndSplitUri(uri: URI): (Option[String], Option[String]) = {
     try {
-      normalizeUri(URI.create(uri))
+      (Option(uri.getScheme), Option(uri.getFragment)) match {
+        case (Some("file"), None)       => (Some(s"file:${uri.getPath}"), None)
+        case (Some("file"), Some(frag)) => (Some(s"file:${uri.getPath}"), Some(frag))
+        case (Some(_), None)            => (Some(uri.toString), None)
+        case (Some(_), Some(_)) =>
+          uri.toString.split('#').toVector match {
+            case Vector(namespace, name) => (Some(namespace), Some(name))
+            case _                       => throw new Exception(s"error splitting uri ${uri}")
+          }
+        case (None, Some(frag)) => (None, Some(frag))
+        case _                  => throw new Exception(s"invalid URI ${uri}")
+      }
     } catch {
-      case _: Throwable => uri
+      case _: IllegalArgumentException => (None, Some(uri.toString))
     }
   }
 
   def normalizeUri(uri: URI): String = {
-    try {
-      (uri.getScheme, uri.getFragment) match {
-        case ("file", null) => s"file:${uri.getPath}"
-        case ("file", frag) => s"file:${uri.getPath}#${frag}"
-        case _              => uri.toString
-      }
-    } catch {
-      case _: IllegalArgumentException => uri.toString
+    normalizeAndSplitUri(uri) match {
+      case (Some(base), Some(frag)) => s"${base}#${frag}"
+      case (Some(base), None)       => base
+      case (None, _)                => throw new Exception(s"invalid uri ${uri}")
     }
   }
 

@@ -212,7 +212,7 @@ case class SchemaDefRequirement(typeDefinitions: Vector[CwlSchema]) extends Requ
   }
 
   def asMap: Map[String, CwlSchema] = {
-    typeDefinitions.map(schema => schema.name.get -> schema)
+    typeDefinitions.map(schema => schema.name -> schema)
   }.toMap
 }
 

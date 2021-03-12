@@ -3,6 +3,7 @@ package dx.cwl
 import dx.cwl.Utils.{translateOptional, translateOptionalArray}
 import org.w3id.cwl.cwl1_2.{CWLVersion, LoadListingEnum, SecondaryFileSchemaImpl}
 
+import java.net.URI
 import java.nio.file.Path
 
 case class Identifier(namespace: Option[String], name: Option[String]) {
@@ -20,6 +21,21 @@ case class Identifier(namespace: Option[String], name: Option[String]) {
 
 object Identifier {
   private val identifierRegexp = "(.*?)(?:#(.*))?".r
+
+  def fromUri(uri: String): Identifier = {
+    val (namespace, name) =
+      try {
+        Utils.normalizeAndSplitUri(URI.create(uri))
+      } catch {
+        case _: Throwable => (None, Some(uri))
+      }
+    Identifier(namespace, name)
+  }
+
+  def fromUri(uri: URI): Identifier = {
+    val (namespace, name) = Utils.normalizeAndSplitUri(uri)
+    Identifier(namespace, name)
+  }
 
   def apply(uri: String): Identifier = {
     uri match {
