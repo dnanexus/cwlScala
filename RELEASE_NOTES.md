@@ -3,7 +3,8 @@
 ## v0.4.2 (dev)
 
 * *Breaking change*: schema types now have `id: Option[Identifier]` rather than `name: Option[String]`
-* bugfixes
+* Fixes coercion of StringValue to CwlEnum
+* other bugfixes
 
 ## v0.4.1 (2021-03-11)
 

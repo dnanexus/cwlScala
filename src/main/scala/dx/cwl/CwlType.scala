@@ -286,6 +286,7 @@ case object CwlString extends CwlPrimitive {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
       case _: CwlPrimitive => true
+      case _: CwlEnum      => true
       case _               => false
     }
   }

@@ -173,10 +173,10 @@ object CwlValue {
           LongValue(bi.longValueExact())
         } catch {
           case ex: ArithmeticException =>
-            throw new RuntimeException(s"invalid long value ${bi.toString}", ex)
+            throw new Exception(s"invalid long value ${bi.toString}", ex)
         }
       case _ =>
-        throw new RuntimeException(s"cannot translate ${value} without a type specification")
+        throw new Exception(s"cannot translate ${value} without a type specification")
     }
   }
 
@@ -232,7 +232,7 @@ object CwlValue {
       case CwlAny if value != null =>
         apply(value, schemaDefs)
       case _ =>
-        throw new RuntimeException(s"cannot translate ${value} to value of type ${cwlType}")
+        throw new Exception(s"cannot translate ${value} to value of type ${cwlType}")
     }
   }
 
@@ -445,7 +445,9 @@ case class StringValue(value: String) extends PrimitiveValue with IntIndexable {
       case CwlDouble    => DoubleValue(value.toDouble)
       case CwlFile      => FileValue(value)
       case CwlDirectory => DirectoryValue(value)
-      case _            => throw new RuntimeException
+      case enum: CwlEnum if enum.symbols.contains(value) =>
+        this
+      case _ => throw new RuntimeException
     }
   }
 }
@@ -584,7 +586,7 @@ object IntValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${obj} to int", ex)
+        throw new Exception(s"cannot convert ${obj} to int", ex)
     }
   }
 
@@ -598,7 +600,7 @@ object IntValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${jsValue} to int", ex)
+        throw new Exception(s"cannot convert ${jsValue} to int", ex)
     }
   }
 }
@@ -635,7 +637,7 @@ object LongValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${obj} to long", ex)
+        throw new Exception(s"cannot convert ${obj} to long", ex)
     }
   }
 
@@ -649,7 +651,7 @@ object LongValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${jsValue} to long", ex)
+        throw new Exception(s"cannot convert ${jsValue} to long", ex)
     }
   }
 }
@@ -678,7 +680,7 @@ object FloatValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${obj} to float", ex)
+        throw new Exception(s"cannot convert ${obj} to float", ex)
     }
   }
 
@@ -692,7 +694,7 @@ object FloatValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${jsValue} to float", ex)
+        throw new Exception(s"cannot convert ${jsValue} to float", ex)
     }
   }
 }
@@ -721,7 +723,7 @@ object DoubleValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${obj} to double", ex)
+        throw new Exception(s"cannot convert ${obj} to double", ex)
     }
   }
 
@@ -735,7 +737,7 @@ object DoubleValue {
       }
     } catch {
       case ex: ArithmeticException =>
-        throw new RuntimeException(s"cannot convert ${jsValue} to double", ex)
+        throw new Exception(s"cannot convert ${jsValue} to double", ex)
     }
   }
 }
@@ -778,7 +780,7 @@ object PathValue {
       case file: FileImpl           => apply(file)
       case directory: DirectoryImpl => apply(directory)
       case _ =>
-        throw new RuntimeException(s"unexpected file/directory value ${expr}")
+        throw new Exception(s"unexpected file/directory value ${expr}")
     }
   }
 
@@ -787,7 +789,7 @@ object PathValue {
       case "File"      => FileValue(map)
       case "Directory" => DirectoryValue(map)
       case null =>
-        throw new RuntimeException(s"missing required key 'class' in expression ${map}")
+        throw new Exception(s"missing required key 'class' in expression ${map}")
       case _ => throw new Exception(s"invalid path map ${map}")
     }
   }
@@ -912,10 +914,10 @@ object FileValue {
             pathList.asScala.map {
               case paths: java.util.Map[_, _] => PathValue.apply(paths)
               case other =>
-                throw new RuntimeException(s"unexpected path value ${other}")
+                throw new Exception(s"unexpected path value ${other}")
             }.toVector
           case other =>
-            throw new RuntimeException(s"unexpected secondaryFiles value ${other}")
+            throw new Exception(s"unexpected secondaryFiles value ${other}")
         },
         translateOptionalString(map.get("format")),
         translateOptionalString(map.get("contents"))
@@ -1005,10 +1007,10 @@ object DirectoryValue {
             pathList.asScala.map {
               case paths: java.util.Map[_, _] => PathValue.apply(paths)
               case other =>
-                throw new RuntimeException(s"unexpected path value ${other}")
+                throw new Exception(s"unexpected path value ${other}")
             }.toVector
           case other =>
-            throw new RuntimeException(s"unexpected secondaryFiles value ${other}")
+            throw new Exception(s"unexpected secondaryFiles value ${other}")
         }
     )
   }
