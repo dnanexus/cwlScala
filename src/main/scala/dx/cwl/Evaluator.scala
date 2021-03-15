@@ -785,7 +785,7 @@ case class Evaluator(jsEnabled: Boolean = false,
       (innerType, innerValue) match {
         case (_, StringValue(s)) => apply(s, innerType, ctx)
         case (arrayType: CwlArray, array: ArrayValue) =>
-          val (types, values) = array.items.map(inner(_, arrayType.itemType)).unzip
+          val (types, values) = array.items.map(i => inner(i, arrayType.itemType)).unzip
           (CwlArray(CwlType.flatten(types.distinct)), ArrayValue(values))
         case (recordType: CwlInputRecord, obj: ObjectValue) =>
           val (types, value) = evaluateObject(obj, recordType.fields)
@@ -826,7 +826,7 @@ case class Evaluator(jsEnabled: Boolean = false,
                   )
                 }
             )
-        case _ => (innerType, value.coerceTo(innerType))
+        case _ => (innerType, innerValue.coerceTo(innerType))
       }
     }
     inner(value, cwlType)

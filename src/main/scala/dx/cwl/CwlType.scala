@@ -545,6 +545,7 @@ object CwlInputRecordField {
   private def create(field: InputRecordField,
                      cwlType: CwlType,
                      schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
+    val id = Identifier.fromUri(field.getName)
     val inputBinding = field match {
       case c: CommandInputRecordField =>
         translateOptional(c.getInputBinding).map {
@@ -555,7 +556,7 @@ object CwlInputRecordField {
       case _ => None
     }
     CwlInputRecordField(
-        field.getName,
+        id.unqualifiedName.get,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
@@ -686,6 +687,7 @@ object CwlOutputRecordField {
   private def create(field: OutputRecordField,
                      cwlType: CwlType,
                      schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
+    val id = Identifier.fromUri(field.getName)
     val outputBinding = field match {
       case c: CommandOutputRecordField =>
         translateOptional(c.getOutputBinding).map {
@@ -696,7 +698,7 @@ object CwlOutputRecordField {
       case _ => None
     }
     CwlOutputRecordField(
-        field.getName,
+        id.unqualifiedName.get,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
