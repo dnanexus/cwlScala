@@ -83,6 +83,7 @@ scalacOptions ++= Seq(
 assemblyJarName in assembly := "cwlScala.jar"
 logLevel in assembly := Level.Info
 
+val dxCommonVersion = "0.2.11"
 val typesafeVersion = "1.3.3"
 val sprayVersion = "1.3.5"
 val scalacticVersion = "3.1.1"
@@ -93,6 +94,7 @@ val antlr4Version = "4.8"
 val junitVersion = "4.12"
 
 libraryDependencies ++= Seq(
+    "com.dnanexus" % "dxcommon" % dxCommonVersion,
     "com.typesafe" % "config" % typesafeVersion,
     "io.spray" %% "spray-json" % sprayVersion,
     // cwljava dependencies

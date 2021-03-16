@@ -3,6 +3,8 @@
 ## v0.4.2 (dev)
 
 * *Breaking change*: schema types now have `id: Option[Identifier]` rather than `name: Option[String]`
+* Adds dependency on `dxCommon` library  
+* Improves finalization of file values
 * Fixes coercion of StringValue to CwlEnum
 * other bugfixes
 

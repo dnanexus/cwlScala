@@ -57,7 +57,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
     }
 
     "evaluate input details" in {
-      val tmpdir = Files.createTempDirectory("test")
+      val tmpdir = Files.createTempDirectory("test").toRealPath()
       val f = tmpdir.resolve("test.txt")
       Files.write(f, "test".getBytes())
       val d = tmpdir.resolve("dir")

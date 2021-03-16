@@ -1,6 +1,7 @@
 package dx.cwl
 
 import dx.cwl.Utils._
+import dx.util.CollectionUtils.IterableExtensions
 import org.w3id.cwl.cwl1_2.{
   DirentImpl,
   DockerRequirementImpl,

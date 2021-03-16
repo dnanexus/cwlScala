@@ -1,29 +1,10 @@
 package dx.cwl
 
-import java.io.FileNotFoundException
 import java.net.URI
-import java.nio.charset.Charset
-import java.nio.file.{Files, Path}
-import java.security.MessageDigest
-import javax.xml.bind.DatatypeConverter
-import scala.io.Codec
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
 object Utils {
-  // the spec states that WDL files must use UTF8 encoding
-  val DefaultEncoding: Charset = Codec.UTF8.charSet
-
-  implicit class IterableExtensions[A](iterable: Iterable[A]) {
-    def asOption: Option[IterableOnce[A]] = {
-      if (iterable.nonEmpty) {
-        Some(iterable)
-      } else {
-        None
-      }
-    }
-  }
-
   def translateOptional[T](opt: java.util.Optional[T]): Option[T] = {
     opt match {
       case null => None
@@ -127,38 +108,5 @@ object Utils {
       case (Some(base), None)       => base
       case (None, _)                => throw new Exception(s"invalid uri ${uri}")
     }
-  }
-
-  def readFileBytes(path: Path, mustExist: Boolean = true): Array[Byte] = {
-    if (Files.exists(path)) {
-      Files.readAllBytes(path)
-    } else if (mustExist) {
-      throw new FileNotFoundException(path.toString)
-    } else {
-      Array.emptyByteArray
-    }
-  }
-
-  /**
-    * Reads the entire contents of a file as a string. Line endings are not stripped or
-    * converted.
-    * @param path file path
-    * @return file contents as a string
-    */
-  def readFileContent(path: Path,
-                      encoding: Charset = DefaultEncoding,
-                      mustExist: Boolean = true,
-                      maxSize: Option[Long] = None): String = {
-    maxSize.foreach { size =>
-      if (path.toFile.length() > size) {
-        throw new Exception(s"file ${path} is larger than ${maxSize} bytes")
-      }
-    }
-    new String(readFileBytes(path, mustExist), encoding)
-  }
-
-  def sha1Digest(s: String): String = {
-    val md = MessageDigest.getInstance("SHA-1")
-    DatatypeConverter.printHexBinary(md.digest(s.getBytes))
   }
 }

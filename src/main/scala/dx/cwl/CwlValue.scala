@@ -930,7 +930,7 @@ object FileValue {
       case file: FileImpl           => FileValue(file)
       case map: java.util.Map[_, _] => apply(map)
       case _ =>
-        throw new Exception(s"invalid value value ${obj}")
+        throw new Exception(s"invalid value ${obj}")
     }
   }
 

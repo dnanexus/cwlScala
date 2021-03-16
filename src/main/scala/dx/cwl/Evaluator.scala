@@ -6,6 +6,7 @@ import java.nio.file.{Path, Paths}
 import java.lang.{Runtime => JavaRuntime}
 import java.security.AccessController.doPrivileged
 import dx.js.{Engine, Scope}
+import dx.util.{FileNode, FileSourceResolver, FileUtils, LocalFileSource}
 import org.antlr.v4.runtime.{CodePointBuffer, CodePointCharStream, CommonTokenStream}
 import org.commonwl.cwl.ecma.v1_2.{CwlEcmaStringLexer, CwlEcmaStringParser}
 import org.commonwl.cwl.refparser.v1_2.{CwlParameterReferenceLexer, CwlParameterReferenceParser}
@@ -13,7 +14,6 @@ import spray.json._
 import sun.security.action.GetPropertyAction
 
 import java.io.File
-import java.net.URI
 import java.util.UUID
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.immutable.{ArraySeq, SeqMap, TreeSeqMap}
@@ -407,29 +407,37 @@ object Runtime {
   def create(outdir: Path = Paths.get(""),
              tmpdir: Path = defaultTmpdir,
              minCores: Option[Int] = None,
+             maxCores: Option[Int] = None,
              minRam: Option[Long] = None,
+             maxRam: Option[Long] = None,
              minOutdirSize: Option[Long] = None,
-             minTmpdirSize: Option[Long] = None): Runtime = {
-    val cores = JavaRuntime.getRuntime.availableProcessors()
-    if (minCores.exists(_ > cores)) {
-      throw new Exception(s"avaiable cores ${cores} is less than min cores ${minCores}")
+             maxOutdirSize: Option[Long] = None,
+             minTmpdirSize: Option[Long] = None,
+             maxTmpdirSize: Option[Long] = None): Runtime = {
+    val actualCores = JavaRuntime.getRuntime.availableProcessors()
+    if (minCores.exists(_ > actualCores)) {
+      throw new Exception(s"avaiable cores ${actualCores} is less than min cores ${minCores}")
     }
-    val ram = totalMemorySize
-    if (minRam.exists(_ > ram)) {
-      throw new Exception(s"avaiable ram ${ram} is less than min ram ${minRam}")
+    val cores = maxCores.map(Math.min(_, actualCores)).getOrElse(actualCores)
+    val actualRam = totalMemorySize
+    if (minRam.exists(_ > actualRam)) {
+      throw new Exception(s"avaiable ram ${actualRam} is less than min ram ${minRam}")
     }
-    val outdirSize = outdir.getRoot.toFile.getFreeSpace
-    if (minOutdirSize.exists(_ > outdirSize)) {
+    val ram = maxRam.map(Math.min(_, actualRam)).getOrElse(actualRam)
+    val actualOutdirSize = outdir.getRoot.toFile.getFreeSpace
+    if (minOutdirSize.exists(_ > actualOutdirSize)) {
       throw new Exception(
-          s"avaiable outdir size ${outdirSize} is less than min outdir size ${minOutdirSize}"
+          s"avaiable outdir size ${actualOutdirSize} is less than min outdir size ${minOutdirSize}"
       )
     }
-    val tmpdirSize = tmpdir.getRoot.toFile.getFreeSpace
-    if (minTmpdirSize.exists(_ > tmpdirSize)) {
+    val outdirSize = maxOutdirSize.map(Math.min(_, actualOutdirSize)).getOrElse(actualOutdirSize)
+    val actualTmpdirSize = tmpdir.getRoot.toFile.getFreeSpace
+    if (minTmpdirSize.exists(_ > actualTmpdirSize)) {
       throw new Exception(
-          s"avaiable tmpdir size ${tmpdirSize} is less than min tmpdir size ${minTmpdirSize}"
+          s"avaiable tmpdir size ${actualTmpdirSize} is less than min tmpdir size ${minTmpdirSize}"
       )
     }
+    val tmpdirSize = maxTmpdirSize.map(Math.min(_, actualTmpdirSize)).getOrElse(actualTmpdirSize)
     Runtime(outdir.toString, tmpdir.toString, cores, ram, outdirSize, tmpdirSize)
   }
 }
@@ -476,37 +484,50 @@ object EvaluatorContext {
   /**
     * Apply "implementation must" rules from the spec.
     */
-  def finalizeInputValue(value: CwlValue, param: InputParameter, inputDir: Path): CwlValue = {
+  def finalizeInputValue(value: CwlValue,
+                         param: InputParameter,
+                         inputDir: Path,
+                         fileResolver: FileSourceResolver = FileSourceResolver.get): CwlValue = {
     def finalizePaths(paths: Seq[File]): Vector[PathValue] = {
       paths.map { f =>
         if (f.isDirectory) {
-          finalizePath(DirectoryValue(f.getAbsolutePath), noShallowListings = true)
+          finalizePath(DirectoryValue(location = Some(f.toPath.toRealPath().toString)),
+                       noShallowListings = true)
         } else {
-          finalizePath(FileValue(f.getAbsolutePath))
+          finalizePath(FileValue(location = Some(f.toPath.toRealPath().toString)))
         }
       }.toVector
     }
     def finalizePath(pathValue: PathValue, noShallowListings: Boolean = false): PathValue = {
-      val (newLocation, newPath) = (pathValue.location, pathValue.path) match {
-        case (Some(location), Some(path)) =>
-          (URI.create(location), Paths.get(path).toAbsolutePath)
-        case (Some(location), None) =>
-          URI.create(location) match {
+      val fileSource = pathValue match {
+        case _ if pathValue.location.isEmpty => None
+        case f: FileValue                    => Some(fileResolver.resolve(f.location.get))
+        case d: DirectoryValue               => Some(fileResolver.resolveDirectory(d.location.get))
+      }
+      println(pathValue, fileSource)
+      val (newLocation, newPath) = (fileSource, pathValue.path) match {
+        case (Some(fs), Some(path)) =>
+          (fs.uri, Paths.get(path).toRealPath())
+        case (Some(local: LocalFileSource), None) =>
+          println(local.canonicalPath)
+          (local.uri, local.canonicalPath)
+        case (Some(fs), None) =>
+          fs.uri match {
             case u if u.getScheme != null =>
               (u, inputDir.resolve(Paths.get(u.getPath).getFileName))
             case u =>
-              val p = Paths.get(u.getPath).toAbsolutePath
+              val p = Paths.get(u.getPath).toRealPath()
               (p.toUri, p)
           }
         case (None, Some(path)) =>
-          val p = Paths.get(path).toAbsolutePath
+          val p = Paths.get(path).toRealPath()
           (p.toUri, p)
         case (None, None) =>
           val randPath = Iterator
             .continually(UUID.randomUUID().toString)
             .map(inputDir.resolve)
             .collectFirst {
-              case p if !p.toFile.exists() => p.toAbsolutePath
+              case p if !p.toFile.exists() => p.toRealPath()
             }
             .get
           (randPath.toUri, randPath)
@@ -524,15 +545,16 @@ object EvaluatorContext {
           val dirname = Option(newPath.getParent).getOrElse(inputDir)
           val newChecksum = f.checksum // TODO
           val fileExists = newPath.toFile.exists()
-          val newSize = f.size match {
-            case Some(size)         => Some(size)
-            case None if fileExists => Some(newPath.toFile.length())
-            case None               => None
+          val newSize = (f.size, fileSource) match {
+            case (Some(size), _)           => Some(size)
+            case (None, Some(f: FileNode)) => Some(f.size)
+            case (None, _) if fileExists   => Some(newPath.toFile.length())
+            case _                         => None
           }
           val newSecondaryFiles = f.secondaryFiles.map(finalizePath(_))
           val newContents = param.loadContents match {
             case Some(true) if f.contents.isEmpty && fileExists =>
-              Some(Utils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
+              Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
             case _ => f.contents
           }
           FileValue(
