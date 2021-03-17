@@ -504,25 +504,30 @@ object EvaluatorContext {
         case f: FileValue                    => Some(fileResolver.resolve(f.location.get))
         case d: DirectoryValue               => Some(fileResolver.resolveDirectory(d.location.get))
       }
-      println(pathValue, fileSource)
-      val (newLocation, newPath) = (fileSource, pathValue.path) match {
-        case (Some(fs), Some(path)) =>
-          (fs.uri, Paths.get(path).toRealPath())
-        case (Some(local: LocalFileSource), None) =>
-          println(local.canonicalPath)
-          (local.uri, local.canonicalPath)
-        case (Some(fs), None) =>
+      val (newFileSource, newLocation, newPath) = fileSource match {
+        case Some(local: LocalFileSource) if local.canonicalPath.toFile.exists() =>
+          (local, local.uri, local.canonicalPath)
+        case Some(local: LocalFileSource) =>
+          val newPath = inputDir.resolve(local.name)
+          (fileResolver.fromPath(newPath), newPath.toUri, newPath)
+        case Some(fs) =>
           fs.uri match {
-            case u if u.getScheme != null =>
-              (u, inputDir.resolve(Paths.get(u.getPath).getFileName))
-            case u =>
-              val p = Paths.get(u.getPath).toRealPath()
-              (p.toUri, p)
+            case uri if uri.getScheme != null =>
+              (fs, uri, inputDir.resolve(fs.name))
+            case uri =>
+              val newPath = Paths.get(uri.getPath) match {
+                case p if p.toFile.exists() => p.toRealPath()
+                case p                      => inputDir.resolve(p.getFileName)
+              }
+              (fs, newPath.toUri, newPath)
           }
-        case (None, Some(path)) =>
-          val p = Paths.get(path).toRealPath()
-          (p.toUri, p)
-        case (None, None) =>
+        case None if pathValue.path.nonEmpty =>
+          val newPath = Paths.get(pathValue.path.get) match {
+            case p if p.toFile.exists() => p.toRealPath()
+            case p                      => inputDir.resolve(p.getFileName)
+          }
+          (fileResolver.fromPath(newPath), newPath.toUri, newPath)
+        case None =>
           val randPath = Iterator
             .continually(UUID.randomUUID().toString)
             .map(inputDir.resolve)
@@ -530,7 +535,7 @@ object EvaluatorContext {
               case p if !p.toFile.exists() => p.toRealPath()
             }
             .get
-          (randPath.toUri, randPath)
+          (fileResolver.fromPath(randPath), randPath.toUri, randPath)
       }
       val newBasename = pathValue.basename match {
         case Some(basename) => basename
@@ -545,11 +550,16 @@ object EvaluatorContext {
           val dirname = Option(newPath.getParent).getOrElse(inputDir)
           val newChecksum = f.checksum // TODO
           val fileExists = newPath.toFile.exists()
-          val newSize = (f.size, fileSource) match {
-            case (Some(size), _)           => Some(size)
-            case (None, Some(f: FileNode)) => Some(f.size)
-            case (None, _) if fileExists   => Some(newPath.toFile.length())
-            case _                         => None
+          val newSize = (f.size, newFileSource) match {
+            case (Some(size), _)         => Some(size)
+            case (None, _) if fileExists => Some(newPath.toFile.length())
+            case (None, f: FileNode) =>
+              try {
+                Some(f.size)
+              } catch {
+                case _: Throwable => None
+              }
+            case _ => None
           }
           val newSecondaryFiles = f.secondaryFiles.map(finalizePath(_))
           val newContents = param.loadContents match {
