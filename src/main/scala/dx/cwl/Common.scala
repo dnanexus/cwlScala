@@ -91,8 +91,13 @@ trait Identifiable {
 
   def path: String = id.flatMap(_.path).getOrElse(throw new Exception(s"${this} has no name"))
 
-  def parent: String =
-    id.flatMap(_.parent).getOrElse(throw new Exception(s"${this} has no name"))
+  def parent: Option[String] = {
+    if (hasName) {
+      id.flatMap(_.parent)
+    } else {
+      throw new Exception(s"${this} has no name")
+    }
+  }
 
   def name: String =
     id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))

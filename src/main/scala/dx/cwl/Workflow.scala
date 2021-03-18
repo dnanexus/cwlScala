@@ -111,7 +111,7 @@ case class WorkflowOutputParameter(id: Option[Identifier],
                                    secondaryFiles: Vector[SecondaryFile],
                                    format: Option[CwlValue],
                                    streamable: Option[Boolean],
-                                   outputSource: Vector[String],
+                                   outputSource: Vector[Identifier],
                                    linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                                    pickValue: Option[PickValueMethod.PickValueMethod])
     extends OutputParameter
@@ -129,7 +129,7 @@ object WorkflowOutputParameter {
         SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
         translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
         translateOptional(param.getStreamable).map(_.booleanValue()),
-        translateOptionalArray(param.getOutputSource).map(_.toString),
+        translateOptionalArray(param.getOutputSource).map(source => Identifier(source.toString)),
         translateOptional(param.getLinkMerge).map(LinkMergeMethod.from),
         translateOptional(param.getPickValue).map(PickValueMethod.from)
     )
