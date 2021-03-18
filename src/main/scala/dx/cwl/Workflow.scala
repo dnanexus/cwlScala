@@ -161,7 +161,7 @@ object ScatterMethod extends Enumeration {
 
 case class WorkflowStepInput(id: Option[Identifier],
                              label: Option[String],
-                             source: Vector[String],
+                             source: Vector[Identifier],
                              default: Option[CwlValue],
                              valueFrom: Option[CwlValue],
                              linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
@@ -175,7 +175,7 @@ object WorkflowStepInput {
     WorkflowStepInput(
         translateOptional(step.getId).map(Identifier.apply),
         translateOptional(step.getLabel),
-        translateOptionalArray(step.getSource).map(_.toString),
+        translateOptionalArray(step.getSource).map(source => Identifier(source.toString)),
         translateOptional(step.getDefault).map(CwlValue(_, schemaDefs)),
         translateOptionalObject(step.getValueFrom).map(CwlValue(_, schemaDefs)),
         translateOptional(step.getLinkMerge).map(LinkMergeMethod.from),
