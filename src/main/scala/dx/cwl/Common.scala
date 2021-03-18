@@ -6,13 +6,25 @@ import org.w3id.cwl.cwl1_2.{CWLVersion, LoadListingEnum, SecondaryFileSchemaImpl
 import java.net.URI
 import java.nio.file.Path
 
-case class Identifier(namespace: Option[String], name: Option[String]) {
+/**
+  * An identifier of the form [\[namespace]#][path], where path is a
+  * '/'-delimited string. For path "foo/bar/baz", parent="foo/bar"
+  * and name="baz".
+  */
+case class Identifier(namespace: Option[String], path: Option[String]) {
   def fullyQualifiedName: Option[String] = {
-    name.map(n => namespace.map(ns => s"${ns}#${n}").getOrElse(n))
+    path.map(n => namespace.map(ns => s"${ns}#${n}").getOrElse(n))
   }
 
-  def unqualifiedName: Option[String] = {
-    name.map {
+  def parent: Option[String] = {
+    path.flatMap {
+      case n if n.contains('/') => Some(n.substring(0, n.lastIndexOf('/')))
+      case _                    => None
+    }
+  }
+
+  def name: Option[String] = {
+    path.map {
       case n if n.contains('/') => n.substring(n.lastIndexOf('/') + 1)
       case n                    => n
     }
@@ -59,12 +71,12 @@ object Identifier {
           name: Option[String] = None,
           source: Option[Path] = None): Option[Identifier] = {
     translateOptional(id).map(Identifier(_)) match {
-      case Some(id) if id.name.isDefined => Some(id)
+      case Some(id) if id.path.isDefined => Some(id)
       case id if name.isDefined =>
-        id.map(_.copy(name = name)).orElse(Some(Identifier(namespace = None, name = name)))
+        id.map(_.copy(path = name)).orElse(Some(Identifier(namespace = None, path = name)))
       case id if source.isDefined =>
         val name = Some(source.get.getFileName.toString.dropRight(4))
-        id.map(_.copy(name = name)).orElse(Some(Identifier(namespace = None, name = name)))
+        id.map(_.copy(path = name)).orElse(Some(Identifier(namespace = None, path = name)))
       case _ => None
     }
   }
@@ -73,11 +85,17 @@ object Identifier {
 trait Identifiable {
   val id: Option[Identifier]
 
-  def getName: Option[String] = id.flatMap(_.name)
+  def getName: Option[String] = id.flatMap(_.path)
 
   def hasName: Boolean = getName.isDefined
 
-  def name: String = id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))
+  def path: String = id.flatMap(_.path).getOrElse(throw new Exception(s"${this} has no name"))
+
+  def parent: String =
+    id.flatMap(_.parent).getOrElse(throw new Exception(s"${this} has no name"))
+
+  def name: String =
+    id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))
 }
 
 trait Parameter extends Identifiable {

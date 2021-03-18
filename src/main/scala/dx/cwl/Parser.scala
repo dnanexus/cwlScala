@@ -16,7 +16,7 @@ object Parser {
              schemaDefs: Vector[CwlSchema] = Vector.empty,
              hintSchemas: Vector[HintSchema] = Vector.empty): Parser = {
     val schemaDefMap = schemaDefs.collect {
-      case schema if schema.hasName => schema.name -> schema
+      case schema if schema.hasName => schema.path -> schema
     }.toMap
     val hintSchemaMap = hintSchemas.map(s => s.className -> s).toMap
     Parser(baseUri, loadingOptions, schemaDefMap, hintSchemaMap)

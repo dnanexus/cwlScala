@@ -599,7 +599,7 @@ object EvaluatorContext {
     (param.cwlType, value) match {
       case (t, NullValue) if CwlOptional.isOptional(t) => NullValue
       case (_, NullValue) =>
-        throw new Exception(s"missing required input ${param.name}")
+        throw new Exception(s"missing required input ${param.path}")
       case (CwlFile, f: FileValue)           => finalizePath(f)
       case (CwlDirectory, d: DirectoryValue) => finalizePath(d)
       case _                                 => value
@@ -618,7 +618,7 @@ object EvaluatorContext {
     ObjectValue(
         inputs
           .map {
-            case (param, value) => param.name -> finalizeInputValue(value, param, inputDir)
+            case (param, value) => param.path -> finalizeInputValue(value, param, inputDir)
           }
           .to(TreeSeqMap)
     )
@@ -635,7 +635,7 @@ object EvaluatorContext {
         inputs
           .collect {
             case param if param.id.isDefined && param.default.isDefined =>
-              param.id.get.name.get -> finalizeInputValue(param.default.get, param, inputDir)
+              param.id.get.path.get -> finalizeInputValue(param.default.get, param, inputDir)
           }
           .to(TreeSeqMap)
     )

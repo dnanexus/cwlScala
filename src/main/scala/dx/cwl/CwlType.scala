@@ -95,7 +95,7 @@ object CwlType {
           val (newType, newSchemaDefs) =
             CwlSchema.translateSchema(schema, innerSchemaDefs, rawSchemaDefs)
           val updatedSchemaDefs = if (newType.hasName) {
-            innerSchemaDefs ++ newSchemaDefs + (newType.name -> newType)
+            innerSchemaDefs ++ newSchemaDefs + (newType.path -> newType)
           } else {
             innerSchemaDefs ++ newSchemaDefs
           }
@@ -108,13 +108,13 @@ object CwlType {
           )
           val schemaDef = schemaDefs
             .get(fqn)
-            .orElse(id.name.flatMap(schemaDefs.get))
+            .orElse(id.path.flatMap(schemaDefs.get))
             .orElse(innerSchemaDefs.get(fqn))
-            .orElse(id.name.flatMap(innerSchemaDefs.get))
+            .orElse(id.path.flatMap(innerSchemaDefs.get))
           schemaDef match {
             case Some(schemaDef) => (Vector(schemaDef), None, innerSchemaDefs)
-            case None if rawSchemaDefs.contains(fqn) || id.name.exists(rawSchemaDefs.contains) =>
-              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.name.get))
+            case None if rawSchemaDefs.contains(fqn) || id.path.exists(rawSchemaDefs.contains) =>
+              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.path.get))
               val (types, stdfile, updatedSchemaDefs) = inner(rawSchemaDef, innerSchemaDefs)
               val newSchemaDef = types match {
                 case Vector(s: CwlSchema) => s
@@ -557,7 +557,7 @@ object CwlInputRecordField {
       case _ => None
     }
     CwlInputRecordField(
-        id.unqualifiedName.get,
+        id.name.get,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
@@ -699,7 +699,7 @@ object CwlOutputRecordField {
       case _ => None
     }
     CwlOutputRecordField(
-        id.unqualifiedName.get,
+        id.name.get,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),

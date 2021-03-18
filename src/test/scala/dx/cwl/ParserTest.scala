@@ -47,7 +47,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         case rec: CwlInputRecord => rec
       }
       records.size shouldBe 1
-      records.head.name shouldBe "vcf2maf_params"
+      records.head.path shouldBe "vcf2maf_params"
     }
 
     val cwlFilter = new FilenameFilter {

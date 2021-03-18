@@ -222,7 +222,7 @@ object CommandLineTool {
     val stdin = paramStdin
       .map { param =>
         val paramId = param.id
-          .flatMap(_.name)
+          .flatMap(_.path)
           .getOrElse(
               throw new Exception(s"missing input parameter ${paramStdin}")
           )
