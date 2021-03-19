@@ -1,8 +1,9 @@
 # Change log
 
-## v0.4.2 (dev)
+## v0.5.0 (dev)
 
 * *Breaking change*: schema types now have `id: Option[Identifier]` rather than `name: Option[String]`
+* Parser can now handle `$graph` style CWL documents
 * Adds dependency on `dxCommon` library  
 * Improves finalization of file values
 * Fixes coercion of StringValue to CwlEnum
