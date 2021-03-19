@@ -69,12 +69,13 @@ object Identifier {
   }
 
   def get(id: java.util.Optional[String],
-          frag: Option[String] = None,
+          defaultFrag: Option[String] = None,
           source: Option[Path] = None): Option[Identifier] = {
     translateOptional(id).map(Identifier.parse(_)) match {
       case Some(id) if id.frag.isDefined => Some(id)
-      case id if frag.isDefined =>
-        id.map(_.copy(frag = frag)).orElse(Some(Identifier(namespace = None, frag = frag)))
+      case id if defaultFrag.isDefined =>
+        id.map(_.copy(frag = defaultFrag))
+          .orElse(Some(Identifier(namespace = None, frag = defaultFrag)))
       case id if source.isDefined =>
         val name = Some(source.get.getFileName.toString.dropRight(4))
         id.map(_.copy(frag = name)).orElse(Some(Identifier(namespace = None, frag = name)))
