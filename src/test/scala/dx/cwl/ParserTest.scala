@@ -18,9 +18,9 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     "parse requirements" in {
-      val doc = Parser.default.parseFile(getPath("/tools/v1.2/writable-dir.cwl"))
-      doc.requirements.size shouldBe 2
-      doc.requirements.iterator sameElements Vector(
+      val (proc, _) = Parser.default.parseFile(getPath("/tools/v1.2/writable-dir.cwl"))
+      proc.requirements.size shouldBe 2
+      proc.requirements.iterator sameElements Vector(
           InlineJavascriptRequirement(None),
           InitialWorkDirRequirement(
               Vector(
@@ -35,9 +35,9 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     "parse schema" in {
-      val doc =
+      val (proc, _) =
         Parser.default.parseFile(getPath("/tools/v1.2/anon_enum_inside_array_inside_schemadef.cwl"))
-      val schemaDefRequirement = doc.requirements.collect {
+      val schemaDefRequirement = proc.requirements.collect {
         case req: SchemaDefRequirement => req
       }
       schemaDefRequirement.size shouldBe 1
@@ -47,7 +47,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         case rec: CwlInputRecord => rec
       }
       records.size shouldBe 1
-      records.head.path shouldBe "vcf2maf_params"
+      records.head.frag shouldBe "vcf2maf_params"
     }
 
     val cwlFilter = new FilenameFilter {
@@ -71,7 +71,7 @@ class ParserTest extends AnyWordSpec with Matchers {
               throw new Exception(s"cannot parse ${toolPath}")
           }
           toolsParser.parseFile(toolPath.toPath) match {
-            case _: CommandLineTool => ()
+            case (_: CommandLineTool, _) => ()
             case other =>
               throw new AssertionError(s"expected CommandLineTool, not ${other}")
           }
@@ -94,7 +94,7 @@ class ParserTest extends AnyWordSpec with Matchers {
           }
           if (isWorkflow) {
             workflowParser.parseFile(wfPath.toPath) match {
-              case _: Workflow => ()
+              case (_: Workflow, _) => ()
               case other =>
                 throw new AssertionError(s"expected Workflow, not ${other}")
             }
@@ -103,5 +103,12 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
+    s"parse packed workflow" in {
+      val wfPath = workflowsPath.resolve("packed.json")
+      workflowParser.parseFile(wfPath) match {
+        case (wf: Workflow, _) => wf
+        case other             => throw new Exception(s"expected Workflow, not ${other}")
+      }
+    }
   }
 }

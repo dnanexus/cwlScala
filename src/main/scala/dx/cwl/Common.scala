@@ -7,24 +7,24 @@ import java.net.URI
 import java.nio.file.Path
 
 /**
-  * An identifier of the form [\[namespace]#][path], where path is a
-  * '/'-delimited string. For path "foo/bar/baz", parent="foo/bar"
+  * An identifier of the form [\[namespace]#][frag], where frag is a
+  * '/'-delimited string. For frag "foo/bar/baz", parent="foo/bar"
   * and name="baz".
   */
-case class Identifier(namespace: Option[String], path: Option[String]) {
+case class Identifier(namespace: Option[String], frag: Option[String]) {
   def fullyQualifiedName: Option[String] = {
-    path.map(n => namespace.map(ns => s"${ns}#${n}").getOrElse(n))
+    frag.map(n => namespace.map(ns => s"${ns}#${n}").getOrElse(n))
   }
 
   def parent: Option[String] = {
-    path.flatMap {
+    frag.flatMap {
       case n if n.contains('/') => Some(n.substring(0, n.lastIndexOf('/')))
       case _                    => None
     }
   }
 
   def name: Option[String] = {
-    path.map {
+    frag.map {
       case n if n.contains('/') => n.substring(n.lastIndexOf('/') + 1)
       case n                    => n
     }
@@ -49,34 +49,35 @@ object Identifier {
     Identifier(namespace, name)
   }
 
-  def apply(uri: String): Identifier = {
-    uri match {
+  def parse(uri: String, stripFragPrefix: Option[String] = None): Identifier = {
+    val id = uri match {
       case identifierRegexp(namespace, null) => Identifier(Some(namespace), None)
       case identifierRegexp(null, id)        => Identifier(None, Some(id))
       case identifierRegexp(namespace, id)   => Identifier(Some(namespace), Some(id))
       case _                                 => throw new Exception(s"invalid identifier ${uri}")
     }
-  }
-
-  def apply(id: java.util.Optional[String],
-            name: Option[String] = None,
-            source: Option[Path] = None): Identifier = {
-    get(id, name, source) match {
-      case _ =>
-        throw new Exception("either tool id or file path must be defined")
-    }
+    stripFragPrefix
+      .map { s =>
+        assert(s.endsWith("/"))
+        id.copy(frag = id.frag.map {
+          case p if p.startsWith(s) => p.drop(s.length)
+          case p =>
+            throw new Exception(s"frag ${p} does not start with prefix ${s}")
+        })
+      }
+      .getOrElse(id)
   }
 
   def get(id: java.util.Optional[String],
-          name: Option[String] = None,
+          frag: Option[String] = None,
           source: Option[Path] = None): Option[Identifier] = {
-    translateOptional(id).map(Identifier(_)) match {
-      case Some(id) if id.path.isDefined => Some(id)
-      case id if name.isDefined =>
-        id.map(_.copy(path = name)).orElse(Some(Identifier(namespace = None, path = name)))
+    translateOptional(id).map(Identifier.parse(_)) match {
+      case Some(id) if id.frag.isDefined => Some(id)
+      case id if frag.isDefined =>
+        id.map(_.copy(frag = frag)).orElse(Some(Identifier(namespace = None, frag = frag)))
       case id if source.isDefined =>
         val name = Some(source.get.getFileName.toString.dropRight(4))
-        id.map(_.copy(path = name)).orElse(Some(Identifier(namespace = None, path = name)))
+        id.map(_.copy(frag = name)).orElse(Some(Identifier(namespace = None, frag = name)))
       case _ => None
     }
   }
@@ -85,11 +86,11 @@ object Identifier {
 trait Identifiable {
   val id: Option[Identifier]
 
-  def getName: Option[String] = id.flatMap(_.path)
+  def getName: Option[String] = id.flatMap(_.frag)
 
   def hasName: Boolean = getName.isDefined
 
-  def path: String = id.flatMap(_.path).getOrElse(throw new Exception(s"${this} has no name"))
+  def frag: String = id.flatMap(_.frag).getOrElse(throw new Exception(s"${this} has no name"))
 
   def parent: Option[String] = {
     if (hasName) {
@@ -101,6 +102,45 @@ trait Identifiable {
 
   def name: String =
     id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))
+}
+
+case class Document(processes: Map[String, Process], primaryId: String = "main") {
+  def add(proc: Process, isPrimary: Boolean = false): Document = {
+    val id = proc.id.flatMap(_.frag).getOrElse(primaryId)
+    if (processes.contains(id)) {
+      throw new Exception(s"two processes have the same ID ${id}")
+    }
+    val newPrimaryId = if (isPrimary) id else primaryId
+    Document(processes + (id -> proc), newPrimaryId)
+  }
+
+  def isEmpty: Boolean = processes.isEmpty
+
+  def contains(frag: String): Boolean = {
+    processes.contains(frag)
+  }
+
+  def get(frag: String): Option[Process] = {
+    processes.get(frag)
+  }
+
+  def apply(frag: String): Process = {
+    processes(frag)
+  }
+
+  def primary: Process = {
+    if (processes.isEmpty) {
+      throw new Exception("no processes")
+    } else if (processes.size == 1) {
+      processes.values.head
+    } else {
+      processes.getOrElse(primaryId, throw new Exception(s"no process with ID '${primaryId}'"))
+    }
+  }
+}
+
+object Document {
+  def empty: Document = Document(Map.empty)
 }
 
 trait Parameter extends Identifiable {

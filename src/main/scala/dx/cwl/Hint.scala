@@ -207,13 +207,13 @@ object InlineJavascriptRequirement extends HintSchema {
 
 case class SchemaDefRequirement(typeDefinitions: Vector[CwlSchema]) extends Requirement {
   typeDefinitions.foreach { typeDef =>
-    if (typeDef.path.isEmpty) {
+    if (typeDef.frag.isEmpty) {
       throw new Exception(s"schema name must be defined in SchemaDefRequirement ${typeDef}")
     }
   }
 
   def asMap: Map[String, CwlSchema] = {
-    typeDefinitions.map(schema => schema.path -> schema)
+    typeDefinitions.map(schema => schema.frag -> schema)
   }.toMap
 }
 

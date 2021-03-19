@@ -95,7 +95,7 @@ object CwlType {
           val (newType, newSchemaDefs) =
             CwlSchema.translateSchema(schema, innerSchemaDefs, rawSchemaDefs)
           val updatedSchemaDefs = if (newType.hasName) {
-            innerSchemaDefs ++ newSchemaDefs + (newType.path -> newType)
+            innerSchemaDefs ++ newSchemaDefs + (newType.frag -> newType)
           } else {
             innerSchemaDefs ++ newSchemaDefs
           }
@@ -108,13 +108,13 @@ object CwlType {
           )
           val schemaDef = schemaDefs
             .get(fqn)
-            .orElse(id.path.flatMap(schemaDefs.get))
+            .orElse(id.frag.flatMap(schemaDefs.get))
             .orElse(innerSchemaDefs.get(fqn))
-            .orElse(id.path.flatMap(innerSchemaDefs.get))
+            .orElse(id.frag.flatMap(innerSchemaDefs.get))
           schemaDef match {
             case Some(schemaDef) => (Vector(schemaDef), None, innerSchemaDefs)
-            case None if rawSchemaDefs.contains(fqn) || id.path.exists(rawSchemaDefs.contains) =>
-              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.path.get))
+            case None if rawSchemaDefs.contains(fqn) || id.frag.exists(rawSchemaDefs.contains) =>
+              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.frag.get))
               val (types, stdfile, updatedSchemaDefs) = inner(rawSchemaDef, innerSchemaDefs)
               val newSchemaDef = types match {
                 case Vector(s: CwlSchema) => s
