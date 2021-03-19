@@ -121,15 +121,31 @@ object WorkflowOutputParameter {
             schemaDefs: Map[String, CwlSchema]): WorkflowOutputParameter = {
     val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     assert(stdfile.isEmpty)
+    val id = translateOptional(param.getId).map(Identifier.apply)
+    val sources =
+      translateOptionalArray(param.getOutputSource).map(source => Identifier(source.toString)).map {
+        src =>
+          // TODO: this is a work-around for a parser bug - remove when fixed
+          if (id.exists(_.path.isDefined) && src.path.isDefined) {
+            val prefix = s"${id.flatMap(_.path).get}/"
+            if (src.path.get.startsWith(prefix)) {
+              src.copy(path = src.path.map(_.drop(prefix.length)))
+            } else {
+              src
+            }
+          } else {
+            src
+          }
+      }
     WorkflowOutputParameter(
-        translateOptional(param.getId).map(Identifier.apply),
+        id,
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
         SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
         translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
         translateOptional(param.getStreamable).map(_.booleanValue()),
-        translateOptionalArray(param.getOutputSource).map(source => Identifier(source.toString)),
+        sources,
         translateOptional(param.getLinkMerge).map(LinkMergeMethod.from),
         translateOptional(param.getPickValue).map(PickValueMethod.from)
     )
