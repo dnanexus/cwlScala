@@ -1,5 +1,7 @@
 package dx.cwl
 
+import dx.cwl.Document.{Document, DocumentAdder}
+
 import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
 import java.net.URI
 import java.nio.file.{Path, Paths}
@@ -28,7 +30,7 @@ case class Parser(baseUri: Option[URI] = None,
                   loadingOptions: Option[LoadingOptions] = None,
                   schemaDefs: Map[String, CwlSchema] = Map.empty,
                   hintSchemas: Map[String, HintSchema] = Map.empty) {
-  private var cache: Map[Path, Document] = Map.empty
+  private var cache: Map[Path, (Process, Map[String, Process])] = Map.empty
   private lazy val normalizedBaseUri = baseUri.map(Utils.normalizeUri).orNull
 
   def detectVersionAndClass(inputStream: InputStream): Option[(String, String)] = {
@@ -65,23 +67,23 @@ case class Parser(baseUri: Option[URI] = None,
   def parse(
       doc: java.lang.Object,
       source: Option[Path] = None,
-      name: Option[String] = None,
+      defaultFrag: Option[String] = None,
       dependencies: Document = Document.empty,
       rawProcesses: Map[String, java.lang.Object] = Map.empty,
       isGraph: Boolean = false
-  ): (Process, Document) = {
+  ): (Process, Map[String, Process]) = {
     doc match {
       case tool: CommandLineToolImpl =>
-        val proc = CommandLineTool(tool, this, source, name, isGraph)
-        (proc, dependencies.add(proc, isPrimary = !isGraph))
+        val proc = CommandLineTool(tool, this, source, defaultFrag, isGraph)
+        (proc, dependencies.addProcess(proc))
       case expressionTool: ExpressionToolImpl =>
-        val proc = ExpressionTool(expressionTool, this, source, name, isGraph)
-        (proc, dependencies.add(proc, isPrimary = !isGraph))
+        val proc = ExpressionTool(expressionTool, this, source, defaultFrag, isGraph)
+        (proc, dependencies.addProcess(proc))
       case operation: OperationImpl =>
-        val proc = Operation(operation, this, source, name, isGraph)
-        (proc, dependencies.add(proc, isPrimary = !isGraph))
+        val proc = Operation(operation, this, source, defaultFrag, isGraph)
+        (proc, dependencies.addProcess(proc))
       case workflow: WorkflowImpl =>
-        Workflow.parse(workflow, this, source, name, dependencies, rawProcesses, isGraph)
+        Workflow.parse(workflow, this, source, defaultFrag, dependencies, rawProcesses, isGraph)
       case graph: java.util.List[_] =>
         // this is the result of parsing a packed workflow - the
         // top-level process will be called "main".
@@ -104,7 +106,7 @@ case class Parser(baseUri: Option[URI] = None,
               parse(rawProc, dependencies = accu, rawProcesses = rawProcesses, isGraph = true)
             newAccu
         }
-        (result.primary, result)
+        (result("main"), result)
       case other =>
         throw new RuntimeException(s"unexpected top-level element ${other.getClass}")
     }
@@ -114,22 +116,21 @@ case class Parser(baseUri: Option[URI] = None,
     * Parses a CWL document from a file.
     * @note currently, only CommandLineTool documents are supported.
     * @param path path to the document
-    * @param name tool/workflow name, in case it is not specified in the document
+    * @param defaultFrag tool/workflow name, in case it is not specified in the document
     *             if not specified, the name of the file without .cwl is used
     * @return a [[Process]]
     */
-  def parseFile(path: Path, name: Option[String] = None): (Process, Document) = {
+  def parseFile(path: Path, defaultFrag: Option[String] = None): (Process, Map[String, Process]) = {
     if (cache.contains(path)) {
-      val cachedDoc = cache(path)
-      (cachedDoc.primary, cachedDoc)
+      cache(path)
     } else {
-      val (proc, doc) = parse(
+      val result = parse(
           RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
           Some(path),
-          name
+          defaultFrag
       )
-      cache += (path -> doc)
-      (proc, doc)
+      cache = cache + (path -> result)
+      result
     }
   }
 
@@ -137,26 +138,28 @@ case class Parser(baseUri: Option[URI] = None,
     * Parses a CWL document from a string.
     * @note currently, only CommandLineTool documents are supported.
     * @param sourceCode path to the document
-    * @param name tool/workflow name, in case it is not specified in the document
+    * @param defaultFrag tool/workflow name, in case it is not specified in the document
     * @return a [[Process]]
     */
-  def parseString(sourceCode: String, name: Option[String] = None): (Process, Document) = {
-    parse(RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull), None, name)
+  def parseString(sourceCode: String,
+                  defaultFrag: Option[String] = None): (Process, Map[String, Process]) = {
+    parse(RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull),
+          None,
+          defaultFrag)
   }
 
-  def parseImport(relPath: String): (Process, Document) = {
+  def parseImport(relPath: String): (Process, Map[String, Process]) = {
     val path = baseUri.map(uri => Paths.get(uri.resolve(relPath))).getOrElse(Paths.get(relPath))
     if (cache.contains(path)) {
-      val cachedDoc = cache(path)
-      (cachedDoc.primary, cachedDoc)
+      cache(path)
     } else {
-      val (proc, doc) = parse(
+      val result = parse(
           RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
           Some(path),
           None
       )
-      cache += (path -> doc)
-      (proc, doc)
+      cache = cache + (path -> result)
+      result
     }
   }
 }

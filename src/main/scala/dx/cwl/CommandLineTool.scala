@@ -184,18 +184,18 @@ object CommandLineTool {
     * @param tool the Java object
     * @param ctx the Parser
     * @param source the CWL original source code
-    * @param name an optional tool name, to use if it is not specified in the document
+    * @param defaultFrag an optional tool name, to use if it is not specified in the document
     * @return a [[CommandLineTool]]
     */
   def apply(tool: CommandLineToolImpl,
             ctx: Parser,
             source: Option[Path] = None,
-            name: Option[String] = None,
+            defaultFrag: Option[String] = None,
             isGraph: Boolean = false): CommandLineTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
 
-    val id = Identifier.get(tool.getId, name, source)
+    val id = Identifier.get(tool.getId, defaultFrag, source)
     val stripFragPrefix = if (isGraph) id.flatMap(_.frag.map(p => s"${p}/")) else None
 
     // An input may have type `stdin`, which is a file that is created from the

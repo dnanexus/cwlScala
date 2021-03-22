@@ -84,6 +84,25 @@ object Identifier {
   }
 }
 
+object Document {
+  type Document = Map[String, Process]
+  val empty: Document = Map.empty[String, Process]
+
+  implicit class DocumentAdder(doc: Document) {
+    def addProcess(proc: Process): Document = {
+      val id = proc.id
+        .flatMap(_.frag)
+        .getOrElse(
+            throw new Exception(s"process ${proc} has no ID")
+        )
+      if (doc.contains(id)) {
+        throw new Exception(s"two processes have the same ID ${id}")
+      }
+      doc + (id -> proc)
+    }
+  }
+}
+
 trait Identifiable {
   val id: Option[Identifier]
 
@@ -103,45 +122,6 @@ trait Identifiable {
 
   def name: String =
     id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))
-}
-
-case class Document(processes: Map[String, Process], primaryId: String = "main") {
-  def add(proc: Process, isPrimary: Boolean = false): Document = {
-    val id = proc.id.flatMap(_.frag).getOrElse(primaryId)
-    if (processes.contains(id)) {
-      throw new Exception(s"two processes have the same ID ${id}")
-    }
-    val newPrimaryId = if (isPrimary) id else primaryId
-    Document(processes + (id -> proc), newPrimaryId)
-  }
-
-  def isEmpty: Boolean = processes.isEmpty
-
-  def contains(frag: String): Boolean = {
-    processes.contains(frag)
-  }
-
-  def get(frag: String): Option[Process] = {
-    processes.get(frag)
-  }
-
-  def apply(frag: String): Process = {
-    processes(frag)
-  }
-
-  def primary: Process = {
-    if (processes.isEmpty) {
-      throw new Exception("no processes")
-    } else if (processes.size == 1) {
-      processes.values.head
-    } else {
-      processes.getOrElse(primaryId, throw new Exception(s"no process with ID '${primaryId}'"))
-    }
-  }
-}
-
-object Document {
-  def empty: Document = Document(Map.empty)
 }
 
 trait Parameter extends Identifiable {

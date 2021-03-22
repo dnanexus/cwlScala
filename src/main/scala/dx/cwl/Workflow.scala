@@ -1,6 +1,7 @@
 package dx.cwl
 
 import java.nio.file.Path
+import dx.cwl.Document.{Document, DocumentAdder}
 import dx.cwl.Utils._
 import org.w3id.cwl.cwl1_2.{
   CWLVersion,
@@ -269,8 +270,11 @@ object WorkflowStep {
             stripFragPrefix: Option[String] = None): (WorkflowStep, Document) = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(step.getRequirements, ctx.schemaDefs)
+    val id = translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix))
     val (runProcess, newDoc) = step.getRun match {
-      case process: ProcessInterface => ctx.parse(process, None)
+      case process: ProcessInterface =>
+        val defaultName = id.flatMap(_.frag.map(f => s"${f}/process"))
+        ctx.parse(process, None, defaultName)
       case uri: String if isGraph =>
         val frag = Identifier.parse(uri).frag.get
         if (dependencies.contains(frag)) {
@@ -288,7 +292,7 @@ object WorkflowStep {
         throw new RuntimeException(s"unexpected run value ${other} for step ${step}")
     }
     val wfStep = WorkflowStep(
-        translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix)),
+        id,
         translateOptional(step.getLabel),
         translateDoc(step.getDoc),
         WorkflowStepInput.applyArray(step.getIn, allSchemaDefs, stripFragPrefix),
@@ -372,11 +376,7 @@ object Workflow {
         requirements,
         Requirement.applyHints(workflow.getHints, allSchemaDefs, ctx.hintSchemas)
     )
-    if (isGraph) {
-      (wf, newDependencies.add(wf))
-    } else {
-      (wf, newDependencies.add(wf, isPrimary = dependencies.isEmpty))
-    }
+    (wf, newDependencies.addProcess(wf))
   }
 }
 
