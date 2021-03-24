@@ -61,11 +61,12 @@ object CommandInputParameter {
   def apply(
       param: CommandInputParameterImpl,
       schemaDefs: Map[String, CwlSchema],
-      stripFragPrefix: Option[String] = None
+      stripFragPrefix: Option[String] = None,
+      defaultNamespace: Option[String] = None
   ): (CommandInputParameter, Boolean) = {
     val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     val inparam = CommandInputParameter(
-        translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix)),
+        translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
@@ -118,7 +119,8 @@ object CommandOutputParameter {
   def apply(
       param: CommandOutputParameterImpl,
       schemaDefs: Map[String, CwlSchema],
-      stripFragPrefix: Option[String] = None
+      stripFragPrefix: Option[String] = None,
+      defaultNamespace: Option[String] = None
   ): (CommandOutputParameter, Option[StdFile.StdFile]) = {
     val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     val outputBinding = translateOptional(param.getOutputBinding) match {
@@ -139,7 +141,7 @@ object CommandOutputParameter {
       translateOptional(param.getStreamable).map(_.booleanValue())
     }
     val outparam = CommandOutputParameter(
-        translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix)),
+        translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
@@ -190,12 +192,13 @@ object CommandLineTool {
   def apply(tool: CommandLineToolImpl,
             ctx: Parser,
             source: Option[Path] = None,
+            defaultNamespace: Option[String],
             defaultFrag: Option[String] = None,
             isGraph: Boolean = false): CommandLineTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
 
-    val id = Identifier.get(tool.getId, defaultFrag, source)
+    val id = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
     val stripFragPrefix = if (isGraph) id.flatMap(_.frag.map(p => s"${p}/")) else None
 
     // An input may have type `stdin`, which is a file that is created from the
@@ -206,7 +209,7 @@ object CommandLineTool {
     val (inputParams, isStdin) = tool.getInputs.asScala
       .map {
         case param: CommandInputParameterImpl =>
-          CommandInputParameter(param, allSchemaDefs, stripFragPrefix)
+          CommandInputParameter(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
         case other =>
           throw new RuntimeException(s"unexpected CommandInputParameter value ${other}")
       }
@@ -244,7 +247,7 @@ object CommandLineTool {
     val (outputParams, stdfile) = tool.getOutputs.asScala
       .map {
         case param: CommandOutputParameterImpl =>
-          CommandOutputParameter(param, allSchemaDefs, stripFragPrefix)
+          CommandOutputParameter(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
         case other =>
           throw new RuntimeException(s"unexpected CommandOutputParameter value ${other}")
       }

@@ -30,7 +30,7 @@ case class Parser(baseUri: Option[URI] = None,
                   loadingOptions: Option[LoadingOptions] = None,
                   schemaDefs: Map[String, CwlSchema] = Map.empty,
                   hintSchemas: Map[String, HintSchema] = Map.empty) {
-  private var cache: Map[Path, (Process, Map[String, Process])] = Map.empty
+  private var cache: Map[Path, (Process, Document)] = Map.empty
   private lazy val normalizedBaseUri = baseUri.map(Utils.normalizeUri).orNull
 
   def detectVersionAndClass(inputStream: InputStream): Option[(String, String)] = {
@@ -64,49 +64,77 @@ case class Parser(baseUri: Option[URI] = None,
     detectVersionAndClass(new ByteArrayInputStream(sourceCode.getBytes()))
   }
 
-  def parse(
-      doc: java.lang.Object,
-      source: Option[Path] = None,
-      defaultFrag: Option[String] = None,
-      dependencies: Document = Document.empty,
-      rawProcesses: Map[String, java.lang.Object] = Map.empty,
-      isGraph: Boolean = false
-  ): (Process, Map[String, Process]) = {
+  def parse(doc: Object,
+            source: Option[Path] = None,
+            defaultNamespace: Option[String] = None,
+            defaultFrag: Option[String] = None,
+            dependencies: Document = Document.empty,
+            rawProcesses: Map[Identifier, Object] = Map.empty,
+            isGraph: Boolean = false): (Process, Document) = {
     doc match {
       case tool: CommandLineToolImpl =>
-        val proc = CommandLineTool(tool, this, source, defaultFrag, isGraph)
+        val proc = CommandLineTool(tool, this, source, defaultNamespace, defaultFrag, isGraph)
         (proc, dependencies.addProcess(proc))
       case expressionTool: ExpressionToolImpl =>
-        val proc = ExpressionTool(expressionTool, this, source, defaultFrag, isGraph)
+        val proc =
+          ExpressionTool(expressionTool, this, source, defaultNamespace, defaultFrag, isGraph)
         (proc, dependencies.addProcess(proc))
       case operation: OperationImpl =>
-        val proc = Operation(operation, this, source, defaultFrag, isGraph)
+        val proc = Operation(operation, this, source, defaultNamespace, defaultFrag, isGraph)
         (proc, dependencies.addProcess(proc))
       case workflow: WorkflowImpl =>
-        Workflow.parse(workflow, this, source, defaultFrag, dependencies, rawProcesses, isGraph)
+        Workflow.parse(workflow,
+                       this,
+                       source,
+                       defaultNamespace,
+                       defaultFrag,
+                       dependencies,
+                       rawProcesses,
+                       isGraph)
       case graph: java.util.List[_] =>
         // this is the result of parsing a packed workflow - the
         // top-level process will be called "main".
         val rawProcesses = graph.asScala.toVector.map {
           case tool: CommandLineToolImpl =>
-            Identifier.parse(tool.getId.get()).frag.get -> tool
+            Identifier.parse(tool.getId.get()) -> tool
           case workflow: WorkflowImpl =>
-            Identifier.parse(workflow.getId.get()).frag.get -> workflow
+            Identifier.parse(workflow.getId.get()) -> workflow
           case expressionTool: ExpressionToolImpl =>
-            Identifier.parse(expressionTool.getId.get()).frag.get -> expressionTool
+            Identifier.parse(expressionTool.getId.get()) -> expressionTool
           case operation: OperationImpl =>
-            Identifier.parse(operation.getId.get()).frag.get -> operation
+            Identifier.parse(operation.getId.get()) -> operation
           case other =>
             throw new RuntimeException(s"unexpected top-level element ${other.getClass}")
         }.toMap
-        val result = rawProcesses.foldLeft(dependencies) {
-          case (accu, (name, _)) if accu.contains(name) => accu
-          case (accu, (_, rawProc)) =>
-            val (_, newAccu) =
-              parse(rawProc, dependencies = accu, rawProcesses = rawProcesses, isGraph = true)
-            newAccu
-        }
-        (result("main"), result)
+        val (primaryProc, newDependencies) =
+          rawProcesses.foldLeft(Option.empty[Process], dependencies) {
+            case ((primaryProc, accu), (id, _)) if accu.contains(id) => (primaryProc, accu)
+            case ((primaryProc, accu), (id, rawProc)) =>
+              (id, primaryProc) match {
+                case (id, Some(_)) if id.frag.contains("main") =>
+                  throw new Exception("more than one process has ID frag='main'")
+                case (id, None) if id.frag.contains("main") =>
+                  val (proc, newAccu) =
+                    parse(rawProc,
+                          source,
+                          defaultNamespace,
+                          defaultFrag,
+                          accu,
+                          rawProcesses,
+                          isGraph = true)
+                  (Some(proc), newAccu)
+                case _ =>
+                  val (_, newAccu) =
+                    parse(rawProc,
+                          defaultNamespace = defaultNamespace,
+                          dependencies = accu,
+                          rawProcesses = rawProcesses,
+                          isGraph = true)
+                  (primaryProc, newAccu)
+              }
+          }
+        (primaryProc.getOrElse(throw new Exception("no process found with ID frag='main'")),
+         newDependencies)
       case other =>
         throw new RuntimeException(s"unexpected top-level element ${other.getClass}")
     }
@@ -120,15 +148,14 @@ case class Parser(baseUri: Option[URI] = None,
     *             if not specified, the name of the file without .cwl is used
     * @return a [[Process]]
     */
-  def parseFile(path: Path, defaultFrag: Option[String] = None): (Process, Map[String, Process]) = {
+  def parseFile(path: Path, defaultFrag: Option[String] = None): (Process, Document) = {
     if (cache.contains(path)) {
       cache(path)
     } else {
-      val result = parse(
-          RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
-          Some(path),
-          defaultFrag
-      )
+      val result = parse(RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
+                         Some(path),
+                         defaultNamespace = Some(normalizedBaseUri),
+                         defaultFrag)
       cache = cache + (path -> result)
       result
     }
@@ -141,23 +168,23 @@ case class Parser(baseUri: Option[URI] = None,
     * @param defaultFrag tool/workflow name, in case it is not specified in the document
     * @return a [[Process]]
     */
-  def parseString(sourceCode: String,
-                  defaultFrag: Option[String] = None): (Process, Map[String, Process]) = {
+  def parseString(sourceCode: String, defaultFrag: Option[String] = None): (Process, Document) = {
     parse(RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull),
           None,
+          defaultNamespace = Some(normalizedBaseUri),
           defaultFrag)
   }
 
-  def parseImport(relPath: String): (Process, Map[String, Process]) = {
+  def parseImport(relPath: String, dependencies: Document = Document.empty): (Process, Document) = {
     val path = baseUri.map(uri => Paths.get(uri.resolve(relPath))).getOrElse(Paths.get(relPath))
     if (cache.contains(path)) {
       cache(path)
     } else {
-      val result = parse(
-          RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
-          Some(path),
-          None
-      )
+      val result = parse(RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
+                         Some(path),
+                         defaultNamespace = Some(normalizedBaseUri),
+                         None,
+                         dependencies)
       cache = cache + (path -> result)
       result
     }

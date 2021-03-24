@@ -83,19 +83,29 @@ object Utils {
     }
   }
 
+  private val identifierRegexp = "(.*?)(?:#(.*))?".r
+
+  def splitUri(uri: String): (Option[String], Option[String]) = {
+    uri match {
+      case identifierRegexp(frag, null) => (None, Some(frag))
+      case identifierRegexp(namespace, frag) if frag.isEmpty =>
+        (Some(namespace), None)
+      case identifierRegexp(namespace, frag) if namespace.isEmpty =>
+        (None, Some(frag))
+      case identifierRegexp(namespace, id) =>
+        (Some(namespace), Some(id))
+      case _ =>
+        throw new Exception(s"invalid URI ${uri}")
+    }
+  }
+
   def normalizeAndSplitUri(uri: URI): (Option[String], Option[String]) = {
     try {
       (Option(uri.getScheme), Option(uri.getFragment)) match {
         case (Some("file"), None)       => (Some(s"file:${uri.getPath}"), None)
         case (Some("file"), Some(frag)) => (Some(s"file:${uri.getPath}"), Some(frag))
         case (Some(_), None)            => (Some(uri.toString), None)
-        case (Some(_), Some(_)) =>
-          uri.toString.split('#').toVector match {
-            case Vector(namespace, name) => (Some(namespace), Some(name))
-            case _                       => throw new Exception(s"error splitting uri ${uri}")
-          }
-        case (None, Some(frag)) => (None, Some(frag))
-        case _                  => throw new Exception(s"invalid URI ${uri}")
+        case _                          => splitUri(uri.toString)
       }
     } catch {
       case _: IllegalArgumentException => (None, Some(uri.toString))
