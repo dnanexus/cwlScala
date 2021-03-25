@@ -33,16 +33,6 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
 
 object Identifier {
 
-  def fromUri(uri: String): Identifier = {
-    val (namespace, name) =
-      try {
-        Utils.normalizeAndSplitUri(URI.create(uri))
-      } catch {
-        case _: Throwable => (None, Some(uri))
-      }
-    Identifier(namespace, name)
-  }
-
   def fromUri(uri: URI): Identifier = {
     val (namespace, name) = Utils.normalizeAndSplitUri(uri)
     Identifier(namespace, name)

@@ -102,7 +102,7 @@ object CwlType {
           (Vector(newType), None, updatedSchemaDefs)
         case schemaName: String if schemaName.contains("#") =>
           // a schema reference
-          val id = Identifier.fromUri(schemaName)
+          val id = Identifier.parse(schemaName)
           val fqn = id.fullyQualifiedName.getOrElse(
               throw new Exception(s"invalid schema name ${schemaName}")
           )
@@ -486,7 +486,7 @@ object CwlArray {
     }
     CwlArray(
         cwlType,
-        translateOptional(name).map(Identifier.fromUri),
+        translateOptional(name).map(Identifier.parse(_)),
         translateOptional(label),
         translateDoc(doc),
         inputBinding
@@ -546,7 +546,7 @@ object CwlInputRecordField {
   private def create(field: InputRecordField,
                      cwlType: CwlType,
                      schemaDefs: Map[String, CwlSchema]): CwlInputRecordField = {
-    val id = Identifier.fromUri(field.getName)
+    val id = Identifier.parse(field.getName)
     val inputBinding = field match {
       case c: CommandInputRecordField =>
         translateOptional(c.getInputBinding).map {
@@ -627,7 +627,7 @@ object CwlInputRecord {
     }
     CwlInputRecord(
         fields,
-        translateOptional(schema.getName).map(Identifier.fromUri),
+        translateOptional(schema.getName).map(Identifier.parse(_)),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc),
         inputBinding
@@ -688,7 +688,7 @@ object CwlOutputRecordField {
   private def create(field: OutputRecordField,
                      cwlType: CwlType,
                      schemaDefs: Map[String, CwlSchema]): CwlOutputRecordField = {
-    val id = Identifier.fromUri(field.getName)
+    val id = Identifier.parse(field.getName)
     val outputBinding = field match {
       case c: CommandOutputRecordField =>
         translateOptional(c.getOutputBinding).map {
@@ -755,7 +755,7 @@ object CwlOutputRecord {
                      fields: SeqMap[String, CwlOutputRecordField]): CwlOutputRecord = {
     CwlOutputRecord(
         fields,
-        translateOptional(schema.getName).map(Identifier.fromUri),
+        translateOptional(schema.getName).map(Identifier.parse(_)),
         translateOptional(schema.getLabel),
         translateDoc(schema.getDoc)
     )
@@ -838,7 +838,7 @@ object CwlEnum {
           case s: String => s
           case other     => throw new Exception(s"unexpected symbol value ${other}")
         }.toVector,
-        translateOptional(name).map(Identifier.fromUri),
+        translateOptional(name).map(Identifier.parse(_)),
         translateOptional(label),
         translateDoc(doc),
         inputBinding
