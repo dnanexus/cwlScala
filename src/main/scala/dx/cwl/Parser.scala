@@ -58,8 +58,19 @@ case class Parser(baseUri: Option[URI] = None,
     value match {
       case JsObject(fields) if fields.contains("cwlVersion") =>
         val JsString(version) = fields("cwlVersion")
-        val JsString(cls) = fields("class")
-        Some(version, cls)
+        if (fields.contains("class")) {
+          val JsString(cls) = fields("class")
+          Some(version, cls)
+        } else if (fields.contains("$graph")) {
+          val JsArray(graph) = fields("$graph")
+          graph.collectFirst {
+            case JsObject(fields) if fields.get("id").contains(JsString("#main")) =>
+              val JsString(cls) = fields("class")
+              (version, cls)
+          }
+        } else {
+          None
+        }
       case _ => None
     }
   }
