@@ -1,6 +1,7 @@
 package dx.cwl
 
 import dx.cwl.Document.{Document, DocumentAdder}
+import dx.util.JsUtils
 
 import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
 import java.net.URI
@@ -8,6 +9,7 @@ import java.nio.file.{Path, Paths}
 import org.w3id.cwl.cwl1_2.{CommandLineToolImpl, ExpressionToolImpl, OperationImpl, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
 import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
+import spray.json._
 
 import scala.jdk.CollectionConverters._
 
@@ -33,11 +35,10 @@ case class Parser(baseUri: Option[URI] = None,
   private var cache: Map[Path, (Process, Document)] = Map.empty
   private lazy val normalizedBaseUri = baseUri.map(Utils.normalizeUri).orNull
 
-  def detectVersionAndClass(inputStream: InputStream): Option[(String, String)] = {
+  def versionAndClassFromYaml(inputStream: InputStream): Option[(String, String)] = {
     try {
       val yamlLoader = new Load(LoadSettings.builder().build())
-      val doc =
-        yamlLoader.loadFromInputStream(inputStream).asInstanceOf[java.util.Map[String, Any]]
+      val doc = yamlLoader.loadFromInputStream(inputStream).asInstanceOf[java.util.Map[String, Any]]
       if (doc.containsKey("cwlVersion")) {
         val version = doc.get("cwlVersion").asInstanceOf[String]
         if (version.startsWith("v1.2")) {
@@ -53,15 +54,44 @@ case class Parser(baseUri: Option[URI] = None,
     }
   }
 
+  def versionAndClassFromJson(value: JsValue): Option[(String, String)] = {
+    value match {
+      case JsObject(fields) if fields.contains("cwlVersion") =>
+        val JsString(version) = fields("cwlVersion")
+        val JsString(cls) = fields("class")
+        Some(version, cls)
+      case _ => None
+    }
+  }
+
   /**
     * Can a file be parsed as CWL?
     */
   def detectVersionAndClass(path: Path): Option[(String, String)] = {
-    detectVersionAndClass(new FileInputStream(path.toFile))
+    if (path.toString.endsWith(".cwl")) {
+      versionAndClassFromYaml(new FileInputStream(path.toFile))
+    } else {
+      versionAndClassFromJson(JsUtils.jsFromFile(path))
+    }
   }
 
-  def detectVersionAndClass(sourceCode: String): Option[(String, String)] = {
-    detectVersionAndClass(new ByteArrayInputStream(sourceCode.getBytes()))
+  /**
+    * Can a string be parsed as CWL?
+    */
+  def detectVersionAndClass(sourceCode: String,
+                            format: Option[String] = None): Option[(String, String)] = {
+    format match {
+      case Some("yaml") => versionAndClassFromYaml(new ByteArrayInputStream(sourceCode.getBytes()))
+      case Some("json") => versionAndClassFromJson(sourceCode.parseJson)
+      case Some(other)  => throw new Exception(s"unsupported format ${other}")
+      case None =>
+        try {
+          versionAndClassFromJson(sourceCode.parseJson)
+        } catch {
+          case _: Throwable =>
+            versionAndClassFromYaml(new ByteArrayInputStream(sourceCode.getBytes()))
+        }
+    }
   }
 
   def parse(doc: Object,

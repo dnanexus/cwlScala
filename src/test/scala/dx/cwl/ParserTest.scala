@@ -110,7 +110,6 @@ class ParserTest extends AnyWordSpec with Matchers {
         case (wf: Workflow, doc) => (wf, doc)
         case other               => throw new Exception(s"expected Workflow, not ${other}")
       }
-      println(doc.keys)
     }
   }
 }
