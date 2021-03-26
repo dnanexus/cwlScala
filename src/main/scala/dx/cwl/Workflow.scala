@@ -294,8 +294,6 @@ object WorkflowStep {
                   dependencies = dependencies)
       case uri: String if isGraph =>
         val runId = Identifier.parse(uri, defaultNamespace = defaultNamespace)
-        println(dependencies.keys)
-        println(rawProcesses.keys)
         if (dependencies.contains(runId)) {
           (dependencies(runId), dependencies)
         } else if (rawProcesses.contains(runId)) {
