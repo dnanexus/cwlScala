@@ -1,10 +1,13 @@
 package dx.cwl
 
+import dx.util.FileUtils
+
 import java.nio.file.{Path, Paths}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.{File, FilenameFilter}
+import java.net.URI
 
 class ParserTest extends AnyWordSpec with Matchers {
   def getPath(path: String): Path = {
@@ -108,6 +111,21 @@ class ParserTest extends AnyWordSpec with Matchers {
       val wfPathPacked = workflowsPath.resolve("count-lines1-wf-packed.json")
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (_, _) = workflowParser.parseFile(wfPathPacked) match {
+        case (wf: Workflow, doc) => (wf, doc)
+        case other               => throw new Exception(s"expected Workflow, not ${other}")
+      }
+    }
+
+    s"parse packed workflow II" in {
+      val wfPathPacked = workflowsPath.resolve("basename-fields-test-packed.json")
+      workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
+      val (_, _) = workflowParser.parseFile(wfPathPacked) match {
+        case (wf: Workflow, doc) => (wf, doc)
+        case other               => throw new Exception(s"expected Workflow, not ${other}")
+      }
+      val stringParser = Parser.create(Some(URI.create("file:/null")))
+      val (_, _) = stringParser.parseString(FileUtils.readFileContent(wfPathPacked),
+                                            Some("basename-fields-test")) match {
         case (wf: Workflow, doc) => (wf, doc)
         case other               => throw new Exception(s"expected Workflow, not ${other}")
       }
