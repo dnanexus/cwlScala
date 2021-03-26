@@ -123,19 +123,25 @@ trait Identifiable {
     id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))
 }
 
-trait Parameter extends Identifiable {
+trait Meta extends Identifiable {
   val label: Option[String]
   val doc: Option[String]
+}
+
+trait Loadable {
+  val loadContents: Option[Boolean]
+  val loadListing: Option[LoadListing.LoadListing]
+}
+
+trait Parameter extends Meta {
   val cwlType: CwlType
   val secondaryFiles: Vector[SecondaryFile]
   val streamable: Option[Boolean]
 }
 
-trait InputParameter extends Parameter {
+trait InputParameter extends Parameter with Loadable {
   val default: Option[CwlValue]
   val format: Vector[CwlValue]
-  val loadContents: Option[Boolean]
-  val loadListing: Option[LoadListing.LoadListing]
 }
 
 trait OutputParameter extends Parameter {
@@ -145,7 +151,7 @@ trait OutputParameter extends Parameter {
 /**
   * Marker trait for top-level elements (CommandLineTool, Workflow, ExpressionTool, etc)
   */
-trait Process extends Identifiable {
+trait Process extends Meta {
   val source: Option[String]
   val cwlVersion: Option[CWLVersion]
   val label: Option[String]

@@ -485,7 +485,8 @@ object EvaluatorContext {
     * Apply "implementation must" rules from the spec.
     */
   def finalizeInputValue(value: CwlValue,
-                         param: InputParameter,
+                         cwlType: CwlType,
+                         param: Identifiable with Loadable,
                          inputDir: Path,
                          fileResolver: FileSourceResolver = FileSourceResolver.get,
                          ignoreMissingRequired: Boolean = false): CwlValue = {
@@ -598,7 +599,7 @@ object EvaluatorContext {
           )
       }
     }
-    (param.cwlType, value) match {
+    (cwlType, value) match {
       case (t, NullValue) if CwlOptional.isOptional(t) || ignoreMissingRequired =>
         NullValue
       case (_, NullValue) =>
@@ -616,17 +617,18 @@ object EvaluatorContext {
     *                 have no location - defaults to the current directory
     * @return
     */
-  def createInputs(inputs: Map[InputParameter, CwlValue],
+  def createInputs(inputs: Map[Identifiable with Loadable, (CwlType, CwlValue)],
                    inputDir: Path = Paths.get("."),
                    fileResolver: FileSourceResolver = FileSourceResolver.get): ObjectValue = {
     ObjectValue(
         inputs
           .map {
-            case (param, value) =>
+            case (param, (t, v)) =>
               // inputs are evaluated before valueFrom, so the value of a required
               // parameter may be null at this point
               param.frag -> finalizeInputValue(
-                  value,
+                  v,
+                  t,
                   param,
                   inputDir,
                   fileResolver,
@@ -637,18 +639,32 @@ object EvaluatorContext {
     )
   }
 
+  def inputsFromParameters(
+      inputs: Map[InputParameter, CwlValue],
+      inputDir: Path = Paths.get("."),
+      fileResolver: FileSourceResolver = FileSourceResolver.get
+  ): ObjectValue = {
+    val i: Map[Identifiable with Loadable, (CwlType, CwlValue)] = inputs.map {
+      case (param, value) => param -> (param.cwlType, value)
+    }
+    createInputs(i, inputDir, fileResolver)
+  }
+
   /**
     * Creates an `inputs` map from all the inputs that contain a default value.
     * @param inputs all the process inputs
     * @return
     */
-  def createStaticInputs(inputs: Vector[InputParameter],
+  def inputsFromDefaults(inputs: Vector[InputParameter],
                          inputDir: Path = Paths.get(".")): ObjectValue = {
     ObjectValue(
         inputs
           .collect {
             case param if param.id.isDefined && param.default.isDefined =>
-              param.id.get.frag.get -> finalizeInputValue(param.default.get, param, inputDir)
+              param.id.get.frag.get -> finalizeInputValue(param.default.get,
+                                                          param.cwlType,
+                                                          param,
+                                                          inputDir)
           }
           .to(TreeSeqMap)
     )

@@ -45,6 +45,7 @@ case class WorkflowInputParameter(id: Option[Identifier],
                                   loadContents: Option[Boolean],
                                   loadListing: Option[LoadListing.LoadListing])
     extends InputParameter
+    with Loadable
 
 object WorkflowInputParameter {
   def apply(param: WorkflowInputParameterImpl,
@@ -109,6 +110,12 @@ object PickValueMethod extends Enumeration {
   }
 }
 
+trait Sink {
+  val sources: Vector[Identifier]
+  val linkMerge: Option[LinkMergeMethod.LinkMergeMethod]
+  val pickValue: Option[PickValueMethod.PickValueMethod]
+}
+
 case class WorkflowOutputParameter(id: Option[Identifier],
                                    label: Option[String],
                                    doc: Option[String],
@@ -116,10 +123,11 @@ case class WorkflowOutputParameter(id: Option[Identifier],
                                    secondaryFiles: Vector[SecondaryFile],
                                    format: Option[CwlValue],
                                    streamable: Option[Boolean],
-                                   outputSource: Vector[Identifier],
+                                   sources: Vector[Identifier],
                                    linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                                    pickValue: Option[PickValueMethod.PickValueMethod])
     extends OutputParameter
+    with Sink
 
 object WorkflowOutputParameter {
   def apply(param: WorkflowOutputParameterImpl,
@@ -188,7 +196,7 @@ object ScatterMethod extends Enumeration {
 
 case class WorkflowStepInput(id: Option[Identifier],
                              label: Option[String],
-                             source: Vector[Identifier],
+                             sources: Vector[Identifier],
                              default: Option[CwlValue],
                              valueFrom: Option[CwlValue],
                              linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
@@ -196,6 +204,8 @@ case class WorkflowStepInput(id: Option[Identifier],
                              loadContents: Option[Boolean],
                              loadListing: Option[LoadListing.LoadListing])
     extends Identifiable
+    with Sink
+    with Loadable
 
 object WorkflowStepInput {
   def apply(step: WorkflowStepInputImpl,
@@ -503,6 +513,7 @@ case class OperationInputParameter(id: Option[Identifier],
                                    loadContents: Option[Boolean],
                                    loadListing: Option[LoadListing.LoadListing])
     extends InputParameter
+    with Loadable
 
 object OperationInputParameter {
   def apply(param: OperationInputParameterImpl,

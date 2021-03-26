@@ -65,7 +65,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       val f2 = d.resolve("test2.txt")
       Files.write(f2, "test2".getBytes())
       tmpdir.toFile.deleteOnExit()
-      val ctx2 = EvaluatorContext(inputs = EvaluatorContext.createInputs(
+      val ctx2 = EvaluatorContext(inputs = EvaluatorContext.inputsFromParameters(
           Map(
               CommandInputParameter(
                   Some(Identifier(namespace = None, frag = Some("f"))),

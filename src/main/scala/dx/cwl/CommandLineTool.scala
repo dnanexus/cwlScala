@@ -56,6 +56,7 @@ case class CommandInputParameter(id: Option[Identifier],
                                  loadContents: Option[Boolean],
                                  loadListing: Option[LoadListing.LoadListing])
     extends InputParameter
+    with Loadable
 
 object CommandInputParameter {
   def apply(
@@ -91,6 +92,7 @@ case class CommandOutputBinding(glob: Vector[CwlValue],
                                 outputEval: Option[CwlValue],
                                 loadContents: Option[Boolean],
                                 loadListing: Option[LoadListing.LoadListing])
+    extends Loadable
 
 object CommandOutputBinding {
   def apply(binding: CommandOutputBindingImpl,
