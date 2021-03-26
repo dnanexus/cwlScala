@@ -487,7 +487,8 @@ object EvaluatorContext {
   def finalizeInputValue(value: CwlValue,
                          param: InputParameter,
                          inputDir: Path,
-                         fileResolver: FileSourceResolver = FileSourceResolver.get): CwlValue = {
+                         fileResolver: FileSourceResolver = FileSourceResolver.get,
+                         ignoreMissingRequired: Boolean = false): CwlValue = {
     def finalizePaths(paths: Seq[File]): Vector[PathValue] = {
       paths.map { f =>
         if (f.isDirectory) {
@@ -498,6 +499,7 @@ object EvaluatorContext {
         }
       }.toVector
     }
+
     def finalizePath(pathValue: PathValue, noShallowListings: Boolean = false): PathValue = {
       val fileSource = pathValue match {
         case _ if pathValue.location.isEmpty => None
@@ -597,7 +599,8 @@ object EvaluatorContext {
       }
     }
     (param.cwlType, value) match {
-      case (t, NullValue) if CwlOptional.isOptional(t) => NullValue
+      case (t, NullValue) if CwlOptional.isOptional(t) || ignoreMissingRequired =>
+        NullValue
       case (_, NullValue) =>
         throw new Exception(s"missing required input ${param.frag}")
       case (CwlFile, f: FileValue)           => finalizePath(f)
@@ -614,11 +617,21 @@ object EvaluatorContext {
     * @return
     */
   def createInputs(inputs: Map[InputParameter, CwlValue],
-                   inputDir: Path = Paths.get(".")): ObjectValue = {
+                   inputDir: Path = Paths.get("."),
+                   fileResolver: FileSourceResolver = FileSourceResolver.get): ObjectValue = {
     ObjectValue(
         inputs
           .map {
-            case (param, value) => param.frag -> finalizeInputValue(value, param, inputDir)
+            case (param, value) =>
+              // inputs are evaluated before valueFrom, so the value of a required
+              // parameter may be null at this point
+              param.frag -> finalizeInputValue(
+                  value,
+                  param,
+                  inputDir,
+                  fileResolver,
+                  ignoreMissingRequired = true
+              )
           }
           .to(TreeSeqMap)
     )
