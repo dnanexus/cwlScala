@@ -626,7 +626,7 @@ object EvaluatorContext {
             case (param, (t, v)) =>
               // inputs are evaluated before valueFrom, so the value of a required
               // parameter may be null at this point
-              param.frag -> finalizeInputValue(
+              param.name -> finalizeInputValue(
                   v,
                   t,
                   param,
@@ -770,7 +770,7 @@ case class Evaluator(jsEnabled: Boolean = false,
                     (value, segment) match {
                       case (NullValue, _) =>
                         throw new Exception(
-                            s"cannot evaluate right-hand side ${segment} for left-hand side null"
+                            s"cannot evaluate right-hand side ${segment} for left-hand side null in ${expr}"
                         )
                       case (value: StringIndexable, Symbol(index)) =>
                         value(index)
@@ -781,7 +781,7 @@ case class Evaluator(jsEnabled: Boolean = false,
                       case (value: IntIndexable, Symbol("length")) =>
                         IntValue(value.length)
                       case _ =>
-                        throw new Exception(s"cannot evaluate ${value}${segment}")
+                        throw new Exception(s"cannot evaluate ${value}${segment} in ${expr}")
                     }
                 }
               case "null" => NullValue
