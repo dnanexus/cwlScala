@@ -535,7 +535,7 @@ object EvaluatorContext {
             .continually(UUID.randomUUID().toString)
             .map(inputDir.resolve)
             .collectFirst {
-              case p if !p.toFile.exists() => p.toRealPath()
+              case p if !p.toFile.exists() => p.toAbsolutePath
             }
             .get
           (fileResolver.fromPath(randPath), randPath.toUri, randPath)
