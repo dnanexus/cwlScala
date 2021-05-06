@@ -6,17 +6,23 @@ import java.nio.file.{Path, Paths}
 import java.lang.{Runtime => JavaRuntime}
 import java.security.AccessController.doPrivileged
 import dx.js.{Engine, Scope}
-import dx.util.{FileNode, FileSourceResolver, FileUtils, LocalFileSource}
+import dx.util.{
+  AddressableFileSource,
+  FileNode,
+  FileSource,
+  FileSourceResolver,
+  FileUtils,
+  LocalFileSource
+}
 import org.antlr.v4.runtime.{CodePointBuffer, CodePointCharStream, CommonTokenStream}
 import org.commonwl.cwl.ecma.v1_2.{CwlEcmaStringLexer, CwlEcmaStringParser}
 import org.commonwl.cwl.refparser.v1_2.{CwlParameterReferenceLexer, CwlParameterReferenceParser}
 import spray.json._
 import sun.security.action.GetPropertyAction
 
-import java.io.File
 import java.util.UUID
 import scala.annotation.{nowarn, tailrec}
-import scala.collection.immutable.{ArraySeq, SeqMap, TreeSeqMap}
+import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -490,23 +496,23 @@ object EvaluatorContext {
                          inputDir: Path,
                          fileResolver: FileSourceResolver = FileSourceResolver.get,
                          ignoreMissingRequired: Boolean = false): CwlValue = {
-    def finalizePaths(paths: Seq[File]): Vector[PathValue] = {
-      paths.map { f =>
-        if (f.isDirectory) {
-          finalizePath(DirectoryValue(location = Some(f.toPath.toRealPath().toString)),
-                       noShallowListings = true)
-        } else {
-          finalizePath(FileValue(location = Some(f.toPath.toRealPath().toString)))
-        }
-      }.toVector
+    def finalizeFileSources(fileSources: Vector[FileSource],
+                            recurseListings: Boolean): Vector[PathValue] = {
+      fileSources.map {
+        case fs: AddressableFileSource if fs.isDirectory =>
+          val dirValue = DirectoryValue(location = Some(fs.address))
+          finalizePathWithFileSource(dirValue, Some(fs), recurseListings)
+        case fs: AddressableFileSource =>
+          val fileValue = FileValue(location = Some(fs.address))
+          finalizePathWithFileSource(fileValue, Some(fs))
+        case other =>
+          throw new Exception(s"cannot finalize FileSource ${other}")
+      }
     }
 
-    def finalizePath(pathValue: PathValue, noShallowListings: Boolean = false): PathValue = {
-      val fileSource = pathValue match {
-        case _ if pathValue.location.isEmpty => None
-        case f: FileValue                    => Some(fileResolver.resolve(f.location.get))
-        case d: DirectoryValue               => Some(fileResolver.resolveDirectory(d.location.get))
-      }
+    def finalizePathWithFileSource(pathValue: PathValue,
+                                   fileSource: Option[AddressableFileSource],
+                                   recurseListings: Boolean = true): PathValue = {
       val (newFileSource, newLocation, newPath) = fileSource match {
         case Some(local: LocalFileSource) if local.canonicalPath.toFile.exists() =>
           (local, local.uri, local.canonicalPath)
@@ -564,7 +570,7 @@ object EvaluatorContext {
               }
             case _ => None
           }
-          val newSecondaryFiles = f.secondaryFiles.map(finalizePath(_))
+          val newSecondaryFiles = f.secondaryFiles.map(finalizePath)
           val newContents = param.loadContents match {
             case Some(true) if f.contents.isEmpty && fileExists =>
               Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
@@ -584,12 +590,16 @@ object EvaluatorContext {
               newContents
           )
         case d: DirectoryValue =>
-          val newListing = param.loadListing match {
-            case Some(LoadListing.Shallow) if !noShallowListings && d.listing.isEmpty =>
-              finalizePaths(ArraySeq.unsafeWrapArray(newPath.toFile.listFiles()))
-            case Some(LoadListing.Deep) if d.listing.isEmpty =>
-              finalizePaths(ArraySeq.unsafeWrapArray(newPath.toFile.listFiles()))
-            case _ => d.listing
+          val newListing = if (d.listing.isEmpty && recurseListings) {
+            param.loadListing match {
+              case Some(LoadListing.Shallow) =>
+                finalizeFileSources(newFileSource.listing, recurseListings = false)
+              case Some(LoadListing.Deep) =>
+                finalizeFileSources(newFileSource.listing, recurseListings = true)
+              case _ => d.listing
+            }
+          } else {
+            d.listing
           }
           DirectoryValue(
               Some(newLocation.toASCIIString),
@@ -599,6 +609,16 @@ object EvaluatorContext {
           )
       }
     }
+
+    def finalizePath(pathValue: PathValue): PathValue = {
+      val fileSource = pathValue match {
+        case _ if pathValue.location.isEmpty => None
+        case f: FileValue                    => Some(fileResolver.resolve(f.location.get))
+        case d: DirectoryValue               => Some(fileResolver.resolveDirectory(d.location.get))
+      }
+      finalizePathWithFileSource(pathValue, fileSource)
+    }
+
     (cwlType, value) match {
       case (t, NullValue) if CwlOptional.isOptional(t) || ignoreMissingRequired =>
         NullValue

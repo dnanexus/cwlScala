@@ -1,16 +1,24 @@
 import sbt.Keys._
-import sbtassembly.AssemblyPlugin.autoImport._
-
-scalaVersion := "2.13.2"
-name := "cwlScala"
+import sbt.ThisBuild
 import com.typesafe.config._
-val confPath =
-  Option(System.getProperty("config.file"))
-    .getOrElse("src/main/resources/application.conf")
-val conf = ConfigFactory.parseFile(new File(confPath)).resolve()
-version := conf.getString("cwlScala.version")
-organization := "com.dnanexus"
-developers := List(
+import sbtassembly.AssemblyPlugin.autoImport._
+import sbtghpackages.GitHubPackagesPlugin.autoImport.githubOwner
+
+import Merging.customMergeStrategy
+
+def getVersion: String = {
+  val confPath =
+    Option(System.getProperty("config.file"))
+      .getOrElse("src/main/resources/application.conf")
+  val conf = ConfigFactory.parseFile(new File(confPath)).resolve()
+  conf.getString("cwlScala.version")
+}
+
+name := "cwlScala"
+
+ThisBuild / scalaVersion := "2.13.2"
+ThisBuild / organization := "com.dnanexus"
+ThisBuild / developers := List(
     Developer(
         "jdidion",
         "jdidion",
@@ -18,41 +26,108 @@ developers := List(
         url("https://github.com/dnanexus")
     )
 )
-homepage := Some(url("https://github.com/dnanexus/cwlScala"))
-scmInfo := Some(
+ThisBuild / homepage := Some(url("https://github.com/dnanexus/cwlScala"))
+ThisBuild / scmInfo := Some(
     ScmInfo(
         url("https://github.com/dnanexus/cwlScala"),
         "git@github.com:dnanexus/cwlScala"
     )
 )
-licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
-publishMavenStyle := true
+ThisBuild / licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 
-val root = project.in(file("."))
-
-// disable publish with scala version, otherwise artifact name will include scala version
-// e.g cwlScala_2.11
-crossPaths := false
-
-// add sonatype repository settings
-// snapshot versions publish to sonatype snapshot repository
-// other versions publish to sonatype staging repository
-publishTo := Some(
-    if (isSnapshot.value)
-      Opts.resolver.sonatypeSnapshots
-    else
-      Opts.resolver.sonatypeStaging
+lazy val root = project.in(file("."))
+lazy val cwlScala = root.settings(
+    name := "cwlScala",
+    version := getVersion,
+    settings,
+    assemblySettings,
+    libraryDependencies ++= dependencies,
+    assemblyJarName in assembly := "cwlScala.jar"
 )
 
-// reduce the maximum number of errors shown by the Scala compiler
-maxErrors := 20
+lazy val dependencies = {
+  val dxCommonVersion = "0.2.15-SNAPSHOT"
+  val typesafeVersion = "1.3.3"
+  val sprayVersion = "1.3.5"
+  val scalatestVersion = "3.1.1"
+  val yamlVersion = "2.2.1"
+  val rhinoVersion = "1.7.13"
+  val antlr4Version = "4.8"
+  val junitVersion = "4.12"
 
-//coverageEnabled := true
+  Seq(
+      "com.dnanexus" % "dxcommon" % dxCommonVersion,
+      "com.typesafe" % "config" % typesafeVersion,
+      "io.spray" %% "spray-json" % sprayVersion,
+      // cwljava dependencies
+      "org.snakeyaml" % "snakeyaml-engine" % yamlVersion,
+      // rhino dependencies
+      "org.mozilla" % "rhino" % rhinoVersion,
+      // antlr4 dependencies
+      "org.antlr" % "antlr4" % antlr4Version,
+      //---------- Test libraries -------------------//
+      "junit" % "junit" % junitVersion % Test,
+      "org.scalatest" % "scalatest_2.13" % scalatestVersion % Test
+  )
+}
 
-javacOptions ++= Seq("-Xlint:deprecation")
+val githubDxScalaResolver = Resolver.githubPackages("dnanexus", "dxScala")
+val githubCwlScalaResolver = Resolver.githubPackages("dnanexus", "cwlScala")
+resolvers ++= Seq(githubDxScalaResolver, githubCwlScalaResolver)
 
-// Show deprecation warnings
-scalacOptions ++= Seq(
+lazy val settings = Seq(
+    scalacOptions ++= compilerOptions,
+    // exclude Java sources from scaladoc
+    scalacOptions in (Compile, doc) ++= Seq("-no-java-comments", "-no-link-warnings"),
+    javacOptions ++= Seq("-Xlint:deprecation"),
+    // Add Java sources
+    Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java",
+    // reduce the maximum number of errors shown by the Scala compiler
+    maxErrors := 20,
+    // scalafmt
+    scalafmtConfig := root.base / ".scalafmt.conf",
+    // disable publish with scala version, otherwise artifact name will include scala version
+    // e.g wdlTools_2.11
+    crossPaths := false,
+    // add sonatype repository settings
+    // snapshot versions publish to sonatype snapshot repository
+    // other versions publish to sonatype staging repository
+    publishTo := Some(
+        if (isSnapshot.value) {
+          githubCwlScalaResolver
+        } else {
+          Opts.resolver.sonatypeStaging
+        }
+    ),
+    githubOwner := "dnanexus",
+    githubRepository := "cwlScala",
+    publishMavenStyle := true,
+    // If an exception is thrown during tests, show the full
+    // stack trace, by adding the "-oF" option to the list.
+    //
+    // exclude the native tests, they are slow.
+    // to do this from the command line:
+    // sbt testOnly -- -l native
+    //
+    // comment out this line in order to allow native
+    // tests
+    // Test / testOptions += Tests.Argument("-l", "native")
+    Test / testOptions += Tests.Argument("-oF"),
+    Test / parallelExecution := false
+
+    // Coverage
+    //
+    // sbt clean coverage test
+    // sbt coverageReport
+    // To turn it off do:
+    // sbt coverageOff
+    //coverageEnabled := true
+    // Ignore code parts that cannot be checked in the unit
+    // test environment
+    //coverageExcludedPackages := "dxWDL.Main;dxWDL.compiler.DxNI;dxWDL.compiler.DxObjectDirectory;dxWDL.compiler.Native"
+)
+
+val compilerOptions = Seq(
     "-unchecked",
     "-deprecation",
     "-feature",
@@ -80,77 +155,21 @@ scalacOptions ++= Seq(
     "-Xfatal-warnings" // makes those warnings fatal.
 )
 
-assemblyJarName in assembly := "cwlScala.jar"
-logLevel in assembly := Level.Info
-
-val dxCommonVersion = "0.2.11"
-val typesafeVersion = "1.3.3"
-val sprayVersion = "1.3.5"
-val scalacticVersion = "3.1.1"
-val scalatestVersion = "3.1.1"
-val yamlVersion = "2.2.1"
-val rhinoVersion = "1.7.13"
-val antlr4Version = "4.8"
-val junitVersion = "4.12"
-
-libraryDependencies ++= Seq(
-    "com.dnanexus" % "dxcommon" % dxCommonVersion,
-    "com.typesafe" % "config" % typesafeVersion,
-    "io.spray" %% "spray-json" % sprayVersion,
-    // cwljava dependencies
-    "org.snakeyaml" % "snakeyaml-engine" % yamlVersion,
-    // rhino dependencies
-    "org.mozilla" % "rhino" % rhinoVersion,
-    // antlr4 dependencies
-    "org.antlr" % "antlr4" % antlr4Version,
-    //---------- Test libraries -------------------//
-    "junit" % "junit" % junitVersion % Test,
-    "org.scalatest" % "scalatest_2.13" % scalatestVersion % Test
+// Assembly
+lazy val assemblySettings = Seq(
+    logLevel in assembly := Level.Info,
+    // comment out this line to enable tests in assembly
+    test in assembly := {},
+    assemblyMergeStrategy in assembly := {
+      case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
+      case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
+      case PathList("META_INF", xs @ _*) =>
+        xs map { _.toLowerCase } match {
+          case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
+            MergeStrategy.discard
+          case _ => MergeStrategy.last
+        }
+      case x =>
+        customMergeStrategy.value(x)
+    }
 )
-
-// Add Java sources
-Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java"
-
-assemblyMergeStrategy in assembly := {
-  {
-    case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
-    case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
-    case PathList("META_INF", xs @ _*) =>
-      xs map { _.toLowerCase } match {
-        case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
-          MergeStrategy.discard
-        case _ => MergeStrategy.last
-      }
-    case x =>
-      val oldStrategy = (assemblyMergeStrategy in assembly).value
-      oldStrategy(x)
-  }
-}
-
-// If an exception is thrown during tests, show the full
-// stack trace, by adding the "-oF" option to the list.
-//
-
-Test / testOptions += Tests.Argument("-oF")
-
-Test / parallelExecution := false
-
-// comment out this line to enable tests in assembly
-test in assembly := {}
-
-// scalafmt
-scalafmtConfig := root.base / ".scalafmt.conf"
-// Coverage
-//
-// sbt clean coverage test
-// sbt coverageReport
-
-// To turn it off do:
-// sbt coverageOff
-
-// Ignore code parts that cannot be checked in the unit
-// test environment
-//coverageExcludedPackages :=
-
-// exclude Java sources from scaladoc
-scalacOptions in (Compile, doc) ++= Seq("-no-java-comments", "-no-link-warnings")
