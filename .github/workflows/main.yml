@@ -31,6 +31,8 @@ jobs:
           cd ${GITHUB_WORKSPACE}
           make
       - name: Unit Tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sbt test
 

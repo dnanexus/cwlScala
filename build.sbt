@@ -11,7 +11,7 @@ def getVersion: String = {
   val confPath =
     Option(System.getProperty("config.file")).getOrElse("src/main/resources/application.conf")
   val conf = ConfigFactory.parseFile(new File(confPath)).resolve()
-  conf.getString("wdlTools.version")
+  conf.getString("cwlScala.version")
 }
 
 ThisBuild / organization := "com.dnanexus"
@@ -44,10 +44,9 @@ lazy val cwlScala = root.settings(
 )
 
 lazy val dependencies = {
-  val dxCommonVersion = "0.2.11"
+  val dxCommonVersion = "0.3.0"
   val typesafeVersion = "1.3.3"
   val sprayVersion = "1.3.5"
-  //val scalacticVersion = "3.1.1"
   val scalatestVersion = "3.1.1"
   val yamlVersion = "2.2.1"
   val rhinoVersion = "1.7.13"
@@ -80,9 +79,9 @@ lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
     // exclude Java sources from scaladoc
     scalacOptions in (Compile, doc) ++= Seq("-no-java-comments", "-no-link-warnings"),
+    javacOptions ++= Seq("-Xlint:deprecation"),
     // Add Java sources
     Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java",
-    javacOptions ++= Seq("-Xlint:deprecation"),
     // reduce the maximum number of errors shown by the Scala compiler
     maxErrors := 20,
     // scalafmt
