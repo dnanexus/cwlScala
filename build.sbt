@@ -1,23 +1,21 @@
+import Merging.customMergeStrategy
 import sbt.Keys._
 import sbt.ThisBuild
-import com.typesafe.config._
 import sbtassembly.AssemblyPlugin.autoImport._
+import com.typesafe.config._
 import sbtghpackages.GitHubPackagesPlugin.autoImport.githubOwner
 
-import Merging.customMergeStrategy
+name := "cwlScala"
 
 def getVersion: String = {
   val confPath =
-    Option(System.getProperty("config.file"))
-      .getOrElse("src/main/resources/application.conf")
+    Option(System.getProperty("config.file")).getOrElse("src/main/resources/application.conf")
   val conf = ConfigFactory.parseFile(new File(confPath)).resolve()
   conf.getString("cwlScala.version")
 }
 
-name := "cwlScala"
-
-ThisBuild / scalaVersion := "2.13.2"
 ThisBuild / organization := "com.dnanexus"
+ThisBuild / scalaVersion := "2.13.2"
 ThisBuild / developers := List(
     Developer(
         "jdidion",
@@ -73,7 +71,9 @@ lazy val dependencies = {
 
 val githubDxScalaResolver = Resolver.githubPackages("dnanexus", "dxScala")
 val githubCwlScalaResolver = Resolver.githubPackages("dnanexus", "cwlScala")
-resolvers ++= Seq(githubDxScalaResolver, githubCwlScalaResolver)
+resolvers ++= Vector(githubCwlScalaResolver, githubDxScalaResolver)
+
+val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("github")
 
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
@@ -93,7 +93,7 @@ lazy val settings = Seq(
     // snapshot versions publish to sonatype snapshot repository
     // other versions publish to sonatype staging repository
     publishTo := Some(
-        if (isSnapshot.value) {
+        if (isSnapshot.value || releaseTarget == "github") {
           githubCwlScalaResolver
         } else {
           Opts.resolver.sonatypeStaging
@@ -127,6 +127,7 @@ lazy val settings = Seq(
     //coverageExcludedPackages := "dxWDL.Main;dxWDL.compiler.DxNI;dxWDL.compiler.DxObjectDirectory;dxWDL.compiler.Native"
 )
 
+// Show deprecation warnings
 val compilerOptions = Seq(
     "-unchecked",
     "-deprecation",
@@ -161,15 +162,17 @@ lazy val assemblySettings = Seq(
     // comment out this line to enable tests in assembly
     test in assembly := {},
     assemblyMergeStrategy in assembly := {
-      case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
-      case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
-      case PathList("META_INF", xs @ _*) =>
-        xs map { _.toLowerCase } match {
-          case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
-            MergeStrategy.discard
-          case _ => MergeStrategy.last
-        }
-      case x =>
-        customMergeStrategy.value(x)
+      {
+        case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
+        case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
+        case PathList("META_INF", xs @ _*) =>
+          xs map { _.toLowerCase } match {
+            case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
+              MergeStrategy.discard
+            case _ => MergeStrategy.last
+          }
+        case x =>
+          customMergeStrategy.value(x)
+      }
     }
 )
