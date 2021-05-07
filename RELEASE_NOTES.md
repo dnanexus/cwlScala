@@ -1,6 +1,12 @@
 # Change log
 
-## v0.5.0 (2020-03-28)
+## in develop
+
+* Fixes error when trying to finalize a File value without location or path
+* Updates dxCommon to 0.2.15-SNAPSHOT
+* Uses `FileSource.listing` to determine directory listing during finalization
+
+## v0.5.0 (2021-03-28)
 
 * *Breaking change*: schema types now have `id: Option[Identifier]` rather than `name: Option[String]`
 * Parser can now handle `$graph` style CWL documents
