@@ -50,7 +50,7 @@ lazy val dependencies = {
   val scalatestVersion = "3.1.1"
   val yamlVersion = "2.2.1"
   val rhinoVersion = "1.7.13"
-  val antlr4Version = "4.8"
+  val antlr4Version = "4.9"
   val junitVersion = "4.12"
 
   Seq(
