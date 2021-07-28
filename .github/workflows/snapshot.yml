@@ -44,6 +44,11 @@ jobs:
           repo: dnanexus
           package-name: com.dnanexus.cwlScala
           package-version-ids: ${{ steps.versions.outputs.version_id }}
+      - name: Build
+        run: |
+          # compile antlr4 sources
+          cd ${GITHUB_WORKSPACE}
+          make
       - name: Publish Snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
