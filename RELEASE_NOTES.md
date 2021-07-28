@@ -1,6 +1,6 @@
 # Change log
 
-## in develop
+## v0.5.1 (2021-07-28)
 
 * Fixes error when trying to finalize a File value without location or path
 * Updates dxCommon to 0.2.15-SNAPSHOT
