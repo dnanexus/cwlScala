@@ -18,7 +18,7 @@ jobs:
       - name: Install other dependencies
         run: |
           sudo apt update -y && sudo apt install -y jq
-      - name: Get snapshot versions
+      - name: Delete existing snapshot version
         id: versions
         run: |
           version=`grep -o -P "\d+\.\d+\.\d+-SNAPSHOT" src/main/resources/application.conf`
@@ -33,7 +33,7 @@ jobs:
             -H "Authorization: bearer ${{ secrets.GITHUB_TOKEN }}" \
             -d "$query" \
             https://api.github.com/graphql`
-          version_id=`echo $version_json | jq .data.repository.packages.nodes[0].version.id`
+          version_id=`echo $version_json | jq -r .data.repository.packages.nodes[0].version.id`
           echo ::set-output name=version_id::"${version_id}"
       - name: Delete existing snapshot
         uses: actions/delete-package-versions@v1
