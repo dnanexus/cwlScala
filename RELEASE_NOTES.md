@@ -5,6 +5,7 @@
 * Fixes error when trying to finalize a File value without location or path
 * Updates dxCommon to 0.2.15-SNAPSHOT
 * Uses `FileSource.listing` to determine directory listing during finalization
+* Updates to dxCommon 0.7.0
 
 ## v0.5.0 (2021-03-28)
 

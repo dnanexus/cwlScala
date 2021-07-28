@@ -593,9 +593,10 @@ object EvaluatorContext {
           val newListing = if (d.listing.isEmpty && recurseListings) {
             param.loadListing match {
               case Some(LoadListing.Shallow) =>
-                finalizeFileSources(newFileSource.listing, recurseListings = false)
+                finalizeFileSources(newFileSource.listing(recursive = false),
+                                    recurseListings = false)
               case Some(LoadListing.Deep) =>
-                finalizeFileSources(newFileSource.listing, recurseListings = true)
+                finalizeFileSources(newFileSource.listing(recursive = true), recurseListings = true)
               case _ => d.listing
             }
           } else {
