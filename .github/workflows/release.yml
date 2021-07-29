@@ -16,26 +16,36 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: true
+      - name: Version check
+        run: |
+          snapshot=`grep -c "SNAPSHOT" ./src/main/resources/application.conf || true`
+          if [ "$snapshot" -ne "0" ]; then
+            echo "cwlScala version contains '-SNAPSHOT'; releases cannot have snapshot versions"
+            exit 1
+          fi
       - name: Install java
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
+      - name: Scala formatting
+        run: |
+          sbt scalafmtCheckAll
       - name: Install & build
         run: |
-          sudo apt-get update
           # compile antlr4 sources
           cd ${GITHUB_WORKSPACE}
           make
       - name: Unit Tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sbt test
       - name: Assembly
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sbt assembly
           mv ./target/cwlScala.jar ./cwlScala-${{ github.event.inputs.release-version }}.jar
-      - name: Scala formatting
-        run: |
-          sbt scalafmtCheckAll
       - name: Extract release notes and set version in application.conf files
         id: update-release
         run: |
@@ -88,6 +98,11 @@ jobs:
         run: |
           git push origin HEAD:${{ github.ref }}
           git push origin HEAD:${{ github.event.inputs.release-version }}
+      - name: Publish package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sbt publish
       - name: Rollback release if unsuccessfull
         if: ${{ cancelled() || failure() }}
         uses: author/action-rollback@stable
