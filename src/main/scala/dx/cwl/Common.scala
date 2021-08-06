@@ -1,6 +1,6 @@
 package dx.cwl
 
-import dx.cwl.Utils.{translateOptional, translateOptionalArray}
+import dx.cwl.Utils.{translateOptional, translateOptionalArray, translateOptionalObject}
 import org.w3id.cwl.cwl1_2.{CWLVersion, LoadListingEnum, SecondaryFileSchemaImpl}
 
 import java.net.URI
@@ -129,14 +129,14 @@ trait Meta extends Identifiable {
 }
 
 trait Loadable {
-  val loadContents: Option[Boolean]
-  val loadListing: Option[LoadListing.LoadListing]
+  val loadContents: Boolean
+  val loadListing: LoadListing.LoadListing
 }
 
 trait Parameter extends Meta {
   val cwlType: CwlType
   val secondaryFiles: Vector[SecondaryFile]
-  val streamable: Option[Boolean]
+  val streamable: Boolean
 }
 
 trait InputParameter extends Parameter with Loadable {
@@ -168,15 +168,19 @@ case class SecondaryFile(pattern: CwlValue, required: CwlValue)
 
 object SecondaryFile {
   def apply(secondaryFile: SecondaryFileSchemaImpl,
-            schemaDefs: Map[String, CwlSchema]): SecondaryFile = {
-    SecondaryFile(CwlValue(secondaryFile.getPattern, schemaDefs),
-                  CwlValue(secondaryFile.getRequired, schemaDefs))
+            schemaDefs: Map[String, CwlSchema],
+            isInput: Boolean): SecondaryFile = {
+    val required = translateOptionalObject(secondaryFile.getRequired)
+      .map(CwlValue(_, schemaDefs))
+      .getOrElse(BooleanValue(isInput))
+    SecondaryFile(CwlValue(secondaryFile.getPattern, schemaDefs), required)
   }
 
   def applyArray(secondaryFiles: java.lang.Object,
-                 schemaDefs: Map[String, CwlSchema]): Vector[SecondaryFile] = {
+                 schemaDefs: Map[String, CwlSchema],
+                 isInput: Boolean): Vector[SecondaryFile] = {
     translateOptionalArray(secondaryFiles).map {
-      case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
+      case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs, isInput)
       case other =>
         throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
     }

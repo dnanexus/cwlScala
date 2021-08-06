@@ -76,9 +76,9 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                   None,
                   Vector.empty,
                   Vector.empty,
-                  None,
-                  Some(true),
-                  None
+                  streamable = false,
+                  loadContents = true,
+                  loadListing = LoadListing.No
               ) -> FileValue(location = Some(f.toString)),
               CommandInputParameter(
                   Some(Identifier(namespace = None, frag = Some("d"))),
@@ -89,9 +89,9 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                   None,
                   Vector.empty,
                   Vector.empty,
-                  None,
-                  Some(true),
-                  Some(LoadListing.Shallow)
+                  streamable = false,
+                  loadContents = true,
+                  loadListing = LoadListing.Shallow
               ) -> DirectoryValue(location = Some(d.toString))
           )
       )

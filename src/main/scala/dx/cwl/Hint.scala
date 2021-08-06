@@ -337,16 +337,14 @@ object SoftwareRequirement extends HintSchema {
 
 sealed trait InitialWorkDirEntry
 case class ValueInitialWorkDirEntry(value: CwlValue) extends InitialWorkDirEntry
-case class DirInitialWorkDirEntry(entry: CwlValue,
-                                  entryName: Option[CwlValue],
-                                  writable: Option[Boolean])
+case class DirInitialWorkDirEntry(entry: CwlValue, entryName: Option[CwlValue], writable: Boolean)
     extends InitialWorkDirEntry
 
 object DirInitialWorkDirEntry {
   def apply(dirent: DirentImpl, schemaDefs: Map[String, CwlSchema]): DirInitialWorkDirEntry = {
     val entry = CwlValue(dirent.getEntry, schemaDefs)
     val entryName = translateOptionalObject(dirent.getEntryname).map(CwlValue(_, schemaDefs))
-    val writable = translateOptional[java.lang.Boolean](dirent.getWritable).map(_.booleanValue())
+    val writable = translateOptional[java.lang.Boolean](dirent.getWritable).exists(_.booleanValue())
     DirInitialWorkDirEntry(entry, entryName, writable)
   }
 
@@ -359,10 +357,11 @@ object DirInitialWorkDirEntry {
             schemaDefs
         ),
         entryName = dirent.get("entryname").map(CwlValue(_, schemaDefs)),
-        writable = dirent.get("writable").map {
-          case s: String  => s.toBoolean
-          case b: Boolean => b
-          case other      => throw new Exception(s"invalid writable value ${other}")
+        writable = dirent.get("writable") match {
+          case Some(s: String)  => s.toBoolean
+          case Some(b: Boolean) => b
+          case None             => false
+          case other            => throw new Exception(s"invalid writable value ${other}")
         }
     )
   }

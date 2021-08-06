@@ -41,9 +41,9 @@ case class WorkflowInputParameter(id: Option[Identifier],
                                   inputBinding: Option[WorkflowInputBinding],
                                   secondaryFiles: Vector[SecondaryFile],
                                   format: Vector[CwlValue],
-                                  streamable: Option[Boolean],
-                                  loadContents: Option[Boolean],
-                                  loadListing: Option[LoadListing.LoadListing])
+                                  streamable: Boolean,
+                                  loadContents: Boolean,
+                                  loadListing: LoadListing.LoadListing)
     extends InputParameter
     with Loadable
 
@@ -64,11 +64,11 @@ object WorkflowInputParameter {
         types,
         translateOptional(param.getDefault).map(CwlValue(_, schemaDefs)),
         inputBinding,
-        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs, isInput = true),
         translateOptionalArray(param.getFormat).map(CwlValue(_, schemaDefs)),
-        translateOptional(param.getStreamable).map(_.booleanValue()),
-        translateOptional(param.getLoadContents).map(_.booleanValue()),
-        translateOptional(param.getLoadListing).map(LoadListing.from)
+        translateOptional(param.getStreamable).exists(_.booleanValue()),
+        translateOptional(param.getLoadContents).exists(_.booleanValue()),
+        translateOptional(param.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
     )
   }
 
@@ -112,7 +112,7 @@ object PickValueMethod extends Enumeration {
 
 trait Sink {
   val sources: Vector[Identifier]
-  val linkMerge: Option[LinkMergeMethod.LinkMergeMethod]
+  val linkMerge: LinkMergeMethod.LinkMergeMethod
   val pickValue: Option[PickValueMethod.PickValueMethod]
 }
 
@@ -122,9 +122,9 @@ case class WorkflowOutputParameter(id: Option[Identifier],
                                    cwlType: CwlType,
                                    secondaryFiles: Vector[SecondaryFile],
                                    format: Option[CwlValue],
-                                   streamable: Option[Boolean],
+                                   streamable: Boolean,
                                    sources: Vector[Identifier],
-                                   linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
+                                   linkMerge: LinkMergeMethod.LinkMergeMethod,
                                    pickValue: Option[PickValueMethod.PickValueMethod])
     extends OutputParameter
     with Sink
@@ -159,11 +159,13 @@ object WorkflowOutputParameter {
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
-        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs, isInput = false),
         translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
-        translateOptional(param.getStreamable).map(_.booleanValue()),
+        translateOptional(param.getStreamable).exists(_.booleanValue()),
         sources,
-        translateOptional(param.getLinkMerge).map(LinkMergeMethod.from),
+        translateOptional(param.getLinkMerge)
+          .map(LinkMergeMethod.from)
+          .getOrElse(LinkMergeMethod.MergeNested),
         translateOptional(param.getPickValue).map(PickValueMethod.from)
     )
   }
@@ -199,10 +201,10 @@ case class WorkflowStepInput(id: Option[Identifier],
                              sources: Vector[Identifier],
                              default: Option[CwlValue],
                              valueFrom: Option[CwlValue],
-                             linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
+                             linkMerge: LinkMergeMethod.LinkMergeMethod,
                              pickValue: Option[PickValueMethod.PickValueMethod],
-                             loadContents: Option[Boolean],
-                             loadListing: Option[LoadListing.LoadListing])
+                             loadContents: Boolean,
+                             loadListing: LoadListing.LoadListing)
     extends Identifiable
     with Sink
     with Loadable
@@ -220,10 +222,12 @@ object WorkflowStepInput {
         ),
         translateOptional(step.getDefault).map(CwlValue(_, schemaDefs)),
         translateOptionalObject(step.getValueFrom).map(CwlValue(_, schemaDefs)),
-        translateOptional(step.getLinkMerge).map(LinkMergeMethod.from),
+        translateOptional(step.getLinkMerge)
+          .map(LinkMergeMethod.from)
+          .getOrElse(LinkMergeMethod.MergeNested),
         translateOptional(step.getPickValue).map(PickValueMethod.from),
-        translateOptional(step.getLoadContents).map(_.booleanValue()),
-        translateOptional(step.getLoadListing).map(LoadListing.from)
+        translateOptional(step.getLoadContents).exists(_.booleanValue()),
+        translateOptional(step.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
     )
   }
 
@@ -422,7 +426,7 @@ case class ExpressionToolOutputParameter(id: Option[Identifier],
                                          cwlType: CwlType,
                                          secondaryFiles: Vector[SecondaryFile],
                                          format: Option[CwlValue],
-                                         streamable: Option[Boolean])
+                                         streamable: Boolean)
     extends OutputParameter
 
 object ExpressionToolOutputParameter {
@@ -437,9 +441,9 @@ object ExpressionToolOutputParameter {
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
-        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs, isInput = false),
         translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
-        translateOptional(param.getStreamable).map(_.booleanValue())
+        translateOptional(param.getStreamable).exists(_.booleanValue())
     )
   }
 
@@ -509,9 +513,9 @@ case class OperationInputParameter(id: Option[Identifier],
                                    default: Option[CwlValue],
                                    secondaryFiles: Vector[SecondaryFile],
                                    format: Vector[CwlValue],
-                                   streamable: Option[Boolean],
-                                   loadContents: Option[Boolean],
-                                   loadListing: Option[LoadListing.LoadListing])
+                                   streamable: Boolean,
+                                   loadContents: Boolean,
+                                   loadListing: LoadListing.LoadListing)
     extends InputParameter
     with Loadable
 
@@ -528,11 +532,11 @@ object OperationInputParameter {
         translateDoc(param.getDoc),
         types,
         translateOptional(param.getDefault).map(CwlValue(_, schemaDefs)),
-        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs, isInput = true),
         translateOptionalArray(param.getFormat).map(CwlValue(_, schemaDefs)),
-        translateOptional(param.getStreamable).map(_.booleanValue()),
-        translateOptional(param.getLoadContents).map(_.booleanValue()),
-        translateOptional(param.getLoadListing).map(LoadListing.from)
+        translateOptional(param.getStreamable).exists(_.booleanValue()),
+        translateOptional(param.getLoadContents).exists(_.booleanValue()),
+        translateOptional(param.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
     )
   }
 
@@ -556,7 +560,7 @@ case class OperationOutputParameter(id: Option[Identifier],
                                     cwlType: CwlType,
                                     secondaryFiles: Vector[SecondaryFile],
                                     format: Option[CwlValue],
-                                    streamable: Option[Boolean])
+                                    streamable: Boolean)
     extends OutputParameter
 
 object OperationOutputParameter {
@@ -571,9 +575,9 @@ object OperationOutputParameter {
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
-        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs, isInput = false),
         translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
-        translateOptional(param.getStreamable).map(_.booleanValue())
+        translateOptional(param.getStreamable).exists(_.booleanValue())
     )
   }
 

@@ -518,7 +518,7 @@ sealed trait CwlRecordField {
   val doc: Option[String]
   val secondaryFiles: Vector[SecondaryFile]
   val format: Vector[CwlValue]
-  val streamable: Option[Boolean]
+  val streamable: Boolean
 
   /**
     * the field is optional if any of the allowed types are optional
@@ -537,9 +537,9 @@ case class CwlInputRecordField(name: String,
                                inputBinding: Option[CommandInputBinding] = None,
                                secondaryFiles: Vector[SecondaryFile] = Vector.empty,
                                format: Vector[CwlValue] = Vector.empty,
-                               streamable: Option[Boolean] = None,
-                               loadContents: Option[Boolean] = None,
-                               loadListing: Option[LoadListing.LoadListing] = None)
+                               streamable: Boolean = false,
+                               loadContents: Boolean = false,
+                               loadListing: LoadListing.LoadListing = LoadListing.No)
     extends CwlRecordField
 
 object CwlInputRecordField {
@@ -563,14 +563,14 @@ object CwlInputRecordField {
         translateDoc(field.getDoc),
         inputBinding,
         translateOptionalArray(field.getSecondaryFiles).map {
-          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
+          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs, isInput = true)
           case other =>
             throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
         },
         translateOptionalArray(field.getFormat).map(CwlValue.apply(_, schemaDefs)),
-        translateOptional(field.getStreamable).map(_.booleanValue()),
-        translateOptional(field.getLoadContents).map(_.booleanValue()),
-        translateOptional(field.getLoadListing).map(LoadListing.from)
+        translateOptional(field.getStreamable).exists(_.booleanValue()),
+        translateOptional(field.getLoadContents).exists(_.booleanValue()),
+        translateOptional(field.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
     )
   }
 
@@ -681,7 +681,7 @@ case class CwlOutputRecordField(name: String,
                                 outputBinding: Option[CommandOutputBinding] = None,
                                 secondaryFiles: Vector[SecondaryFile] = Vector.empty,
                                 format: Vector[CwlValue] = Vector.empty,
-                                streamable: Option[Boolean] = None)
+                                streamable: Boolean = false)
     extends CwlRecordField
 
 object CwlOutputRecordField {
@@ -705,12 +705,12 @@ object CwlOutputRecordField {
         translateDoc(field.getDoc),
         outputBinding,
         translateOptionalArray(field.getSecondaryFiles).map {
-          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs)
+          case sf: SecondaryFileSchemaImpl => SecondaryFile(sf, schemaDefs, isInput = false)
           case other =>
             throw new RuntimeException(s"unexpected SecondaryFile value ${other}")
         },
         translateOptionalArray(field.getFormat).map(CwlValue.apply(_, schemaDefs)),
-        translateOptional(field.getStreamable).map(_.booleanValue())
+        translateOptional(field.getStreamable).exists(_.booleanValue())
     )
   }
 

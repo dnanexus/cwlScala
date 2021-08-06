@@ -825,6 +825,13 @@ object PathValue {
         throw new Exception(s"expected string, not ${jsValue}")
     }
   }
+
+  def isDirectory(pathValue: PathValue): Boolean = {
+    pathValue match {
+      case _: DirectoryValue => true
+      case _                 => false
+    }
+  }
 }
 
 case class FileValue(location: Option[String] = None,

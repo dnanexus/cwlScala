@@ -30,7 +30,7 @@ class ParserTest extends AnyWordSpec with Matchers {
                   DirInitialWorkDirEntry(
                       entry = StringValue("$({class: 'Directory', listing: []})"),
                       entryName = Some(StringValue("emptyWritableDir")),
-                      writable = Some(true)
+                      writable = true
                   )
               )
           )
