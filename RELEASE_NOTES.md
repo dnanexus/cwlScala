@@ -3,6 +3,7 @@
 ## in develop
 
 * Set `CommandLineTool.successCodes` to `Set(0)` if not specified
+* Fixes deserialization of optional fields
 
 ## v0.5.1 (2021-07-28)
 
