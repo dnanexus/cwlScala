@@ -10,6 +10,7 @@ import org.w3id.cwl.cwl1_2.{
   InitialWorkDirRequirementImpl,
   InlineJavascriptRequirementImpl,
   InplaceUpdateRequirementImpl,
+  LoadListingEnum,
   LoadListingRequirementImpl,
   MultipleInputFeatureRequirementImpl,
   NetworkAccessImpl,
@@ -237,8 +238,9 @@ object LoadListingRequirement extends HintSchema {
   }
 
   override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
-    LoadListingRequirement(value =
-      hint.get("loadListing").map(name => LoadListing.withName(name.toString))
+    LoadListingRequirement(value = hint
+      .get("loadListing")
+      .map(name => LoadListing.from(LoadListingEnum.fromDocumentVal(name.toString)))
     )
   }
 }
