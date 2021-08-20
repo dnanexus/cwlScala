@@ -549,7 +549,7 @@ object EvaluatorContext {
       }
       val newBasename = pathValue.basename match {
         case Some(basename) => basename
-        case None           => Paths.get(newLocation.getPath).getFileName.toString
+        case None           => newPath.getFileName.toString
       }
       pathValue match {
         case f: FileValue =>
@@ -601,7 +601,7 @@ object EvaluatorContext {
               case _ => d.listing
             }
           } else {
-            d.listing
+            d.listing.map(finalizePath)
           }
           DirectoryValue(
               Some(newLocation.toASCIIString),
@@ -613,10 +613,11 @@ object EvaluatorContext {
     }
 
     def finalizePath(pathValue: PathValue): PathValue = {
-      val fileSource = pathValue match {
-        case _ if pathValue.location.isEmpty => None
-        case f: FileValue                    => Some(fileResolver.resolve(f.location.get))
-        case d: DirectoryValue               => Some(fileResolver.resolveDirectory(d.location.get))
+      val location = pathValue.location.orElse(pathValue.path)
+      val fileSource = (location, pathValue) match {
+        case (Some(uri), _: FileValue)      => Some(fileResolver.resolve(uri))
+        case (Some(uri), _: DirectoryValue) => Some(fileResolver.resolveDirectory(uri))
+        case _                              => None
       }
       finalizePathWithFileSource(pathValue, fileSource)
     }
@@ -863,7 +864,6 @@ case class Evaluator(jsEnabled: Boolean = false,
       }.unzip
       (types.toMap, ObjectValue(values.to(TreeSeqMap)))
     }
-
     def inner(innerValue: CwlValue, innerType: CwlType): (CwlType, CwlValue) = {
       (innerType, innerValue) match {
         case (_, StringValue(s)) => apply(s, innerType, ctx)

@@ -4,6 +4,8 @@
 
 * Set `CommandLineTool.successCodes` to `Set(0)` if not specified
 * Fixes deserialization of optional fields
+* Fixes evaluation for Directory-type values with listings
+* Fixes parsing of LoadListingEnum values
 
 ## v0.5.1 (2021-07-28)
 
