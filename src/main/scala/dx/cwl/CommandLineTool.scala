@@ -210,8 +210,20 @@ object CommandLineTool {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
 
-    val id = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) id.flatMap(_.frag.map(p => s"${p}/")) else None
+    val rawId = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
+    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+
+    val toolId = Option
+      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
+        Option
+          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+          .orElse(
+              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
+          )
+      }
+      .flatten
+      .orElse(rawId)
 
     // An input may have type `stdin`, which is a file that is created from the
     // standard input piped to the CommandLineTool. A maximum of one input parameter
@@ -288,7 +300,7 @@ object CommandLineTool {
     CommandLineTool(
         source.map(_.toString),
         translateOptional(tool.getCwlVersion),
-        id,
+        toolId,
         translateOptional(tool.getLabel),
         translateDoc(tool.getDoc),
         translateOptionalArray(tool.getIntent).map(translateString),

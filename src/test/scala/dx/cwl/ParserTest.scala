@@ -110,10 +110,11 @@ class ParserTest extends AnyWordSpec with Matchers {
     s"parse packed workflow" in {
       val wfPathPacked = workflowsPath.resolve("count-lines1-wf-packed.json")
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
-      val (_, _) = workflowParser.parseFile(wfPathPacked) match {
+      val (wf, _) = workflowParser.parseFile(wfPathPacked) match {
         case (wf: Workflow, doc) => (wf, doc)
         case other               => throw new Exception(s"expected Workflow, not ${other}")
       }
+      wf.name shouldBe "count-lines1-wf-packed"
     }
 
     s"parse packed workflow II" in {
@@ -124,11 +125,12 @@ class ParserTest extends AnyWordSpec with Matchers {
         case other               => throw new Exception(s"expected Workflow, not ${other}")
       }
       val stringParser = Parser.create(Some(URI.create("file:/null")))
-      val (_, _) = stringParser.parseString(FileUtils.readFileContent(wfPathPacked),
-                                            Some("basename-fields-test")) match {
+      val (wf, _) = stringParser.parseString(FileUtils.readFileContent(wfPathPacked),
+                                             Some("basename-fields-test")) match {
         case (wf: Workflow, doc) => (wf, doc)
         case other               => throw new Exception(s"expected Workflow, not ${other}")
       }
+      wf.name shouldBe "basename-fields-test"
     }
   }
 }

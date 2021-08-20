@@ -32,10 +32,23 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
 }
 
 object Identifier {
+  val CwlExtensions = Vector(".cwl", ".cwl.json", ".json")
+  val Main = "main"
+  val MainFrag = s"#${Main}"
 
   def fromUri(uri: URI): Identifier = {
     val (namespace, name) = Utils.normalizeAndSplitUri(uri)
     Identifier(namespace, name)
+  }
+
+  def fromSource(source: Path, namespace: Option[String]): Identifier = {
+    val fileName = source.getFileName.toString
+    val name = CwlExtensions
+      .collectFirst {
+        case ext if fileName.endsWith(ext) => fileName.dropRight(ext.length)
+      }
+      .getOrElse(fileName)
+    Identifier(namespace, Some(name))
   }
 
   def parse(uri: String,
@@ -77,8 +90,7 @@ object Identifier {
         id.map(_.copy(frag = defaultFrag))
           .orElse(Some(Identifier(namespace = None, frag = defaultFrag)))
       case id if source.isDefined =>
-        val name = Some(source.get.getFileName.toString.dropRight(4))
-        id.map(_.copy(frag = name)).orElse(Some(Identifier(namespace = None, frag = name)))
+        Some(fromSource(source.get, id.flatMap(_.namespace)))
       case _ => None
     }
   }

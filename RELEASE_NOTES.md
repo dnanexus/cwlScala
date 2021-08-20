@@ -4,6 +4,7 @@
 
 * Set `CommandLineTool.successCodes` to `Set(0)` if not specified
 * Fixes deserialization of optional fields
+* Uses the source file name as the process name when processing a `$graph` where the top-level element ID is 'main'
 * Fixes evaluation for Directory-type values with listings
 * Fixes parsing of LoadListingEnum values
 
