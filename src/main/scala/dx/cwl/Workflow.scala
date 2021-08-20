@@ -393,8 +393,13 @@ object Workflow {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(workflow.getRequirements, ctx.schemaDefs)
     val newContext = ctx.copy(schemaDefs = allSchemaDefs)
-    val id = Identifier.get(workflow.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) id.flatMap(_.frag.map(p => s"${p}/")) else None
+    val rawId = Identifier.get(workflow.getId, defaultNamespace, defaultFrag, source)
+    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+    val wfId = if (isGraph && source.isDefined && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+      Some(Identifier.fromSource(source.get, rawId.map(_.namespace).getOrElse(defaultNamespace)))
+    } else {
+      rawId
+    }
     val (steps, newDependencies) =
       WorkflowStep.parseArray(workflow.getSteps,
                               newContext,
@@ -406,7 +411,7 @@ object Workflow {
     val wf = Workflow(
         source.map(_.toString),
         translateOptional(workflow.getCwlVersion),
-        id,
+        wfId,
         translateOptional(workflow.getLabel),
         translateDoc(workflow.getDoc),
         translateOptionalArray(workflow.getIntent).map(translateString),
@@ -482,12 +487,18 @@ object ExpressionTool {
             isGraph: Boolean = false): ExpressionTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(expressionTool.getRequirements, ctx.schemaDefs)
-    val id = Identifier.get(expressionTool.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) id.flatMap(_.frag.map(p => s"${p}/")) else None
+    val rawId = Identifier.get(expressionTool.getId, defaultNamespace, defaultFrag, source)
+    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+    val toolId =
+      if (isGraph && source.isDefined && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+        Some(Identifier.fromSource(source.get, rawId.map(_.namespace).getOrElse(defaultNamespace)))
+      } else {
+        rawId
+      }
     ExpressionTool(
         source.map(_.toString),
         translateOptional(expressionTool.getCwlVersion),
-        id,
+        toolId,
         translateOptional(expressionTool.getLabel),
         translateDoc(expressionTool.getDoc),
         translateOptionalArray(expressionTool.getIntent).map(translateString),
@@ -616,12 +627,17 @@ object Operation {
             isGraph: Boolean = false): Operation = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(operation.getRequirements, ctx.schemaDefs)
-    val id = Identifier.get(operation.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) id.flatMap(_.frag.map(p => s"${p}/")) else None
+    val rawId = Identifier.get(operation.getId, defaultNamespace, defaultFrag, source)
+    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+    val opId = if (isGraph && source.isDefined && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+      Some(Identifier.fromSource(source.get, rawId.map(_.namespace).getOrElse(defaultNamespace)))
+    } else {
+      rawId
+    }
     Operation(
         source.map(_.toString),
         translateOptional(operation.getCwlVersion),
-        id,
+        opId,
         translateOptional(operation.getLabel),
         translateDoc(operation.getDoc),
         translateOptionalArray(operation.getIntent).map(translateString),

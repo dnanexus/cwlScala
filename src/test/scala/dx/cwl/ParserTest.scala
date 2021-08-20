@@ -130,5 +130,15 @@ class ParserTest extends AnyWordSpec with Matchers {
         case other               => throw new Exception(s"expected Workflow, not ${other}")
       }
     }
+
+    s"parse packed workflow III" in {
+      val wfPathPacked = workflowsPath.resolve("fastq-unique-reads.cwl.json")
+      workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
+      val (wf, _) = workflowParser.parseFile(wfPathPacked) match {
+        case (wf: Workflow, doc) => (wf, doc)
+        case other               => throw new Exception(s"expected Workflow, not ${other}")
+      }
+      wf.name shouldBe "fastq-unique-reads"
+    }
   }
 }
