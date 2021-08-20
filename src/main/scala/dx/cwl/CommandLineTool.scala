@@ -213,12 +213,17 @@ object CommandLineTool {
     val rawId = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
     val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
 
-    val toolId =
-      if (isGraph && source.isDefined && rawId.flatMap(_.frag).contains(Identifier.Main)) {
-        Some(Identifier.fromSource(source.get, rawId.map(_.namespace).getOrElse(defaultNamespace)))
-      } else {
-        rawId
+    val toolId = Option
+      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
+        Option
+          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+          .orElse(
+              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
+          )
       }
+      .flatten
+      .orElse(rawId)
 
     // An input may have type `stdin`, which is a file that is created from the
     // standard input piped to the CommandLineTool. A maximum of one input parameter
