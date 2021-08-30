@@ -107,7 +107,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
-    s"parse packed workflow" in {
+    "parse packed workflow" in {
       val wfPathPacked = workflowsPath.resolve("count-lines1-wf-packed.json")
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (wf, _) = workflowParser.parseFile(wfPathPacked) match {
@@ -117,7 +117,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       wf.name shouldBe "count-lines1-wf-packed"
     }
 
-    s"parse packed workflow II" in {
+    "parse packed workflow in a graph" in {
       val wfPathPacked = workflowsPath.resolve("basename-fields-test-packed.json")
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (_, _) = workflowParser.parseFile(wfPathPacked) match {
@@ -131,6 +131,17 @@ class ParserTest extends AnyWordSpec with Matchers {
         case other               => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "basename-fields-test"
+    }
+
+    "parse packed workflow not in a graph" in {
+      val wfPathPacked = workflowsPath.resolve("any-type-compat.cwl.json")
+      workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
+      val (wf, _) = workflowParser.parseFile(wfPathPacked, isPacked = true) match {
+        case (wf: Workflow, doc) => (wf, doc)
+        case other               => throw new Exception(s"expected Workflow, not ${other}")
+      }
+      wf.name shouldBe "any-type-compat"
+      wf.inputs.flatMap(_.id.map(_.frag.get)).toSet shouldBe Set("input1", "input2", "input3")
     }
   }
 }
