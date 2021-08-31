@@ -188,7 +188,7 @@ case class Parser(baseUri: Option[URI] = None,
     * @param defaultFrag tool/workflow name, in case it is not specified in the document.
     *                    If not specified, the name of the file without .cwl is used.
     * @param isPacked whether the input is in packed form; ignored if the input is a JSON
-    *                 file with a top-level "$graph" element.
+    *                 file with a top-level "\$graph" element.
     * @return a [[Process]]
     */
   def parseFile(path: Path,
@@ -215,7 +215,7 @@ case class Parser(baseUri: Option[URI] = None,
     * @param sourceCode path to the document
     * @param defaultFrag tool/workflow name, in case it is not specified in the document
     * @param isPacked whether the input is in packed form; ignored if the input is a JSON
-    *                 file with a top-level "$graph" element.
+    *                 file with a top-level "\$graph" element.
     * @return a [[Process]]
     */
   def parseString(sourceCode: String,
