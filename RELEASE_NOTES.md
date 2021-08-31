@@ -1,6 +1,6 @@
 # Change log
 
-## in develop
+## 0.6.0 (2021-08-31)
 
 * Set `CommandLineTool.successCodes` to `Set(0)` if not specified
 * Fixes deserialization of optional fields
