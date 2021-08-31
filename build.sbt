@@ -45,13 +45,13 @@ lazy val cwlScala = root.settings(
 
 lazy val dependencies = {
   val dxCommonVersion = "0.8.0"
-  val typesafeVersion = "1.3.3"
-  val sprayVersion = "1.3.5"
-  val scalatestVersion = "3.1.1"
-  val yamlVersion = "2.2.1"
+  val typesafeVersion = "1.4.1"
+  val sprayVersion = "1.3.6"
+  val scalatestVersion = "3.2.9"
+  val yamlVersion = "2.3"
   val rhinoVersion = "1.7.13"
-  val antlr4Version = "4.9"
-  val junitVersion = "4.12"
+  val antlr4Version = "4.9.2"
+  val junitVersion = "4.13.2"
 
   Seq(
       "com.dnanexus" % "dxcommon" % dxCommonVersion,
