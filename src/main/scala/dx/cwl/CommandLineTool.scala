@@ -22,22 +22,24 @@ object StdFile extends Enumeration {
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandLineBinding
-case class CommandInputBinding(position: Option[CwlValue],
+case class CommandInputBinding(position: CwlValue,
                                prefix: Option[String],
-                               separate: Option[Boolean],
+                               separate: Boolean,
                                itemSeparator: Option[String],
-                               shellQuote: Option[Boolean],
+                               shellQuote: Boolean,
                                valueFrom: Option[CwlValue])
 
 object CommandInputBinding {
   def apply(binding: CommandLineBindingImpl,
             schemaDefs: Map[String, CwlSchema]): CommandInputBinding = {
     CommandInputBinding(
-        translateOptionalObject(binding.getPosition).map(CwlValue(_, schemaDefs)),
+        translateOptionalObject(binding.getPosition)
+          .map(CwlValue(_, schemaDefs))
+          .getOrElse(IntValue(0)),
         translateOptional(binding.getPrefix),
-        translateOptional(binding.getSeparate).map(_.booleanValue()),
+        translateOptional(binding.getSeparate).forall(_.booleanValue()),
         translateOptional(binding.getItemSeparator),
-        translateOptional(binding.getShellQuote).map(_.booleanValue()),
+        translateOptional(binding.getShellQuote).forall(_.booleanValue()),
         translateOptionalObject(binding.getValueFrom).map(CwlValue(_, schemaDefs))
     )
   }
@@ -52,9 +54,9 @@ case class CommandInputParameter(id: Option[Identifier],
                                  inputBinding: Option[CommandInputBinding],
                                  secondaryFiles: Vector[SecondaryFile],
                                  format: Vector[CwlValue],
-                                 streamable: Option[Boolean],
-                                 loadContents: Option[Boolean],
-                                 loadListing: Option[LoadListing.LoadListing])
+                                 streamable: Boolean,
+                                 loadContents: Boolean,
+                                 loadListing: LoadListing.LoadListing)
     extends InputParameter
     with Loadable
 
@@ -77,11 +79,11 @@ object CommandInputParameter {
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         },
-        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs, isInput = true),
         translateOptionalArray(param.getFormat).map(CwlValue(_, schemaDefs)),
-        translateOptional(param.getStreamable).map(_.booleanValue()),
-        translateOptional(param.getLoadContents).map(_.booleanValue()),
-        translateOptional(param.getLoadListing).map(LoadListing.from)
+        translateOptional(param.getStreamable).exists(_.booleanValue()),
+        translateOptional(param.getLoadContents).exists(_.booleanValue()),
+        translateOptional(param.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
     )
     (inparam, stdfile.contains(StdFile.Stdin))
   }
@@ -90,8 +92,8 @@ object CommandInputParameter {
 // https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputBinding
 case class CommandOutputBinding(glob: Vector[CwlValue],
                                 outputEval: Option[CwlValue],
-                                loadContents: Option[Boolean],
-                                loadListing: Option[LoadListing.LoadListing])
+                                loadContents: Boolean,
+                                loadListing: LoadListing.LoadListing)
     extends Loadable
 
 object CommandOutputBinding {
@@ -100,8 +102,8 @@ object CommandOutputBinding {
     CommandOutputBinding(
         translateOptionalArray(binding.getGlob).map(CwlValue(_, schemaDefs)),
         translateOptional(binding.getOutputEval).map(CwlValue(_, schemaDefs)),
-        translateOptional(binding.getLoadContents).map(_.booleanValue()),
-        translateOptional(binding.getLoadListing).map(LoadListing.from)
+        translateOptional(binding.getLoadContents).exists(_.booleanValue()),
+        translateOptional(binding.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
     )
   }
 }
@@ -114,7 +116,7 @@ case class CommandOutputParameter(id: Option[Identifier],
                                   outputBinding: Option[CommandOutputBinding],
                                   secondaryFiles: Vector[SecondaryFile],
                                   format: Option[CwlValue],
-                                  streamable: Option[Boolean])
+                                  streamable: Boolean)
     extends OutputParameter
 
 object CommandOutputParameter {
@@ -131,16 +133,20 @@ object CommandOutputParameter {
       case Some(binding: CommandOutputBindingImpl) =>
         Some(CommandOutputBinding(binding, schemaDefs))
       case None if stdfile.nonEmpty =>
-        Some(CommandOutputBinding(Vector(RandomFile(stdfile.get)), None, None, None))
-      case None =>
-        None
+        Some(
+            CommandOutputBinding(glob = Vector(RandomFile(stdfile.get)),
+                                 outputEval = None,
+                                 loadContents = false,
+                                 loadListing = LoadListing.No)
+        )
+      case None => None
       case other =>
         throw new RuntimeException(s"unexpected CommandOutputBinding value ${other}")
     }
     val streamable = if (stdfile.nonEmpty) {
-      Some(true)
+      true
     } else {
-      translateOptional(param.getStreamable).map(_.booleanValue())
+      translateOptional(param.getStreamable).exists(_.booleanValue())
     }
     val outparam = CommandOutputParameter(
         translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
@@ -148,7 +154,7 @@ object CommandOutputParameter {
         translateDoc(param.getDoc),
         types,
         outputBinding,
-        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs),
+        SecondaryFile.applyArray(param.getSecondaryFiles, schemaDefs, isInput = false),
         translateOptionalObject(param.getFormat).map(CwlValue(_, schemaDefs)),
         streamable
     )
@@ -160,7 +166,11 @@ sealed trait Argument
 case class ExprArgument(expr: CwlValue) extends Argument
 case class BindingArgument(binding: CommandInputBinding) extends Argument
 
-// https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputBinding
+/**
+  * @note
+  * - If `successCodes` is not specified, it is initialized to `Set(0)`
+  * @see https://www.commonwl.org/v1.2/CommandLineTool.html#CommandOutputBinding
+  */
 case class CommandLineTool(source: Option[String],
                            cwlVersion: Option[CWLVersion],
                            id: Option[Identifier],
@@ -200,8 +210,20 @@ object CommandLineTool {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
 
-    val id = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) id.flatMap(_.frag.map(p => s"${p}/")) else None
+    val rawId = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
+    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+
+    val toolId = Option
+      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
+        Option
+          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+          .orElse(
+              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
+          )
+      }
+      .flatten
+      .orElse(rawId)
 
     // An input may have type `stdin`, which is a file that is created from the
     // standard input piped to the CommandLineTool. A maximum of one input parameter
@@ -278,7 +300,7 @@ object CommandLineTool {
     CommandLineTool(
         source.map(_.toString),
         translateOptional(tool.getCwlVersion),
-        id,
+        toolId,
         translateOptional(tool.getLabel),
         translateDoc(tool.getDoc),
         translateOptionalArray(tool.getIntent).map(translateString),
@@ -291,7 +313,10 @@ object CommandLineTool {
         stderr,
         requirements,
         Requirement.applyHints(tool.getHints, allSchemaDefs, ctx.hintSchemas),
-        translateOptionalArray(tool.getSuccessCodes).map(translateInt).toSet,
+        translateOptionalArray(tool.getSuccessCodes) match {
+          case v if v.isEmpty => Set(0)
+          case v              => v.map(translateInt).toSet
+        },
         translateOptionalArray(tool.getTemporaryFailCodes).map(translateInt).toSet,
         translateOptionalArray(tool.getPermanentFailCodes).map(translateInt).toSet
     )

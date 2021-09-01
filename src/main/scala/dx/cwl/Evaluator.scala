@@ -513,12 +513,13 @@ object EvaluatorContext {
     def finalizePathWithFileSource(pathValue: PathValue,
                                    fileSource: Option[AddressableFileSource],
                                    recurseListings: Boolean = true): PathValue = {
+      lazy val isDirectory = Some(PathValue.isDirectory(pathValue))
       val (newFileSource, newLocation, newPath) = fileSource match {
         case Some(local: LocalFileSource) if local.canonicalPath.toFile.exists() =>
           (local, local.uri, local.canonicalPath)
         case Some(local: LocalFileSource) =>
           val newPath = inputDir.resolve(local.name)
-          (fileResolver.fromPath(newPath), newPath.toUri, newPath)
+          (fileResolver.fromPath(newPath, isDirectory = isDirectory), newPath.toUri, newPath)
         case Some(fs) =>
           fs.uri match {
             case uri if uri.getScheme != null =>
@@ -535,7 +536,7 @@ object EvaluatorContext {
             case p if p.toFile.exists() => p.toRealPath()
             case p                      => inputDir.resolve(p.getFileName)
           }
-          (fileResolver.fromPath(newPath), newPath.toUri, newPath)
+          (fileResolver.fromPath(newPath, isDirectory = isDirectory), newPath.toUri, newPath)
         case None =>
           val randPath = Iterator
             .continually(UUID.randomUUID().toString)
@@ -544,11 +545,11 @@ object EvaluatorContext {
               case p if !p.toFile.exists() => p.toAbsolutePath
             }
             .get
-          (fileResolver.fromPath(randPath), randPath.toUri, randPath)
+          (fileResolver.fromPath(randPath, isDirectory = isDirectory), randPath.toUri, randPath)
       }
       val newBasename = pathValue.basename match {
         case Some(basename) => basename
-        case None           => Paths.get(newLocation.getPath).getFileName.toString
+        case None           => newPath.getFileName.toString
       }
       pathValue match {
         case f: FileValue =>
@@ -571,10 +572,10 @@ object EvaluatorContext {
             case _ => None
           }
           val newSecondaryFiles = f.secondaryFiles.map(finalizePath)
-          val newContents = param.loadContents match {
-            case Some(true) if f.contents.isEmpty && fileExists =>
-              Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
-            case _ => f.contents
+          val newContents = if (param.loadContents && f.contents.isEmpty && fileExists) {
+            Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
+          } else {
+            f.contents
           }
           FileValue(
               Some(newLocation.toString),
@@ -592,15 +593,15 @@ object EvaluatorContext {
         case d: DirectoryValue =>
           val newListing = if (d.listing.isEmpty && recurseListings) {
             param.loadListing match {
-              case Some(LoadListing.Shallow) =>
+              case LoadListing.Shallow =>
                 finalizeFileSources(newFileSource.listing(recursive = false),
                                     recurseListings = false)
-              case Some(LoadListing.Deep) =>
+              case LoadListing.Deep =>
                 finalizeFileSources(newFileSource.listing(recursive = true), recurseListings = true)
               case _ => d.listing
             }
           } else {
-            d.listing
+            d.listing.map(finalizePath)
           }
           DirectoryValue(
               Some(newLocation.toASCIIString),
@@ -612,10 +613,11 @@ object EvaluatorContext {
     }
 
     def finalizePath(pathValue: PathValue): PathValue = {
-      val fileSource = pathValue match {
-        case _ if pathValue.location.isEmpty => None
-        case f: FileValue                    => Some(fileResolver.resolve(f.location.get))
-        case d: DirectoryValue               => Some(fileResolver.resolveDirectory(d.location.get))
+      val location = pathValue.location.orElse(pathValue.path)
+      val fileSource = (location, pathValue) match {
+        case (Some(uri), _: FileValue)      => Some(fileResolver.resolve(uri))
+        case (Some(uri), _: DirectoryValue) => Some(fileResolver.resolveDirectory(uri))
+        case _                              => None
       }
       finalizePathWithFileSource(pathValue, fileSource)
     }
@@ -862,7 +864,6 @@ case class Evaluator(jsEnabled: Boolean = false,
       }.unzip
       (types.toMap, ObjectValue(values.to(TreeSeqMap)))
     }
-
     def inner(innerValue: CwlValue, innerType: CwlType): (CwlType, CwlValue) = {
       (innerType, innerValue) match {
         case (_, StringValue(s)) => apply(s, innerType, ctx)

@@ -62,3 +62,7 @@ libraryDependencies ++= Seq(
 $ git clone --recurse-submodules https://github.com/dnanexus/cwlScala.git
 $ sbt publishLocal
 ```
+
+## Support
+
+cwlScala is not an official product of DNAnexus. Please do not contact DNAnexus (or any employees thereof) for support. To report a bug or feature request, please open an issue in the [issue tracker](https://github.com/dnanexus/cwlScala/issues).

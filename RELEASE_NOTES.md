@@ -1,5 +1,16 @@
 # Change log
 
+## 0.6.0 (2021-08-31)
+
+* Set `CommandLineTool.successCodes` to `Set(0)` if not specified
+* Fixes deserialization of optional fields
+* Uses the source file name as the process name when processing a `$graph` where the top-level element ID is 'main'
+* Fixes evaluation for Directory-type values with listings
+* Fixes parsing of LoadListingEnum values
+* Adds option to `Parser.parseFile` and `Parser.parseString` to specify that the CWL file is in "packed" form
+* Updates to latest cwljava, which fixes parsing of anonymous schemas in packed documents
+* Correctly handles identifiers with namespaces from imported documents
+
 ## v0.5.1 (2021-07-28)
 
 * Fixes error when trying to finalize a File value without location or path

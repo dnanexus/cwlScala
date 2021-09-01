@@ -311,6 +311,33 @@ object CwlValue {
     }
   }
 
+  private def deserializeMulti(jsValue: JsValue,
+                               cwlType: CwlMulti,
+                               schemaDefs: Map[String, CwlSchema]): (CwlType, CwlValue) = {
+    cwlType.types.iterator
+      .map {
+        case CwlAny => None
+        case t =>
+          try {
+            Some((t, deserialize(jsValue, t, schemaDefs)._2))
+          } catch {
+            case _: Throwable => None
+          }
+      }
+      .collectFirst {
+        case Some(result) => result
+      }
+      .getOrElse(
+          if (cwlType.types.contains(CwlAny)) {
+            (CwlAny, deserialize(jsValue, schemaDefs))
+          } else {
+            throw new Exception(
+                s"cannot deserialize ${jsValue} to any of types ${cwlType.types.mkString(",")}"
+            )
+          }
+      )
+  }
+
   /**
     * Deserializes a JSON value to a [[CwlValue]] given type information.
     * @param jsValue the JSON value
@@ -322,34 +349,10 @@ object CwlValue {
   def deserialize(jsValue: JsValue,
                   cwlType: CwlType,
                   schemaDefs: Map[String, CwlSchema]): (CwlType, CwlValue) = {
-    cwlType match {
-      case CwlOptional(t) => deserialize(jsValue, t, schemaDefs)
-      case CwlMulti(types) =>
-        types.iterator
-          .map {
-            case CwlAny => None
-            case t =>
-              try {
-                Some((t, deserialize(jsValue, t, schemaDefs)._2))
-              } catch {
-                case _: Throwable => None
-              }
-          }
-          .collectFirst {
-            case Some(result) => result
-          }
-          .getOrElse(
-              if (types.contains(CwlAny)) {
-                (CwlAny, deserialize(jsValue, schemaDefs))
-              } else {
-                throw new Exception(
-                    s"cannot deserialize ${jsValue} to any of types ${types.mkString(",")}"
-                )
-              }
-          )
-      case _ =>
-        val cwlValue = deserializeSingle(jsValue, cwlType, schemaDefs)
-        (cwlType, cwlValue)
+    (cwlType, jsValue) match {
+      case (CwlOptional(_: CwlMulti), JsNull) => (cwlType, NullValue)
+      case (m: CwlMulti, _)                   => deserializeMulti(jsValue, m, schemaDefs)
+      case _                                  => (cwlType, deserializeSingle(jsValue, cwlType, schemaDefs))
     }
   }
 
@@ -823,6 +826,13 @@ object PathValue {
       case JsString(s) => s.toLong
       case _ =>
         throw new Exception(s"expected string, not ${jsValue}")
+    }
+  }
+
+  def isDirectory(pathValue: PathValue): Boolean = {
+    pathValue match {
+      case _: DirectoryValue => true
+      case _                 => false
     }
   }
 }
