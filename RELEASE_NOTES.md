@@ -2,6 +2,11 @@
 
 ## in develop
 
+* Introduces `ParserResult` class, which is returned from all `Parser.parse*` methods
+* For packed workflows, parses out `$schemas` and `$namespaces`
+
+## 0.6.0 (2021-08-31)
+
 * Set `CommandLineTool.successCodes` to `Set(0)` if not specified
 * Fixes deserialization of optional fields
 * Uses the source file name as the process name when processing a `$graph` where the top-level element ID is 'main'

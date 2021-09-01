@@ -299,7 +299,7 @@ object WorkflowStep {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(step.getRequirements, ctx.schemaDefs)
     val id = translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix))
-    val (runProcess, newDoc) = step.getRun match {
+    val runResult = step.getRun match {
       case process: ProcessInterface =>
         val defaultFrag = id.flatMap(_.frag.map(f => s"${f}/run"))
         ctx.parse(process,
@@ -309,7 +309,7 @@ object WorkflowStep {
       case uri: String if isGraph =>
         val runId = Identifier.parse(uri, defaultNamespace = defaultNamespace)
         if (dependencies.contains(runId)) {
-          (dependencies(runId), dependencies)
+          ParserResult(dependencies(runId), dependencies)
         } else if (rawProcesses.contains(runId)) {
           ctx.parse(rawProcesses(runId),
                     dependencies = dependencies,
@@ -328,14 +328,14 @@ object WorkflowStep {
         translateDoc(step.getDoc),
         WorkflowStepInput.applyArray(step.getIn, allSchemaDefs, stripFragPrefix),
         WorkflowStepOutput.applyArray(step.getOut, stripFragPrefix),
-        runProcess,
+        runResult.process,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
         translateOptionalArray(step.getScatter).map(_.toString),
         translateOptional(step.getScatterMethod).map(ScatterMethod.from),
         requirements,
         Requirement.applyHints(step.getHints, allSchemaDefs, ctx.hintSchemas)
     )
-    (wfStep, newDoc)
+    (wfStep, runResult.document)
   }
 
   def parseArray(steps: java.util.List[java.lang.Object],
