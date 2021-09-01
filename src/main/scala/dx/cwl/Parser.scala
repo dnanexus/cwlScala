@@ -1,14 +1,13 @@
 package dx.cwl
 
 import dx.cwl.Document.{Document, DocumentAdder}
-import dx.util.JsUtils
+import dx.util.{FileUtils, JsUtils}
+import dx.yaml._
 
-import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
 import java.net.URI
 import java.nio.file.{Path, Paths}
 import org.w3id.cwl.cwl1_2.{CommandLineToolImpl, ExpressionToolImpl, OperationImpl, WorkflowImpl}
 import org.w3id.cwl.cwl1_2.utils.{LoadingOptions, RootLoader}
-import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
 import spray.json._
 
 import scala.jdk.CollectionConverters._
@@ -40,19 +39,16 @@ case class Parser(baseUri: Option[URI] = None,
   private var cache: Map[Path, ParserResult] = Map.empty
   private lazy val normalizedBaseUri = baseUri.map(Utils.normalizeUri).orNull
 
-  def versionAndClassFromYaml(inputStream: InputStream): Option[(String, String)] = {
+  def versionAndClassFromYaml(value: YamlValue): Option[(String, String)] = {
+    val versionKey = YamlString("cwlVersion")
+    val classKey = YamlString("class")
     try {
-      val yamlLoader = new Load(LoadSettings.builder().build())
-      val doc = yamlLoader.loadFromInputStream(inputStream).asInstanceOf[java.util.Map[String, Any]]
-      if (doc.containsKey("cwlVersion")) {
-        val version = doc.get("cwlVersion").asInstanceOf[String]
-        if (version.startsWith("v1.2")) {
-          Some(version, doc.get("class").asInstanceOf[String])
-        } else {
-          None
-        }
-      } else {
-        None
+      value match {
+        case YamlObject(fields) if fields.contains(versionKey) && fields.contains(classKey) =>
+          val YamlString(version) = fields(versionKey)
+          val YamlString(cls) = fields(classKey)
+          Some((version, cls))
+        case _ => None
       }
     } catch {
       case _: Throwable => None
@@ -85,7 +81,7 @@ case class Parser(baseUri: Option[URI] = None,
     */
   def detectVersionAndClass(path: Path): Option[(String, String)] = {
     if (path.toString.endsWith(".cwl")) {
-      versionAndClassFromYaml(new FileInputStream(path.toFile))
+      versionAndClassFromYaml(FileUtils.readFileContent(path).parseYaml)
     } else {
       versionAndClassFromJson(JsUtils.jsFromFile(path))
     }
@@ -97,7 +93,7 @@ case class Parser(baseUri: Option[URI] = None,
   def detectVersionAndClass(sourceCode: String,
                             format: Option[String] = None): Option[(String, String)] = {
     format match {
-      case Some("yaml") => versionAndClassFromYaml(new ByteArrayInputStream(sourceCode.getBytes()))
+      case Some("yaml") => versionAndClassFromYaml(sourceCode.parseYaml)
       case Some("json") => versionAndClassFromJson(sourceCode.parseJson)
       case Some(other)  => throw new Exception(s"unsupported format ${other}")
       case None =>
@@ -105,7 +101,7 @@ case class Parser(baseUri: Option[URI] = None,
           versionAndClassFromJson(sourceCode.parseJson)
         } catch {
           case _: Throwable =>
-            versionAndClassFromYaml(new ByteArrayInputStream(sourceCode.getBytes()))
+            versionAndClassFromYaml(sourceCode.parseYaml)
         }
     }
   }
