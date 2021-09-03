@@ -47,6 +47,15 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
+    "parse an empty tool" in {
+      toolsParser.parseFile(toolsPath.resolve("empty.cwl.json")) match {
+        case ParserResult(tool: CommandLineTool, _, _, _) =>
+          tool.requirements shouldBe Vector(ShellCommandRequirement)
+        case other =>
+          throw new Exception(s"expected CommandLineTool, not ${other}")
+      }
+    }
+
     "not parse an invalid document" in {
       toolsParser.detectVersionAndClass(tools12Path.resolve("invalid1.cwl")) shouldBe None
       toolsParser.detectVersionAndClass(tools12Path.resolve("invalid2.cwl")) shouldBe None
