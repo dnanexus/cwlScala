@@ -116,7 +116,7 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     "parse record type with secondaryFiles" in {
       val result =
-        toolsParser.parseFile(toolsPath.resolve("record-in-secondaryFiles.cwl.json"),
+        toolsParser.parseFile(toolsPath.resolve("record-sd-secondaryFiles.cwl.json"),
                               isPacked = true)
       val tool = result.process match {
         case tool: CommandLineTool => tool
