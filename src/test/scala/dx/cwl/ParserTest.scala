@@ -114,6 +114,27 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
+    "parse record type with secondaryFiles" in {
+      val result =
+        toolsParser.parseFile(toolsPath.resolve("record-in-secondaryFiles.cwl.json"),
+                              isPacked = true)
+      val tool = result.process match {
+        case tool: CommandLineTool => tool
+        case other                 => throw new Exception(s"expected CommandLineTool, not ${other}")
+      }
+      tool.inputs.size shouldBe 1
+      tool.inputs.head.cwlType match {
+        case rec: CwlInputRecord =>
+          rec.fields("f1").secondaryFiles.size shouldBe 1
+          rec.fields("f1").secondaryFiles.head shouldBe SecondaryFile(StringValue(".s2"),
+                                                                      BooleanValue(true))
+          rec.fields("f2").secondaryFiles.size shouldBe 1
+          rec.fields("f2").secondaryFiles.head shouldBe SecondaryFile(StringValue(".s3"),
+                                                                      BooleanValue(true))
+        case other => throw new Exception(s"expected input type to be record not ${other}")
+      }
+    }
+
     "parse packed tool with imported output parameters" in {
       val result = toolsParser.parseFile(toolsPath.resolve("params2.cwl.json"), isPacked = true)
       val tool = result.process match {
