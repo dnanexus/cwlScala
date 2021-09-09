@@ -6,7 +6,9 @@ on:
       release-version:
         description: 'Release version'
         required: true
-
+permissions:
+  contents: write
+  packages: write
 jobs:
   run-release:
     name: cwlScala Release
