@@ -2,6 +2,7 @@
 
 ## in develop
 
+* **Breaking Change**: `Sink.linkMerge` is now `Option`al
 * Introduces `ParserResult` class, which is returned from all `Parser.parse*` methods
 * For packed workflows, parses out `$schemas` and `$namespaces`
 * Updates to latest cwljava, which fixes several parsing errors
