@@ -112,7 +112,7 @@ object PickValueMethod extends Enumeration {
 
 trait Sink {
   val sources: Vector[Identifier]
-  val linkMerge: LinkMergeMethod.LinkMergeMethod
+  val linkMerge: Option[LinkMergeMethod.LinkMergeMethod]
   val pickValue: Option[PickValueMethod.PickValueMethod]
 }
 
@@ -124,7 +124,7 @@ case class WorkflowOutputParameter(id: Option[Identifier],
                                    format: Option[CwlValue],
                                    streamable: Boolean,
                                    sources: Vector[Identifier],
-                                   linkMerge: LinkMergeMethod.LinkMergeMethod,
+                                   linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                                    pickValue: Option[PickValueMethod.PickValueMethod])
     extends OutputParameter
     with Sink
@@ -165,7 +165,7 @@ object WorkflowOutputParameter {
         sources,
         translateOptional(param.getLinkMerge)
           .map(LinkMergeMethod.from)
-          .getOrElse(LinkMergeMethod.MergeNested),
+          .orElse(Option.when(sources.size > 1)(LinkMergeMethod.MergeNested)),
         translateOptional(param.getPickValue).map(PickValueMethod.from)
     )
   }
@@ -201,7 +201,7 @@ case class WorkflowStepInput(id: Option[Identifier],
                              sources: Vector[Identifier],
                              default: Option[CwlValue],
                              valueFrom: Option[CwlValue],
-                             linkMerge: LinkMergeMethod.LinkMergeMethod,
+                             linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                              pickValue: Option[PickValueMethod.PickValueMethod],
                              loadContents: Boolean,
                              loadListing: LoadListing.LoadListing)
@@ -214,17 +214,18 @@ object WorkflowStepInput {
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowStepInput = {
+    val sources = translateOptionalArray(step.getSource).map(source =>
+      Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
+    )
     WorkflowStepInput(
         translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
         translateOptional(step.getLabel),
-        translateOptionalArray(step.getSource).map(source =>
-          Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
-        ),
+        sources,
         translateOptional(step.getDefault).map(CwlValue(_, schemaDefs)),
         translateOptionalObject(step.getValueFrom).map(CwlValue(_, schemaDefs)),
         translateOptional(step.getLinkMerge)
           .map(LinkMergeMethod.from)
-          .getOrElse(LinkMergeMethod.MergeNested),
+          .orElse(Option.when(sources.size > 1)(LinkMergeMethod.MergeNested)),
         translateOptional(step.getPickValue).map(PickValueMethod.from),
         translateOptional(step.getLoadContents).exists(_.booleanValue()),
         translateOptional(step.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
