@@ -396,17 +396,6 @@ object Workflow {
     val newContext = ctx.copy(schemaDefs = allSchemaDefs)
     val rawId = Identifier.get(workflow.getId, defaultNamespace, defaultFrag, source)
     val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
-    val wfId = Option
-      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
-        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
-        Option
-          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
-          .orElse(
-              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
-          )
-      }
-      .flatten
-      .orElse(rawId)
     val (steps, newDependencies) =
       WorkflowStep.parseArray(workflow.getSteps,
                               newContext,
@@ -415,6 +404,31 @@ object Workflow {
                               isGraph,
                               stripFragPrefix,
                               defaultNamespace)
+    val wfId = Option
+      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
+        Option
+          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+          .orElse(
+              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
+          )
+          .map { wfId =>
+            if (newDependencies.contains(wfId)) {
+              // the document already has a process with the given ID - make it unique by adding a suffix
+              Iterator
+                .from(1)
+                .map(i => wfId.copy(frag = Some(s"${wfId.frag.get}-${i}")))
+                .collectFirst {
+                  case id if !newDependencies.contains(id) => id
+                }
+                .get
+            } else {
+              wfId
+            }
+          }
+      }
+      .flatten
+      .orElse(rawId)
     val wf = Workflow(
         source.map(_.toString),
         translateOptional(workflow.getCwlVersion),
