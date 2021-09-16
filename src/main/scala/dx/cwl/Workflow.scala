@@ -279,7 +279,7 @@ case class WorkflowStep(id: Option[Identifier],
                         outputs: Vector[WorkflowStepOutput],
                         run: Process,
                         when: Option[CwlValue],
-                        scatter: Vector[String],
+                        scatter: Vector[Identifier],
                         scatterMethod: Option[ScatterMethod.ScatterMethod],
                         requirements: Vector[Requirement],
                         hints: Vector[Hint])
@@ -331,7 +331,9 @@ object WorkflowStep {
         WorkflowStepOutput.applyArray(step.getOut, stripFragPrefix),
         runResult.process,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
-        translateOptionalArray(step.getScatter).map(_.toString),
+        translateOptionalArray(step.getScatter).map(source =>
+          Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
+        ),
         translateOptional(step.getScatterMethod).map(ScatterMethod.from),
         requirements,
         Requirement.applyHints(step.getHints, allSchemaDefs, ctx.hintSchemas)
