@@ -6,6 +6,9 @@
 * Introduces `ParserResult` class, which is returned from all `Parser.parse*` methods
 * For packed workflows, parses out `$schemas` and `$namespaces`
 * Updates to latest cwljava, which fixes several parsing errors
+* Fixes `CwlType.flatten` to correctly handle duplicate types
+* Treats scatter sources as identifiers
+* Automatically renames the `main` process if its name collides with another process
 
 ## 0.6.0 (2021-08-31)
 
