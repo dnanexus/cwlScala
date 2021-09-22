@@ -157,22 +157,22 @@ object CwlType {
     */
   def flatten(types: Vector[CwlType]): CwlType = {
     @tailrec
-    def inner(innerTypes: Vector[CwlType]): Vector[CwlType] = {
+    def inner(innerTypes: Set[CwlType]): Set[CwlType] = {
       if (innerTypes.size > 1 && innerTypes.contains(CwlNull)) {
-        inner(innerTypes.diff(Vector(CwlNull)).map(CwlOptional.ensureOptional))
+        inner(innerTypes.diff(Set(CwlNull)).map(CwlOptional.ensureOptional))
       } else if (innerTypes.contains(CwlOptional(CwlAny))) {
-        Vector(CwlOptional(CwlAny))
+        Set(CwlOptional(CwlAny))
       } else if (innerTypes.contains(CwlAny)) {
-        Vector(CwlAny)
+        Set(CwlAny)
       } else {
         innerTypes
       }
     }
-    val flattened = inner(types)
+    val flattened = inner(types.toSet)
     if (flattened.size == 1) {
       flattened.head
     } else {
-      CwlMulti(flattened)
+      CwlMulti(flattened.toVector)
     }
   }
 
