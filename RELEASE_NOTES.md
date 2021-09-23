@@ -1,6 +1,6 @@
 # Change log
 
-## in develop
+## 0.7.0 (2021-09-23)
 
 * **Breaking Change**: `Sink.linkMerge` is now `Option`al
 * Introduces `ParserResult` class, which is returned from all `Parser.parse*` methods
