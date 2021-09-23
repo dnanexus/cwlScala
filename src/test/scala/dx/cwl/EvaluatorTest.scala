@@ -108,6 +108,10 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       evaluator("$(inputs.d.basename)", CwlString, ctx2)._2 shouldBe StringValue("dir")
       evaluator("$(inputs.d.listing[0].path)", CwlString, ctx2)._2 shouldBe StringValue(f2.toString)
       evaluator("$(inputs.d.listing[0].contents)", CwlString, ctx2)._2 shouldBe StringValue("test2")
+
+      evaluator("filename$(inputs.f.nameext)", CwlString, ctx2)._2 shouldBe StringValue(
+          "filename.txt"
+      )
     }
   }
 
@@ -151,4 +155,5 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       }
     }
   }
+
 }

@@ -782,7 +782,7 @@ case class Evaluator(jsEnabled: Boolean = false,
           case CompoundValue(parts) =>
             StringValue(
                 parts
-                  .map(applyParameterValue(_, CwlOptional(CwlString), ctx).toString)
+                  .map(applyParameterValue(_, CwlOptional(CwlString), ctx)._2.toString)
                   .mkString("")
             )
           case ParameterReference(rootSymbol, segments) =>
