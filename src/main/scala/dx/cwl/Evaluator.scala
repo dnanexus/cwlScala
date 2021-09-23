@@ -758,7 +758,7 @@ case class Evaluator(jsEnabled: Boolean = false,
         checkCoercibleTo(StringValue(s), cwlType)
       case CompoundString(parts) =>
         checkCoercibleTo(
-            StringValue(parts.map(applyEcmaString(_, cwlType, ctx).toString).mkString("")),
+            StringValue(parts.map(applyEcmaString(_, cwlType, ctx)._2.toString).mkString("")),
             cwlType
         )
       case EcmaExpr(expr) =>
