@@ -9,6 +9,7 @@
 * Fixes `CwlType.flatten` to correctly handle duplicate types
 * Treats scatter sources as identifiers
 * Automatically renames the `main` process if its name collides with another process
+* Fixes evalution of compound parameter references
 
 ## 0.6.0 (2021-08-31)
 
