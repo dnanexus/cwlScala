@@ -1,5 +1,16 @@
 # Change log
 
+## 0.7.0 (2021-09-23)
+
+* **Breaking Change**: `Sink.linkMerge` is now `Option`al
+* Introduces `ParserResult` class, which is returned from all `Parser.parse*` methods
+* For packed workflows, parses out `$schemas` and `$namespaces`
+* Updates to latest cwljava, which fixes several parsing errors
+* Fixes `CwlType.flatten` to correctly handle duplicate types
+* Treats scatter sources as identifiers
+* Automatically renames the `main` process if its name collides with another process
+* Fixes evalution of compound parameter references
+
 ## 0.6.0 (2021-08-31)
 
 * Set `CommandLineTool.successCodes` to `Set(0)` if not specified

@@ -1,0 +1,11 @@
+{
+  "cwlVersion": "v1.2",
+  "class": "CommandLineTool",
+  "inputs": [],
+  "outputs": [],
+  "requirements": [
+    {
+      "class": "ShellCommandRequirement"
+    }
+  ]
+}

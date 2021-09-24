@@ -123,7 +123,7 @@ object CwlType {
               }
               (types, stdfile, updatedSchemaDefs + (fqn -> newSchemaDef))
             case None =>
-              throw new RuntimeException(s"missing definition for schema ${schemaName}")
+              throw new RuntimeException(s"missing definition for schema ${fqn}")
           }
         case _ =>
           val cwlType: CwlType = innerType match {
@@ -157,22 +157,22 @@ object CwlType {
     */
   def flatten(types: Vector[CwlType]): CwlType = {
     @tailrec
-    def inner(innerTypes: Vector[CwlType]): Vector[CwlType] = {
+    def inner(innerTypes: Set[CwlType]): Set[CwlType] = {
       if (innerTypes.size > 1 && innerTypes.contains(CwlNull)) {
-        inner(innerTypes.diff(Vector(CwlNull)).map(CwlOptional.ensureOptional))
+        inner(innerTypes.diff(Set(CwlNull)).map(CwlOptional.ensureOptional))
       } else if (innerTypes.contains(CwlOptional(CwlAny))) {
-        Vector(CwlOptional(CwlAny))
+        Set(CwlOptional(CwlAny))
       } else if (innerTypes.contains(CwlAny)) {
-        Vector(CwlAny)
+        Set(CwlAny)
       } else {
         innerTypes
       }
     }
-    val flattened = inner(types)
+    val flattened = inner(types.toSet)
     if (flattened.size == 1) {
       flattened.head
     } else {
-      CwlMulti(flattened)
+      CwlMulti(flattened.toVector)
     }
   }
 
@@ -400,10 +400,20 @@ object CwlSchema {
   def translateSchemas(schemas: Map[String, IOSchema],
                        schemaDefs: Map[String, CwlSchema]): Map[String, CwlSchema] = {
     schemas.foldLeft(Map.empty[String, CwlSchema]) {
-      case (accu, (name, _)) if schemaDefs.contains(name) || accu.contains(name) => accu
+      case (accu, (name, _)) if accu.contains(name) || schemaDefs.contains(name) => accu
       case (accu, (name, schema)) =>
-        val (newSchema, newSchemaDefs) = translateSchema(schema, schemaDefs ++ accu, schemas)
-        accu ++ newSchemaDefs + (name -> newSchema)
+        val id = Identifier.parse(name)
+        if (id.fullyQualifiedName
+              .exists(fqn => accu.contains(fqn) || schemaDefs.contains(fqn))) {
+          accu
+        } else {
+          val (newSchema, newSchemaDefs) = translateSchema(schema, schemaDefs ++ accu, schemas)
+          val newSchemaEntry = newSchema.id
+            .flatMap(_.fullyQualifiedName)
+            .map(fqn => fqn -> newSchema)
+            .getOrElse(name -> newSchema)
+          accu ++ newSchemaDefs + newSchemaEntry
+        }
     }
   }
 

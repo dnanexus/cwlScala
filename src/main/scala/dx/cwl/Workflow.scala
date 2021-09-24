@@ -112,7 +112,7 @@ object PickValueMethod extends Enumeration {
 
 trait Sink {
   val sources: Vector[Identifier]
-  val linkMerge: LinkMergeMethod.LinkMergeMethod
+  val linkMerge: Option[LinkMergeMethod.LinkMergeMethod]
   val pickValue: Option[PickValueMethod.PickValueMethod]
 }
 
@@ -124,7 +124,7 @@ case class WorkflowOutputParameter(id: Option[Identifier],
                                    format: Option[CwlValue],
                                    streamable: Boolean,
                                    sources: Vector[Identifier],
-                                   linkMerge: LinkMergeMethod.LinkMergeMethod,
+                                   linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                                    pickValue: Option[PickValueMethod.PickValueMethod])
     extends OutputParameter
     with Sink
@@ -165,7 +165,7 @@ object WorkflowOutputParameter {
         sources,
         translateOptional(param.getLinkMerge)
           .map(LinkMergeMethod.from)
-          .getOrElse(LinkMergeMethod.MergeNested),
+          .orElse(Option.when(sources.size > 1)(LinkMergeMethod.MergeNested)),
         translateOptional(param.getPickValue).map(PickValueMethod.from)
     )
   }
@@ -201,7 +201,7 @@ case class WorkflowStepInput(id: Option[Identifier],
                              sources: Vector[Identifier],
                              default: Option[CwlValue],
                              valueFrom: Option[CwlValue],
-                             linkMerge: LinkMergeMethod.LinkMergeMethod,
+                             linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                              pickValue: Option[PickValueMethod.PickValueMethod],
                              loadContents: Boolean,
                              loadListing: LoadListing.LoadListing)
@@ -214,17 +214,18 @@ object WorkflowStepInput {
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowStepInput = {
+    val sources = translateOptionalArray(step.getSource).map(source =>
+      Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
+    )
     WorkflowStepInput(
         translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
         translateOptional(step.getLabel),
-        translateOptionalArray(step.getSource).map(source =>
-          Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
-        ),
+        sources,
         translateOptional(step.getDefault).map(CwlValue(_, schemaDefs)),
         translateOptionalObject(step.getValueFrom).map(CwlValue(_, schemaDefs)),
         translateOptional(step.getLinkMerge)
           .map(LinkMergeMethod.from)
-          .getOrElse(LinkMergeMethod.MergeNested),
+          .orElse(Option.when(sources.size > 1)(LinkMergeMethod.MergeNested)),
         translateOptional(step.getPickValue).map(PickValueMethod.from),
         translateOptional(step.getLoadContents).exists(_.booleanValue()),
         translateOptional(step.getLoadListing).map(LoadListing.from).getOrElse(LoadListing.No)
@@ -278,7 +279,7 @@ case class WorkflowStep(id: Option[Identifier],
                         outputs: Vector[WorkflowStepOutput],
                         run: Process,
                         when: Option[CwlValue],
-                        scatter: Vector[String],
+                        scatter: Vector[Identifier],
                         scatterMethod: Option[ScatterMethod.ScatterMethod],
                         requirements: Vector[Requirement],
                         hints: Vector[Hint])
@@ -299,7 +300,7 @@ object WorkflowStep {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(step.getRequirements, ctx.schemaDefs)
     val id = translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix))
-    val (runProcess, newDoc) = step.getRun match {
+    val runResult = step.getRun match {
       case process: ProcessInterface =>
         val defaultFrag = id.flatMap(_.frag.map(f => s"${f}/run"))
         ctx.parse(process,
@@ -309,7 +310,7 @@ object WorkflowStep {
       case uri: String if isGraph =>
         val runId = Identifier.parse(uri, defaultNamespace = defaultNamespace)
         if (dependencies.contains(runId)) {
-          (dependencies(runId), dependencies)
+          ParserResult(dependencies(runId), dependencies)
         } else if (rawProcesses.contains(runId)) {
           ctx.parse(rawProcesses(runId),
                     dependencies = dependencies,
@@ -328,14 +329,16 @@ object WorkflowStep {
         translateDoc(step.getDoc),
         WorkflowStepInput.applyArray(step.getIn, allSchemaDefs, stripFragPrefix),
         WorkflowStepOutput.applyArray(step.getOut, stripFragPrefix),
-        runProcess,
+        runResult.process,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
-        translateOptionalArray(step.getScatter).map(_.toString),
+        translateOptionalArray(step.getScatter).map(source =>
+          Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
+        ),
         translateOptional(step.getScatterMethod).map(ScatterMethod.from),
         requirements,
         Requirement.applyHints(step.getHints, allSchemaDefs, ctx.hintSchemas)
     )
-    (wfStep, newDoc)
+    (wfStep, runResult.document)
   }
 
   def parseArray(steps: java.util.List[java.lang.Object],
@@ -395,17 +398,6 @@ object Workflow {
     val newContext = ctx.copy(schemaDefs = allSchemaDefs)
     val rawId = Identifier.get(workflow.getId, defaultNamespace, defaultFrag, source)
     val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
-    val wfId = Option
-      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
-        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
-        Option
-          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
-          .orElse(
-              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
-          )
-      }
-      .flatten
-      .orElse(rawId)
     val (steps, newDependencies) =
       WorkflowStep.parseArray(workflow.getSteps,
                               newContext,
@@ -414,6 +406,31 @@ object Workflow {
                               isGraph,
                               stripFragPrefix,
                               defaultNamespace)
+    val wfId = Option
+      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
+        Option
+          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+          .orElse(
+              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
+          )
+          .map { wfId =>
+            if (newDependencies.contains(wfId)) {
+              // the document already has a process with the given ID - make it unique by adding a suffix
+              Iterator
+                .from(1)
+                .map(i => wfId.copy(frag = Some(s"${wfId.frag.get}-${i}")))
+                .collectFirst {
+                  case id if !newDependencies.contains(id) => id
+                }
+                .get
+            } else {
+              wfId
+            }
+          }
+      }
+      .flatten
+      .orElse(rawId)
     val wf = Workflow(
         source.map(_.toString),
         translateOptional(workflow.getCwlVersion),

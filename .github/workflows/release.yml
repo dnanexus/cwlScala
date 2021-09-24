@@ -6,7 +6,9 @@ on:
       release-version:
         description: 'Release version'
         required: true
-
+permissions:
+  contents: write
+  packages: write
 jobs:
   run-release:
     name: cwlScala Release
@@ -109,6 +111,5 @@ jobs:
         with:
           release_id: ${{ steps.create-release.outputs.id }}
           tag: ${{ github.event.inputs.release-version }}
-          delete_orphan_tag: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
