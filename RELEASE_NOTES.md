@@ -1,5 +1,9 @@
 # Change log
 
+## in develop
+
+* Handles error when listing folder during path value finalization
+
 ## 0.7.0 (2021-09-23)
 
 * **Breaking Change**: `Sink.linkMerge` is now `Option`al

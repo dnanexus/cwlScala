@@ -510,6 +510,16 @@ object EvaluatorContext {
       }
     }
 
+    def finalizeListing(fs: AddressableFileSource, recurse: Boolean): Vector[PathValue] = {
+      try {
+        finalizeFileSources(fs.listing(recursive = recurse), recurseListings = recurse)
+      } catch {
+        case _: Throwable =>
+          // assume failure to list the folder means it doesn't exist - treat as empty
+          Vector.empty
+      }
+    }
+
     def finalizePathWithFileSource(pathValue: PathValue,
                                    fileSource: Option[AddressableFileSource],
                                    recurseListings: Boolean = true): PathValue = {
@@ -593,12 +603,9 @@ object EvaluatorContext {
         case d: DirectoryValue =>
           val newListing = if (d.listing.isEmpty && recurseListings) {
             param.loadListing match {
-              case LoadListing.Shallow =>
-                finalizeFileSources(newFileSource.listing(recursive = false),
-                                    recurseListings = false)
-              case LoadListing.Deep =>
-                finalizeFileSources(newFileSource.listing(recursive = true), recurseListings = true)
-              case _ => d.listing
+              case LoadListing.Shallow => finalizeListing(newFileSource, recurse = false)
+              case LoadListing.Deep    => finalizeListing(newFileSource, recurse = true)
+              case _                   => d.listing
             }
           } else {
             d.listing.map(finalizePath)
