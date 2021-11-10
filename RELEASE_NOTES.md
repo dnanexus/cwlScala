@@ -1,6 +1,6 @@
 # Change log
 
-## in develop
+## 0.7.1 (2021-11-10)
 
 * Handles error when listing folder during path value finalization
 
