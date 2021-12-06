@@ -1,0 +1,26 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "dockerPull": "python:3",
+            "class": "DockerRequirement"
+        },
+        {
+            "networkAccess": true,
+            "class": "NetworkAccess"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [],
+    "outputs": [],
+    "baseCommand": "python",
+    "arguments": [
+        "-c",
+        {
+            "valueFrom": "import urllib.request\nassert(urllib.request.urlopen(\"http://commonwl.org\").code == 200)"
+        }
+    ]
+}

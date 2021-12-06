@@ -1,0 +1,33 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "results"
+            },
+            "id": "results"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "hints": {
+        "DockerRequirement": {
+            "dockerPull": "debian:stretch-slim"
+        }
+    },
+    "arguments": [
+        {
+            "shellQuote": false,
+            "valueFrom": "echo HOME=$HOME TMPDIR=$TMPDIR > log\nif [ \"$HOME\" = \"$(runtime.outdir)\" ] && [ \"$TMPDIR\" = \"$(runtime.tmpdir)\" ]\nthen\n    echo success > results\nelse\n    echo failure > results\nfi\n"
+        }
+    ]
+}

@@ -1,0 +1,85 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "int"
+            },
+            "id": "val"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "val",
+                    "id": "in1"
+                },
+                {
+                    "source": "val",
+                    "id": "a_new_var"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "foo $(inputs.in1)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "when": "$(inputs.a_new_var > 3)",
+            "out": [
+                "out1"
+            ],
+            "scatter": [
+                "in1",
+                "a_new_var"
+            ],
+            "scatterMethod": "dotproduct",
+            "id": "step1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "outputSource": "step1/out1",
+            "pickValue": "all_non_null",
+            "id": "out1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ]
+}

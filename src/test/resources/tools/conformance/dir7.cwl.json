@@ -1,0 +1,25 @@
+{
+    "class": "ExpressionTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "id": "files"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "Directory",
+            "id": "dir"
+        }
+    ],
+    "expression": "${\nreturn {\"dir\": {\"class\": \"Directory\", \"basename\": \"a_directory\", \"listing\": inputs.files}};\n}"
+}

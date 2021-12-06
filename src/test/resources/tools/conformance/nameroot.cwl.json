@@ -1,0 +1,29 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "inputs": [
+        {
+            "type": "File",
+            "id": "file1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "b"
+        }
+    ],
+    "stdout": "$(inputs.file1.nameroot).xtx",
+    "baseCommand": [],
+    "arguments": [
+        "echo",
+        "$(inputs.file1.basename)",
+        "$(inputs.file1.nameroot)",
+        "$(inputs.file1.nameext)"
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

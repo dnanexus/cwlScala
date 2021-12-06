@@ -1,0 +1,42 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "hello",
+            "type": {
+                "name": "user_type_2",
+                "type": "record",
+                "fields": [
+                    {
+                        "name": "a",
+                        "type": "string"
+                    },
+                    {
+                        "name": "b",
+                        "type": "string"
+                    }
+                ]
+            },
+            "inputBinding": {
+                "valueFrom": "$(self.a)/$(self.b)"
+            }
+        }
+    ],
+    "outputs": [
+        {
+            "id": "output",
+            "type": "File",
+            "outputBinding": {
+                "glob": "output.txt"
+            }
+        }
+    ],
+    "stdout": "output.txt",
+    "baseCommand": "echo"
+}

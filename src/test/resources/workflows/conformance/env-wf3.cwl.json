@@ -1,0 +1,82 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "string",
+            "id": "in"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputSource": "step1/out",
+            "id": "out"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "id": "in"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "out"
+                        },
+                        "id": "out"
+                    }
+                ],
+                "hints": {
+                    "EnvVarRequirement": {
+                        "envDef": {
+                            "TEST_ENV": "$(inputs.in)"
+                        }
+                    }
+                },
+                "baseCommand": [
+                    "/bin/sh",
+                    "-c",
+                    "echo $TEST_ENV"
+                ],
+                "stdout": "out",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "requirements": {
+                "EnvVarRequirement": {
+                    "envDef": {
+                        "TEST_ENV": "override"
+                    }
+                }
+            },
+            "in": [
+                {
+                    "source": "in",
+                    "id": "in"
+                }
+            ],
+            "out": [
+                "out"
+            ],
+            "id": "step1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

@@ -1,0 +1,33 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "dockerPull": "debian:stable-slim",
+            "class": "DockerRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "listing": "${\n   return [{\"class\": \"Directory\",\n            \"basename\": \"subdir\",\n            \"listing\": [ inputs.filelist ]\n            }]}\n",
+            "class": "InitialWorkDirRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "filelist"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "subdir/$(inputs.filelist.basename)"
+            },
+            "id": "same"
+        }
+    ],
+    "baseCommand": "echo"
+}

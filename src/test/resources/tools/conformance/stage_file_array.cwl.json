@@ -1,0 +1,47 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "id": "stage_file_array",
+    "label": "Stage File Array",
+    "arguments": [
+        "ls"
+    ],
+    "inputs": [
+        {
+            "id": "input_list",
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "secondaryFiles": [
+                ".sec"
+            ]
+        }
+    ],
+    "outputs": [
+        {
+            "id": "output",
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputBinding": {
+                "glob": "input_dir/*"
+            }
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "InitialWorkDirRequirement",
+            "listing": [
+                {
+                    "entryname": "input_dir",
+                    "entry": "${ return {class: 'Directory', listing: inputs.input_list} }"
+                }
+            ]
+        }
+    ]
+}

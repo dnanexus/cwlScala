@@ -1,0 +1,32 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "baseCommand": "echo",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": "string"
+                }
+            },
+            "inputBinding": {
+                "position": 1
+            },
+            "id": "letters"
+        }
+    ],
+    "stdout": "echo.txt",
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "echo"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

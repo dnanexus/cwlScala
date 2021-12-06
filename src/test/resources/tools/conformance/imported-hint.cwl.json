@@ -1,0 +1,33 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "out"
+        }
+    ],
+    "hints": [
+        {
+            "class": "EnvVarRequirement",
+            "envDef": [
+                {
+                    "envName": "TEST_ENV",
+                    "envValue": "hello test env"
+                }
+            ]
+        }
+    ],
+    "baseCommand": [
+        "/bin/sh",
+        "-c",
+        "echo $TEST_ENV"
+    ],
+    "stdout": "out",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

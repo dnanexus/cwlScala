@@ -1,0 +1,32 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "DockerRequirement",
+            "dockerPull": "debian:stretch-slim"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "stdin",
+            "id": "file1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "output"
+            },
+            "id": "output"
+        }
+    ],
+    "baseCommand": [
+        "cat"
+    ],
+    "stdout": "output"
+}

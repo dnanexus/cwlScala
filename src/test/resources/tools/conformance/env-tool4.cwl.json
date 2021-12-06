@@ -1,0 +1,36 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "string",
+            "id": "in"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "out"
+            },
+            "id": "out"
+        }
+    ],
+    "requirements": [
+        {
+            "envDef": {
+                "TEST_ENV": "conflict_original"
+            },
+            "class": "EnvVarRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "baseCommand": [
+        "/bin/bash",
+        "-c",
+        "echo $TEST_ENV"
+    ],
+    "stdout": "out"
+}

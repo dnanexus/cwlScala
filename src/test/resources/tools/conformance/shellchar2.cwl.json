@@ -1,0 +1,28 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "doc": "Ensure that `shellQuote: true` is the default behavior when\nShellCommandRequirement is in effect.\n",
+    "requirements": [
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "stdout_file"
+        },
+        {
+            "type": "stderr",
+            "id": "stderr_file"
+        }
+    ],
+    "baseCommand": "echo",
+    "arguments": [
+        "foo 1>&2"
+    ]
+}

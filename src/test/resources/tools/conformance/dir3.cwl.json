@@ -1,0 +1,31 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "baseCommand": [
+        "tar",
+        "xvf"
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "inputBinding": {
+                "position": 1
+            },
+            "id": "inf"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "Directory",
+            "outputBinding": {
+                "glob": "."
+            },
+            "id": "outdir"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

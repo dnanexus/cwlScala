@@ -1,0 +1,73 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "File",
+            "id": "file1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "int",
+            "outputSource": "step1/output",
+            "id": "count_output"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "inputBinding": {},
+                        "id": "file1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "outputBinding": {
+                            "glob": "output.txt",
+                            "loadContents": true,
+                            "outputEval": "${\n  var s = self[0].contents.split(/\\r?\\n/);\n  return parseInt(s[s.length-2]);\n}\n"
+                        },
+                        "id": "output"
+                    }
+                ],
+                "stdout": "output.txt",
+                "baseCommand": "wc"
+            },
+            "in": [
+                {
+                    "source": [
+                        "file1"
+                    ],
+                    "linkMerge": "merge_nested",
+                    "id": "file1"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "id": "step1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

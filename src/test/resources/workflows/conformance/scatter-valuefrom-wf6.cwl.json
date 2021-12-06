@@ -1,0 +1,90 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "Workflow",
+    "requirements": [
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "StepInputExpressionRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "id": "scattered_messages"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputSource": "step1/out_message",
+            "id": "out_message"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "inputBinding": {
+                            "position": 2
+                        },
+                        "id": "scattered_message"
+                    },
+                    {
+                        "type": "string",
+                        "inputBinding": {
+                            "position": 1
+                        },
+                        "id": "message"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "stdout",
+                        "id": "out_message"
+                    }
+                ],
+                "baseCommand": "echo",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "scatter": [
+                "scattered_message"
+            ],
+            "scatterMethod": "dotproduct",
+            "in": [
+                {
+                    "source": "scattered_messages",
+                    "id": "scattered_message"
+                },
+                {
+                    "valueFrom": "Hello",
+                    "id": "message"
+                }
+            ],
+            "out": [
+                "out_message"
+            ],
+            "id": "step1"
+        }
+    ]
+}

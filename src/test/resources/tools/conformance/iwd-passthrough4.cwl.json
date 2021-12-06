@@ -1,0 +1,31 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "listing": [
+                "$(inputs.filelist)"
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "filelist"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "$(inputs.filelist.basename)"
+            },
+            "id": "filelist"
+        }
+    ],
+    "baseCommand": "true"
+}

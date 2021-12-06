@@ -1,0 +1,34 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "inputBinding": {
+                "position": 1
+            },
+            "id": "ids"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputBinding": {
+                "glob": "$(inputs.ids)"
+            },
+            "id": "files"
+        }
+    ],
+    "baseCommand": "touch",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

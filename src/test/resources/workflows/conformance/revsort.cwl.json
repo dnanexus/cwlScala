@@ -1,0 +1,134 @@
+{
+    "class": "Workflow",
+    "doc": "Reverse the lines in a document, then sort those lines.",
+    "cwlVersion": "v1.2",
+    "hints": [
+        {
+            "class": "DockerRequirement",
+            "dockerPull": "debian:stretch-slim"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "doc": "The input file to be processed.",
+            "id": "input"
+        },
+        {
+            "type": "boolean",
+            "default": true,
+            "doc": "If true, reverse (decending) sort",
+            "id": "reverse_sort"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputSource": "sorted/output",
+            "doc": "The output with the lines reversed and sorted.",
+            "id": "output"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "input",
+                    "id": "input"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "doc": "Reverse each line using the `rev` command",
+                "inputs": [
+                    {
+                        "type": "File",
+                        "inputBinding": {},
+                        "id": "input"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "output.txt"
+                        },
+                        "id": "output"
+                    }
+                ],
+                "baseCommand": "rev",
+                "stdout": "output.txt",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "rev"
+        },
+        {
+            "in": [
+                {
+                    "source": "rev/output",
+                    "id": "input"
+                },
+                {
+                    "source": "reverse_sort",
+                    "id": "reverse"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "doc": "Sort lines using the `sort` command",
+                "inputs": [
+                    {
+                        "id": "reverse",
+                        "type": "boolean",
+                        "inputBinding": {
+                            "position": 1,
+                            "prefix": "-r"
+                        }
+                    },
+                    {
+                        "id": "input",
+                        "type": "File",
+                        "inputBinding": {
+                            "position": 2
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "id": "output",
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "output.txt"
+                        }
+                    }
+                ],
+                "baseCommand": "sort",
+                "stdout": "output.txt",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "sorted"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

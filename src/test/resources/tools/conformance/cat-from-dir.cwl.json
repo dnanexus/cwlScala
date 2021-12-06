@@ -1,0 +1,25 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "Directory",
+            "id": "dir1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "output"
+        }
+    ],
+    "baseCommand": [
+        "cat"
+    ],
+    "stdin": "$(inputs.dir1.listing[0].path)",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

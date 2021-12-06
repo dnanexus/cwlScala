@@ -1,0 +1,21 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "inputs": [],
+    "baseCommand": "false",
+    "outputs": [],
+    "successCodes": [
+        1
+    ],
+    "permanentFailCodes": [
+        0
+    ],
+    "temporaryFailCodes": [
+        42
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

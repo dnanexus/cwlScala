@@ -1,0 +1,41 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "File",
+            "format": "http://example.com/format1",
+            "id": "regular_input"
+        },
+        {
+            "type": {
+                "type": "record",
+                "fields": [
+                    {
+                        "type": "File",
+                        "format": "http://example.com/format1",
+                        "name": "f1"
+                    },
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "format": "http://example.com/format2",
+                        "name": "f2"
+                    }
+                ]
+            },
+            "id": "record_input"
+        }
+    ],
+    "outputs": [],
+    "arguments": [
+        "true"
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

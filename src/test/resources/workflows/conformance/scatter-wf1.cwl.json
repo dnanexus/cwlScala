@@ -1,0 +1,81 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "Workflow",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "id": "inp"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "outputSource": "step1/echo_out",
+            "id": "out"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "inp",
+                    "id": "echo_in"
+                }
+            ],
+            "out": [
+                "echo_out"
+            ],
+            "scatter": "echo_in",
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "inputBinding": {},
+                        "id": "echo_in"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "glob": "step1_out",
+                            "loadContents": true,
+                            "outputEval": "$(self[0].contents)"
+                        },
+                        "id": "echo_out"
+                    }
+                ],
+                "baseCommand": "echo",
+                "arguments": [
+                    "-n",
+                    "foo"
+                ],
+                "stdout": "step1_out",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        }
+    ]
+}

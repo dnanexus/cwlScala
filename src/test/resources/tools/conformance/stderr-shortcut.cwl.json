@@ -1,0 +1,26 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "doc": "Test of capturing stderr output.",
+    "requirements": [
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "stderr",
+            "id": "output_file"
+        }
+    ],
+    "arguments": [
+        {
+            "valueFrom": "echo foo 1>&2",
+            "shellQuote": false
+        }
+    ]
+}

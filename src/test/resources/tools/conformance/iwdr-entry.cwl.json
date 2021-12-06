@@ -1,0 +1,37 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "baseCommand": [
+        "cat",
+        "example.conf"
+    ],
+    "requirements": [
+        {
+            "listing": [
+                {
+                    "entryname": "example.conf",
+                    "entry": "CONFIGVAR=$(inputs.message)\n"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "string",
+            "id": "message"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "example.conf"
+            },
+            "id": "out"
+        }
+    ]
+}

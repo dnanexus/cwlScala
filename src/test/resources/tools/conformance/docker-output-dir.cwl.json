@@ -1,0 +1,28 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "dockerPull": "debian:stretch-slim",
+            "dockerOutputDirectory": "/other",
+            "class": "DockerRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "thing"
+            },
+            "id": "thing"
+        }
+    ],
+    "baseCommand": [
+        "touch",
+        "/other/thing"
+    ]
+}

@@ -1,0 +1,66 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": [
+                "null",
+                "int"
+            ],
+            "id": "i"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "int",
+            "outputSource": "step1/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "i",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "inputs": [
+                    {
+                        "type": [
+                            "null",
+                            "int"
+                        ],
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "id": "o"
+                    }
+                ],
+                "expression": "${return {'o': (inputs.i || 2) * 2};}\n",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        }
+    ]
+}

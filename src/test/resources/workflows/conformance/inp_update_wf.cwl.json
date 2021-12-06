@@ -1,0 +1,211 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "int",
+            "outputSource": "step3/output",
+            "id": "a"
+        },
+        {
+            "type": "int",
+            "outputSource": "step4/output",
+            "id": "b"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "default": "3",
+                    "id": "in"
+                }
+            ],
+            "out": [
+                "out"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "baseCommand": [
+                    "echo"
+                ],
+                "inputs": [
+                    {
+                        "type": "string",
+                        "inputBinding": {
+                            "position": 1
+                        },
+                        "id": "in"
+                    },
+                    {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "id": "name"
+                    }
+                ],
+                "stdout": "out.txt",
+                "outputs": [
+                    {
+                        "type": "stdout",
+                        "id": "out"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/out",
+                    "id": "r"
+                }
+            ],
+            "out": [
+                "out"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "requirements": [
+                    {
+                        "listing": [
+                            {
+                                "entry": "$(inputs.r)",
+                                "writable": true
+                            }
+                        ],
+                        "class": "InitialWorkDirRequirement"
+                    },
+                    {
+                        "inplaceUpdate": true,
+                        "class": "InplaceUpdateRequirement"
+                    },
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "hints": {
+                    "DockerRequirement": {
+                        "dockerPull": "python:2.7.15-alpine3.7"
+                    }
+                },
+                "inputs": [
+                    {
+                        "type": "File",
+                        "id": "r"
+                    },
+                    {
+                        "type": "File",
+                        "default": {
+                            "class": "File",
+                            "location": "updateval.py"
+                        },
+                        "id": "script"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "$(inputs.r.basename)"
+                        },
+                        "id": "out"
+                    }
+                ],
+                "arguments": [
+                    "python",
+                    "$(inputs.script)",
+                    "$(inputs.r.basename)"
+                ]
+            },
+            "id": "step2"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/out",
+                    "id": "file1"
+                },
+                {
+                    "source": "step2/out",
+                    "id": "wait"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [
+                    {
+                        "type": "File",
+                        "loadContents": true,
+                        "id": "file1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "id": "output"
+                    }
+                ],
+                "expression": "$({'output': parseInt(inputs.file1.contents)})"
+            },
+            "id": "step3"
+        },
+        {
+            "in": [
+                {
+                    "source": "step2/out",
+                    "id": "file1"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [
+                    {
+                        "type": "File",
+                        "loadContents": true,
+                        "id": "file1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "id": "output"
+                    }
+                ],
+                "expression": "$({'output': parseInt(inputs.file1.contents)})"
+            },
+            "id": "step4"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

@@ -1,0 +1,91 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": {
+                "type": "record",
+                "fields": [
+                    {
+                        "type": "File",
+                        "secondaryFiles": ".s2",
+                        "name": "f1"
+                    },
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "secondaryFiles": ".s3",
+                        "name": "f2"
+                    }
+                ]
+            },
+            "id": "record_input"
+        }
+    ],
+    "outputs": [],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "record_input",
+                    "id": "record_input"
+                }
+            ],
+            "out": [],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": {
+                            "type": "record",
+                            "fields": [
+                                {
+                                    "type": "File",
+                                    "secondaryFiles": ".s2",
+                                    "name": "f1"
+                                },
+                                {
+                                    "type": {
+                                        "type": "array",
+                                        "items": "File"
+                                    },
+                                    "secondaryFiles": ".s3",
+                                    "name": "f2"
+                                }
+                            ]
+                        },
+                        "id": "record_input"
+                    }
+                ],
+                "outputs": [],
+                "baseCommand": "test",
+                "arguments": [
+                    "-f",
+                    "$(inputs.record_input.f1.path).s2",
+                    "-a",
+                    "-f",
+                    "$(inputs.record_input.f2[0].path).s3",
+                    "-a",
+                    "-f",
+                    "$(inputs.record_input.f2[1].path).s3"
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    "class": "ExpressionTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "File",
+            "id": "lit"
+        }
+    ],
+    "expression": "${\nreturn {\"lit\": {\"class\": \"File\", \"basename\": \"a_file\", \"contents\": \"Hello file literal.\"}};\n}"
+}

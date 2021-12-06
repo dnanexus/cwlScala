@@ -1,0 +1,19 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [],
+    "outputs": [],
+    "requirements": [
+        {
+            "timelimit": -1,
+            "class": "ToolTimeLimit"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "baseCommand": [
+        "sleep",
+        "15"
+    ]
+}

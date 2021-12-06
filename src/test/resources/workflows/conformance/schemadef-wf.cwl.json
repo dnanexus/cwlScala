@@ -1,0 +1,93 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "Workflow",
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": {
+                "name": "user_type_2",
+                "type": "record",
+                "fields": [
+                    {
+                        "name": "a",
+                        "type": "string"
+                    },
+                    {
+                        "name": "b",
+                        "type": "string"
+                    }
+                ]
+            },
+            "id": "hello"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputSource": "step1/output",
+            "id": "output"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "hello",
+                    "id": "hello"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [
+                    {
+                        "id": "hello",
+                        "type": {
+                            "name": "user_type_8",
+                            "type": "record",
+                            "fields": [
+                                {
+                                    "name": "a",
+                                    "type": "string"
+                                },
+                                {
+                                    "name": "b",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "inputBinding": {
+                            "valueFrom": "$(self.a)/$(self.b)"
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "id": "output",
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "output.txt"
+                        }
+                    }
+                ],
+                "stdout": "output.txt",
+                "baseCommand": "echo"
+            },
+            "id": "step1"
+        }
+    ]
+}

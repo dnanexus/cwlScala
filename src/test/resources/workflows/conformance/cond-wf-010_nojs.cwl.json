@@ -1,0 +1,108 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "int"
+            },
+            "default": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "id": "val"
+        },
+        {
+            "type": {
+                "type": "array",
+                "items": "boolean"
+            },
+            "default": [
+                false,
+                false,
+                false,
+                true,
+                true,
+                true
+            ],
+            "id": "test"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "val",
+                    "id": "in1"
+                },
+                {
+                    "source": "test",
+                    "id": "a_new_var"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "foo $(inputs.in1)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "when": "$(inputs.a_new_var)",
+            "out": [
+                "out1"
+            ],
+            "scatter": [
+                "in1",
+                "a_new_var"
+            ],
+            "scatterMethod": "dotproduct",
+            "id": "step1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "outputSource": "step1/out1",
+            "pickValue": "all_non_null",
+            "id": "out1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

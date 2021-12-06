@@ -1,0 +1,112 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "i"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputSource": "step2/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "i",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "inputs": [
+                    {
+                        "type": "File",
+                        "loadContents": true,
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "string"
+                        },
+                        "id": "o"
+                    }
+                ],
+                "expression": "${return {'o': inputs.i.contents.split(\" \")};}\n",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/o",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "string"
+                        },
+                        "inputBinding": {
+                            "position": 1
+                        },
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "outputBinding": {
+                            "glob": "$(inputs.i)"
+                        },
+                        "id": "o"
+                    }
+                ],
+                "baseCommand": "touch",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step2"
+        }
+    ]
+}

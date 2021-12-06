@@ -1,0 +1,100 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "file1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "int",
+            "outputSource": "step2/parseInt_output",
+            "id": "count_output"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "file1",
+                    "id": "wc_file1"
+                }
+            ],
+            "out": [
+                "wc_output"
+            ],
+            "run": {
+                "id": "wc",
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "File",
+                        "inputBinding": {},
+                        "id": "wc_file1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "output.txt"
+                        },
+                        "id": "wc_output"
+                    }
+                ],
+                "stdout": "output.txt",
+                "baseCommand": "wc",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/wc_output",
+                    "id": "parseInt_file1"
+                }
+            ],
+            "out": [
+                "parseInt_output"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "inputs": [
+                    {
+                        "type": "File",
+                        "loadContents": true,
+                        "id": "parseInt_file1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "id": "parseInt_output"
+                    }
+                ],
+                "expression": "${return {'parseInt_output': parseInt(inputs.parseInt_file1.contents)};}\n",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step2"
+        }
+    ]
+}

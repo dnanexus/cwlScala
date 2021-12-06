@@ -1,0 +1,18 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "File",
+            "loadContents": true,
+            "id": "filelist"
+        }
+    ],
+    "outputs": [],
+    "baseCommand": "true",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

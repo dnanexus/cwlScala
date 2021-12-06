@@ -1,0 +1,82 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "timelimit": 3,
+            "class": "ToolTimeLimit"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": [
+                "null",
+                "int"
+            ],
+            "id": "i"
+        }
+    ],
+    "outputs": [
+        {
+            "type": [
+                "null",
+                "string"
+            ],
+            "outputSource": "step1/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "i",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "baseCommand": [
+                    "sleep",
+                    "10"
+                ],
+                "inputs": [
+                    {
+                        "type": [
+                            "null",
+                            "int"
+                        ],
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "outputBinding": {
+                            "outputEval": "time passed"
+                        },
+                        "id": "o"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        }
+    ]
+}

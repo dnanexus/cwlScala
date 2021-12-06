@@ -1,0 +1,28 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "inputs": [],
+    "baseCommand": [
+        "mkdir",
+        "a_dir",
+        "b_dir",
+        "c_dir"
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "Directory"
+            },
+            "outputBinding": {
+                "glob": "[a,b,c]_dir"
+            },
+            "id": "directories"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

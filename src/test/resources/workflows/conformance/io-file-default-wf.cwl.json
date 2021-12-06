@@ -1,0 +1,71 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "Workflow",
+    "inputs": [
+        {
+            "type": "File",
+            "default": {
+                "class": "File",
+                "path": "whale.txt"
+            },
+            "id": "file1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputSource": "step1/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "file1",
+                    "id": "catfile1"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "File",
+                        "id": "catfile1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "output"
+                        },
+                        "id": "o"
+                    }
+                ],
+                "arguments": [
+                    "cat",
+                    "$(inputs.catfile1.path)"
+                ],
+                "stdout": "output",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

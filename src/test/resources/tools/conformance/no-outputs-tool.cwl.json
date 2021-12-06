@@ -1,0 +1,27 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "doc": "CommandLineTool without outputs.",
+    "hints": {
+        "DockerRequirement": {
+            "dockerPull": "debian:stretch-slim"
+        }
+    },
+    "inputs": [
+        {
+            "type": "File",
+            "label": "Input File",
+            "inputBinding": {
+                "position": 1
+            },
+            "id": "file1"
+        }
+    ],
+    "outputs": [],
+    "baseCommand": "echo",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ]
+}

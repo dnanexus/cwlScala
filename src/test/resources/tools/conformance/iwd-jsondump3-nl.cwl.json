@@ -1,0 +1,31 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "listing": [
+                {
+                    "entryname": "out-number.json",
+                    "entry": "${\n  return 44.4;\n}\n"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        }
+    ],
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "out-number.json"
+            },
+            "id": "filelist"
+        }
+    ],
+    "arguments": [
+        "true"
+    ]
+}

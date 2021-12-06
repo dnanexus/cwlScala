@@ -1,0 +1,94 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "id": "file1"
+        },
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "id": "file2"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "int"
+            },
+            "outputSource": "step1/output",
+            "id": "count_output"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "MultipleInputFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "inputBinding": {},
+                        "id": "file1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "outputBinding": {
+                            "glob": "output.txt",
+                            "loadContents": true,
+                            "outputEval": "${\n  var s = self[0].contents.split(/\\r?\\n/);\n  return parseInt(s[s.length-2]);\n}\n"
+                        },
+                        "id": "output"
+                    }
+                ],
+                "stdout": "output.txt",
+                "baseCommand": "wc"
+            },
+            "scatter": "file1",
+            "in": [
+                {
+                    "source": [
+                        "file1",
+                        "file2"
+                    ],
+                    "linkMerge": "merge_nested",
+                    "id": "file1"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "id": "step1"
+        }
+    ]
+}

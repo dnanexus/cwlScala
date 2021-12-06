@@ -1,0 +1,124 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "int"
+            },
+            "id": "in1"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "in1",
+                    "id": "in1"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "foo $(inputs.in1)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "when": "$(inputs.in1 % 2 == 0)",
+            "out": [
+                "out1"
+            ],
+            "scatter": "in1",
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "in1",
+                    "id": "in1"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "bar $(inputs.in1)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "when": "$(inputs.in1 % 2 == 1)",
+            "out": [
+                "out1"
+            ],
+            "scatter": "in1",
+            "id": "step2"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "outputSource": [
+                "step1/out1",
+                "step2/out1"
+            ],
+            "linkMerge": "merge_flattened",
+            "pickValue": "all_non_null",
+            "id": "out1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "MultipleInputFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ]
+}
