@@ -201,12 +201,13 @@ object CommandLineTool {
     * @param defaultFrag an optional tool name, to use if it is not specified in the document
     * @return a [[CommandLineTool]]
     */
-  def apply(tool: CommandLineToolImpl,
+  def parse(tool: CommandLineToolImpl,
             ctx: Parser,
             source: Option[Path] = None,
             defaultNamespace: Option[String],
             defaultFrag: Option[String] = None,
-            isGraph: Boolean = false): CommandLineTool = {
+            isGraph: Boolean = false,
+            mainId: Identifier = Identifier.MainId): CommandLineTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
 
@@ -214,7 +215,7 @@ object CommandLineTool {
     val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
 
     val toolId = Option
-      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+      .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         Option
           .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))

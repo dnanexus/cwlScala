@@ -286,10 +286,6 @@ case class WorkflowStep(id: Option[Identifier],
     extends Identifiable
 
 object WorkflowStep {
-  def apply(step: WorkflowStepImpl, ctx: Parser): WorkflowStep = {
-    parse(step, ctx)._1
-  }
-
   def parse(step: WorkflowStepImpl,
             ctx: Parser,
             dependencies: Document = Document.empty,
@@ -329,7 +325,7 @@ object WorkflowStep {
         translateDoc(step.getDoc),
         WorkflowStepInput.applyArray(step.getIn, allSchemaDefs, stripFragPrefix),
         WorkflowStepOutput.applyArray(step.getOut, stripFragPrefix),
-        runResult.process,
+        runResult.mainProcess,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
         translateOptionalArray(step.getScatter).map(source =>
           Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
@@ -378,13 +374,6 @@ case class Workflow(source: Option[String],
     extends Process
 
 object Workflow {
-  def apply(workflow: WorkflowImpl,
-            ctx: Parser,
-            source: Option[Path] = None,
-            defaultFrag: Option[String] = None): Workflow = {
-    parse(workflow, ctx, source, defaultFrag = defaultFrag)._1
-  }
-
   def parse(workflow: WorkflowImpl,
             ctx: Parser,
             source: Option[Path] = None,
@@ -392,7 +381,8 @@ object Workflow {
             defaultFrag: Option[String] = None,
             dependencies: Document = Document.empty,
             rawProcesses: Map[Identifier, Object] = Map.empty,
-            isGraph: Boolean = false): (Workflow, Document) = {
+            isGraph: Boolean = false,
+            mainId: Identifier = Identifier.MainId): (Workflow, Document) = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(workflow.getRequirements, ctx.schemaDefs)
     val newContext = ctx.copy(schemaDefs = allSchemaDefs)
@@ -407,7 +397,7 @@ object Workflow {
                               stripFragPrefix,
                               defaultNamespace)
     val wfId = Option
-      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+      .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         Option
           .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
@@ -502,18 +492,19 @@ case class ExpressionTool(source: Option[String],
     extends Process
 
 object ExpressionTool {
-  def apply(expressionTool: ExpressionToolImpl,
+  def parse(expressionTool: ExpressionToolImpl,
             ctx: Parser,
             source: Option[Path] = None,
             defaultNamespace: Option[String] = None,
             defaultFrag: Option[String] = None,
-            isGraph: Boolean = false): ExpressionTool = {
+            isGraph: Boolean = false,
+            mainId: Identifier = Identifier.MainId): ExpressionTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(expressionTool.getRequirements, ctx.schemaDefs)
     val rawId = Identifier.get(expressionTool.getId, defaultNamespace, defaultFrag, source)
     val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
     val toolId = Option
-      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+      .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         Option
           .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
@@ -647,18 +638,19 @@ case class Operation(source: Option[String],
     extends Process
 
 object Operation {
-  def apply(operation: OperationImpl,
+  def parse(operation: OperationImpl,
             ctx: Parser,
             source: Option[Path] = None,
             defaultNamespace: Option[String] = None,
             defaultFrag: Option[String] = None,
-            isGraph: Boolean = false): Operation = {
+            isGraph: Boolean = false,
+            mainId: Identifier = Identifier.MainId): Operation = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(operation.getRequirements, ctx.schemaDefs)
     val rawId = Identifier.get(operation.getId, defaultNamespace, defaultFrag, source)
     val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
     val opId = Option
-      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
+      .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         Option
           .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))

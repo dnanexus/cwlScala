@@ -8,13 +8,13 @@ import java.nio.file.Path
 import scala.util.matching.Regex
 
 /**
-  * An identifier of the form [\[namespace]#][frag], where frag is a
+  * An identifier of the form [namespace]#frag, where frag is a
   * '/'-delimited string. For frag "foo/bar/baz", parent="foo/bar"
   * and name="baz".
   */
 case class Identifier(namespace: Option[String], frag: Option[String]) {
   def fullyQualifiedName: Option[String] = {
-    frag.map(n => namespace.map(ns => s"${ns}#${n}").getOrElse(n))
+    frag.map(f => s"${namespace.getOrElse("")}#${f}")
   }
 
   def parent: Option[String] = {
@@ -34,8 +34,8 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
 
 object Identifier {
   val CwlExtensions = Vector(".cwl", ".cwl.json", ".json")
-  val Main = "main"
-  val MainFrag = s"#${Main}"
+  val MainFrag = "main"
+  val MainId: Identifier = Identifier(namespace = None, frag = Some(MainFrag))
   val ImportNamespaceRegex: Regex = "^(.+\\.(?:cwl|yml|yaml))/(.+)".r
 
   def fromUri(uri: URI): Identifier = {

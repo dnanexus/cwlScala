@@ -87,15 +87,11 @@ object Utils {
 
   def splitUri(uri: String): (Option[String], Option[String]) = {
     uri match {
-      case identifierRegexp(frag, null) => (None, Some(frag))
-      case identifierRegexp(namespace, frag) if frag.isEmpty =>
-        (Some(namespace), None)
-      case identifierRegexp(namespace, frag) if namespace.isEmpty =>
-        (None, Some(frag))
-      case identifierRegexp(namespace, id) =>
-        (Some(namespace), Some(id))
-      case _ =>
-        throw new Exception(s"invalid URI ${uri}")
+      case identifierRegexp(frag, null)                           => (None, Some(frag))
+      case identifierRegexp(namespace, frag) if frag.isEmpty      => (Some(namespace), None)
+      case identifierRegexp(namespace, frag) if namespace.isEmpty => (None, Some(frag))
+      case identifierRegexp(namespace, id)                        => (Some(namespace), Some(id))
+      case _                                                      => throw new Exception(s"invalid URI ${uri}")
     }
   }
 
