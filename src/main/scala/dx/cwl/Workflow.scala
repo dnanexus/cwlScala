@@ -214,9 +214,9 @@ object WorkflowStepInput {
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowStepInput = {
-    val sources = translateOptionalArray(step.getSource).map(source =>
+    val sources = translateOptionalArray(step.getSource).map { source =>
       Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
-    )
+    }
     WorkflowStepInput(
         translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
         translateOptional(step.getLabel),
@@ -306,7 +306,7 @@ object WorkflowStep {
       case uri: String if isGraph =>
         val runId = Identifier.parse(uri, defaultNamespace = defaultNamespace)
         if (dependencies.contains(runId)) {
-          ParserResult(dependencies(runId), dependencies)
+          ParserResult(Some(dependencies(runId)), dependencies)
         } else if (rawProcesses.contains(runId)) {
           ctx.parse(rawProcesses(runId),
                     dependencies = dependencies,
@@ -325,7 +325,7 @@ object WorkflowStep {
         translateDoc(step.getDoc),
         WorkflowStepInput.applyArray(step.getIn, allSchemaDefs, stripFragPrefix),
         WorkflowStepOutput.applyArray(step.getOut, stripFragPrefix),
-        runResult.mainProcess,
+        runResult.mainProcess.get,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
         translateOptionalArray(step.getScatter).map(source =>
           Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)

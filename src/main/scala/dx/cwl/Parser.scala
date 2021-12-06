@@ -113,18 +113,6 @@ case class Parser(baseUri: Option[URI] = None,
   }
 
   /**
-    * Can a file be parsed as CWL?
-    */
-  def detectVersionAndClass(path: Path,
-                            mainId: Identifier = Identifier.MainId): (String, Option[String]) = {
-    if (path.toString.endsWith(".cwl")) {
-      versionAndClassFromYaml(FileUtils.readFileContent(path).parseYaml, mainId)
-    } else {
-      versionAndClassFromJson(JsUtils.jsFromFile(path), mainId)
-    }
-  }
-
-  /**
     * Can a string be parsed as CWL?
     */
   def detectVersionAndClass(sourceCode: String,
@@ -141,6 +129,20 @@ case class Parser(baseUri: Option[URI] = None,
           case _: Throwable =>
             versionAndClassFromYaml(sourceCode.parseYaml, mainId)
         }
+    }
+  }
+
+  /**
+    * Can a file be parsed as CWL?
+    */
+  def detectVersionAndClassFromFile(
+      path: Path,
+      mainId: Identifier = Identifier.MainId
+  ): (String, Option[String]) = {
+    if (path.toString.endsWith(".cwl")) {
+      versionAndClassFromYaml(FileUtils.readFileContent(path).parseYaml, mainId)
+    } else {
+      versionAndClassFromJson(JsUtils.jsFromFile(path), mainId)
     }
   }
 

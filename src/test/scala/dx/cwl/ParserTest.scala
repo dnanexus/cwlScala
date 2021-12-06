@@ -20,13 +20,13 @@ class ParserTest extends AnyWordSpec with Matchers {
       override def accept(dir: File, name: String): Boolean = name.endsWith(".cwl.json")
     }
 
-    val toolsPath = getPath("/tools")
+    val toolsPath = getPath("/CommandLineTools")
     val toolsBaseUri = toolsPath.toUri
     val toolsParser = Parser.create(Some(toolsBaseUri))
 
     "parse an empty tool" in {
       toolsParser.parseFile(toolsPath.resolve("empty.cwl.json")) match {
-        case ParserResult(tool: CommandLineTool, _, _, _) =>
+        case ParserResult(Some(tool: CommandLineTool), _, _, _) =>
           tool.requirements shouldBe Vector(ShellCommandRequirement)
         case other =>
           throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -37,8 +37,8 @@ class ParserTest extends AnyWordSpec with Matchers {
       val result =
         toolsParser.parseFile(toolsPath.resolve("record-in-format.cwl.json"), isPacked = true)
       val tool = result.mainProcess match {
-        case tool: CommandLineTool => tool
-        case other                 => throw new Exception(s"expected CommandLineTool, not ${other}")
+        case Some(tool: CommandLineTool) => tool
+        case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
       }
       tool.inputs.size shouldBe 2
       tool.inputs.filter(_.name == "record_input") match {
@@ -58,8 +58,8 @@ class ParserTest extends AnyWordSpec with Matchers {
         toolsParser.parseFile(toolsPath.resolve("record-sd-secondaryFiles.cwl.json"),
                               isPacked = true)
       val tool = result.mainProcess match {
-        case tool: CommandLineTool => tool
-        case other                 => throw new Exception(s"expected CommandLineTool, not ${other}")
+        case Some(tool: CommandLineTool) => tool
+        case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
       }
       tool.inputs.size shouldBe 1
       tool.inputs.head.cwlType match {
@@ -77,8 +77,8 @@ class ParserTest extends AnyWordSpec with Matchers {
     "parse packed tool with imported output parameters" in {
       val result = toolsParser.parseFile(toolsPath.resolve("params2.cwl.json"), isPacked = true)
       val tool = result.mainProcess match {
-        case tool: CommandLineTool => tool
-        case other                 => throw new Exception(s"expected CommandLineTool, not ${other}")
+        case Some(tool: CommandLineTool) => tool
+        case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
       }
       tool.outputs.size shouldBe 28
       tool.outputs.head.id.flatMap(_.namespace) shouldBe Some(
@@ -90,8 +90,8 @@ class ParserTest extends AnyWordSpec with Matchers {
       val result =
         toolsParser.parseFile(toolsPath.resolve("formattest2.cwl.json"), isPacked = true)
       result.mainProcess match {
-        case _: CommandLineTool => ()
-        case other              => throw new Exception(s"expected CommandLineTool, not ${other}")
+        case Some(_: CommandLineTool) => ()
+        case other                    => throw new Exception(s"expected CommandLineTool, not ${other}")
       }
       result.schemas shouldBe Some(
           JsArray(
@@ -101,15 +101,15 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     def parseToolConformance(parser: Parser, toolFile: File): Unit = {
-      parser.detectVersionAndClass(toolFile.toPath) match {
-        case Some((_, cls)) if cls == "CommandLineTool" => ()
-        case Some(other) =>
-          throw new AssertionError(s"expected CommandLineTool v1.2, not ${other}")
-        case None =>
+      parser.detectVersionAndClassFromFile(toolFile.toPath) match {
+        case (_, Some(cls)) if cls == "CommandLineTool" => ()
+        case (_, Some(other)) =>
+          throw new AssertionError(s"expected CommandLineTool, not ${other}")
+        case (_, None) =>
           throw new Exception(s"cannot parse ${toolFile}")
       }
       parser.parseFile(toolFile.toPath) match {
-        case ParserResult(_: CommandLineTool, _, _, _) => ()
+        case ParserResult(Some(_: CommandLineTool), _, _, _) => ()
         case other =>
           throw new AssertionError(s"expected CommandLineTool, not ${other}")
       }
@@ -128,7 +128,8 @@ class ParserTest extends AnyWordSpec with Matchers {
     toolsConformanceShouldFailPath.toFile.listFiles(cwlFilter).toVector.foreach { toolFile =>
       s"maybe parse tool ${toolFile}" in {
         if (toolFile.getName.contains("invalid")) {
-          toolsConformanceShouldFailParser.detectVersionAndClass(toolFile.toPath) shouldBe None
+          toolsConformanceShouldFailParser
+            .detectVersionAndClassFromFile(toolFile.toPath) shouldBe None
           assertThrows[Throwable] {
             toolsConformanceShouldFailParser.parseFile(toolFile.toPath)
           }
@@ -141,8 +142,8 @@ class ParserTest extends AnyWordSpec with Matchers {
     "parse requirements" in {
       val result =
         toolsConformanceParser.parseFile(toolsConformancePath.resolve("writable-dir.cwl"))
-      result.mainProcess.requirements.size shouldBe 2
-      result.mainProcess.requirements.iterator sameElements Vector(
+      result.mainProcess.get.requirements.size shouldBe 2
+      result.mainProcess.get.requirements.iterator sameElements Vector(
           InlineJavascriptRequirement(None),
           InitialWorkDirRequirement(
               Vector(
@@ -161,7 +162,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         toolsConformanceParser.parseFile(
             toolsConformancePath.resolve("anon_enum_inside_array_inside_schemadef.cwl")
         )
-      val schemaDefRequirement = result.mainProcess.requirements.collect {
+      val schemaDefRequirement = result.mainProcess.get.requirements.collect {
         case req: SchemaDefRequirement => req
       }
       schemaDefRequirement.size shouldBe 1
@@ -174,41 +175,60 @@ class ParserTest extends AnyWordSpec with Matchers {
       records.head.frag shouldBe "vcf2maf_params"
     }
 
-    val workflowsPath = getPath(s"/workflows")
+    val expressionToolsConformancePath = getPath("/ExpressionTools/conformance")
+    val expressionToolsConformanceParser = Parser.create(Some(expressionToolsConformancePath.toUri))
+    expressionToolsConformancePath.toFile.listFiles(cwlFilter).toVector.foreach { toolFile =>
+      s"parse tool ${toolFile}" in {
+        expressionToolsConformanceParser.detectVersionAndClassFromFile(toolFile.toPath) match {
+          case (_, Some(cls)) if cls == "ExpressionTool" => ()
+          case (_, Some(other)) =>
+            throw new AssertionError(s"expected ExpressionTool, not ${other}")
+          case (_, None) =>
+            throw new Exception(s"cannot parse ${toolFile}")
+        }
+        expressionToolsConformanceParser.parseFile(toolFile.toPath) match {
+          case ParserResult(Some(_: ExpressionTool), _, _, _) => ()
+          case other =>
+            throw new AssertionError(s"expected ExpressionTool, not ${other}")
+        }
+      }
+    }
+
+    val workflowsPath = getPath(s"/Workflows")
     val workflowsParser = Parser.create(Some(workflowsPath.toUri))
 
     "parse packed workflow" in {
       val wfPathPacked = workflowsPath.resolve("count-lines1-wf-packed.json")
-      workflowsParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
+      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (wf, _) = workflowsParser.parseFile(wfPathPacked) match {
-        case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "count-lines1-wf-packed"
     }
 
     "parse packed workflow in a graph" in {
       val wfPathPacked = workflowsPath.resolve("basename-fields-test-packed.json")
-      workflowsParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
+      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (_, _) = workflowsParser.parseFile(wfPathPacked) match {
-        case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       val stringParser = Parser.create(Some(URI.create("file:/null")))
       val (wf, _) = stringParser.parseString(FileUtils.readFileContent(wfPathPacked),
                                              Some("basename-fields-test")) match {
-        case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "basename-fields-test"
     }
 
     "parse packed workflow not in a graph" in {
       val wfPathPacked = workflowsPath.resolve("any-type-compat.cwl.json")
-      workflowsParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
+      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (wf, _) = workflowsParser.parseFile(wfPathPacked, isPacked = true) match {
-        case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "any-type-compat"
       wf.inputs.flatMap(_.id.map(_.frag.get)).toSet shouldBe Set("input1", "input2", "input3")
@@ -216,10 +236,10 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     "parse packed workflow with JavaScript expressions" in {
       val wfPathPacked = workflowsPath.resolve("timelimit2-wf.cwl.json")
-      workflowsParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
+      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (wf, _) = workflowsParser.parseFile(wfPathPacked, isPacked = true) match {
-        case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       val out = wf.steps.head.run.outputs.head match {
         case out: CommandOutputParameter => out.outputBinding.get.outputEval.get
@@ -231,14 +251,18 @@ class ParserTest extends AnyWordSpec with Matchers {
       v shouldBe StringValue("time passed")
     }
 
-    def parseWorkflowConformance(parser: Parser, wfFile: File): Unit = {
-      val isWorkflow = parser.detectVersionAndClass(wfFile.toPath) match {
-        case Some((_, cls)) => cls == "Workflow"
-        case None           => false
+    def parseWorkflowConformance(parser: Parser,
+                                 wfFile: File,
+                                 mainIds: Map[Path, Identifier] = Map.empty): Unit = {
+      val wfPath = wfFile.toPath
+      val isWorkflow = parser.detectVersionAndClassFromFile(wfPath) match {
+        case (_, Some(cls)) => cls == "Workflow"
+        case _              => false
       }
       if (isWorkflow) {
-        parser.parseFile(wfFile.toPath) match {
-          case ParserResult(_: Workflow, _, _, _) => ()
+        val mainId = mainIds.getOrElse(wfPath, Identifier.MainId)
+        parser.parseFile(wfFile.toPath, mainId = mainId) match {
+          case ParserResult(Some(_: Workflow), _, _, _) => ()
           case other =>
             throw new AssertionError(s"expected Workflow, not ${other}")
         }
@@ -247,9 +271,24 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     val workflowsConformancePath = workflowsPath.resolve("conformance")
     val workflowConformanceParser = Parser.create(Some(workflowsConformancePath.toUri))
+    // Some workflow conformance tests are in $graph format but do not have a #main process; instead, the main process
+    // id is specified as part of the tool name in conformance_tests.yaml.
+    val workflowMainProcesses = Map(
+        "conflict-wf.cwl.json" -> "collision",
+        "js-expr-req-wf.cwl.json" -> "wf"
+//        "revsort-packed.cwl.json" -> "main",
+//        "scatter-valuefrom-wf3.cwl.json" -> "main",
+//        "scatter-valuefrom-wf4.cwl.json" -> "main",
+//        "scatter-wf3.cwl.json" -> "main",
+//        "scatter-wf4.cwl.json" -> "main",
+//        "search.cwl.json" -> "main"
+    ).map {
+      case (filename, frag) =>
+        workflowsConformancePath.resolve(filename) -> Identifier(None, Some(frag))
+    }
     workflowsConformancePath.toFile.listFiles(cwlFilter).toVector.foreach { wfFile =>
       s"parse workflow ${wfFile}" in {
-        parseWorkflowConformance(workflowConformanceParser, wfFile)
+        parseWorkflowConformance(workflowConformanceParser, wfFile, workflowMainProcesses)
       }
     }
 
@@ -259,7 +298,8 @@ class ParserTest extends AnyWordSpec with Matchers {
     workflowsConformanceShouldFailPath.toFile.listFiles(cwlFilter).toVector.foreach { wfFile =>
       s"maybe parse workflow ${wfFile}" in {
         if (wfFile.getName.contains("invalid")) {
-          workflowConformanceShouldFailParser.detectVersionAndClass(wfFile.toPath) shouldBe None
+          workflowConformanceShouldFailParser
+            .detectVersionAndClassFromFile(wfFile.toPath) shouldBe None
           assertThrows[Throwable] {
             workflowConformanceShouldFailParser.parseFile(wfFile.toPath)
           }

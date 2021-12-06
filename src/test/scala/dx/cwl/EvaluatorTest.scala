@@ -42,7 +42,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
   private val trace = false
 
   "parameter reference evaluator" should {
-    val testCases = loadYamlTestCases(s"/tools/v1.2/params_inc.yml")
+    val testCases = loadYamlTestCases(s"/CommandLineTools/conformance/params_inc.yml")
     val evaluator = Evaluator(trace = trace)
     testCases.foreach { x =>
       val testCase = x.asInstanceOf[java.util.Map[String, Any]].asScala
