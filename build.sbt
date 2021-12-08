@@ -44,14 +44,14 @@ lazy val cwlScala = root.settings(
 )
 
 lazy val dependencies = {
-  val dxCommonVersion = "0.8.0"
+  val dxCommonVersion = "0.9.1-SNAPSHOT"
   val dxYamlVersion = "0.1.0"
   val typesafeVersion = "1.4.1"
   val sprayVersion = "1.3.6"
   val scalatestVersion = "3.2.9"
   val yamlVersion = "2.3"
   val rhinoVersion = "1.7.13"
-  val antlr4Version = "4.9.2"
+  val antlr4Version = "4.9.3"
   val junitVersion = "4.13.2"
 
   Seq(
@@ -165,7 +165,7 @@ lazy val assemblySettings = Seq(
     test in assembly := {},
     assemblyMergeStrategy in assembly := {
       {
-        case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
+        case PathList("javax", "xml", _*)                    => MergeStrategy.first
         case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
         case PathList("META_INF", xs @ _*) =>
           xs map { _.toLowerCase } match {

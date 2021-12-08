@@ -35,7 +35,7 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     "parse inline record schema" in {
       val result =
-        toolsParser.parseFile(toolsPath.resolve("record-in-format.cwl.json"), isPacked = true)
+        toolsParser.parseFile(toolsPath.resolve("record-in-format.cwl.json"), isGraph = true)
       val tool = result.mainProcess match {
         case Some(tool: CommandLineTool) => tool
         case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -56,7 +56,7 @@ class ParserTest extends AnyWordSpec with Matchers {
     "parse record type with secondaryFiles" in {
       val result =
         toolsParser.parseFile(toolsPath.resolve("record-sd-secondaryFiles.cwl.json"),
-                              isPacked = true)
+                              isGraph = true)
       val tool = result.mainProcess match {
         case Some(tool: CommandLineTool) => tool
         case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -75,7 +75,7 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     "parse packed tool with imported output parameters" in {
-      val result = toolsParser.parseFile(toolsPath.resolve("params2.cwl.json"), isPacked = true)
+      val result = toolsParser.parseFile(toolsPath.resolve("params2.cwl.json"), isGraph = true)
       val tool = result.mainProcess match {
         case Some(tool: CommandLineTool) => tool
         case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -88,7 +88,7 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     "parse packed tool with schema" in {
       val result =
-        toolsParser.parseFile(toolsPath.resolve("formattest2.cwl.json"), isPacked = true)
+        toolsParser.parseFile(toolsPath.resolve("formattest2.cwl.json"), isGraph = true)
       result.mainProcess match {
         case Some(_: CommandLineTool) => ()
         case other                    => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -232,7 +232,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked, isPacked = true) match {
+      val (wf, _) = workflowsParser.parseFile(wfPathPacked, isGraph = true) match {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
@@ -245,7 +245,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked, isPacked = true) match {
+      val (wf, _) = workflowsParser.parseFile(wfPathPacked, isGraph = true) match {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }

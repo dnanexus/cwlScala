@@ -245,13 +245,13 @@ case class Parser(baseUri: Option[URI] = None,
     * @param path path to the document
     * @param defaultFrag tool/workflow name, in case it is not specified in the document.
     *                    If not specified, the name of the file without .cwl is used.
-    * @param isPacked whether the input is in packed form; ignored if the input is a JSON
+    * @param isGraph whether the input is in packed form; ignored if the input is a JSON
     *                 file with a top-level "\$graph" element.
     * @return a [[ParserResult]]
     */
   def parseFile(path: Path,
                 defaultFrag: Option[String] = None,
-                isPacked: Boolean = false,
+                isGraph: Boolean = false,
                 mainId: Identifier = Identifier.MainId): ParserResult = {
     if (cache.contains(path)) {
       cache(path)
@@ -261,11 +261,11 @@ case class Parser(baseUri: Option[URI] = None,
           source = Some(path),
           defaultNamespace = Some(normalizedBaseUri),
           defaultFrag = defaultFrag,
-          isGraph = isPacked,
+          isGraph = isGraph,
           mainId = mainId
       )
       // get the $namespaces and $schemas from a packed workflow
-      val finalResult = if (isPacked) {
+      val finalResult = if (isGraph) {
         val jsDoc = JsUtils.jsFromFile(path).asJsObject.fields
         result.copy(namespaces = jsDoc.get("$namespaces"), schemas = jsDoc.get("$schemas"))
       } else {
@@ -281,23 +281,23 @@ case class Parser(baseUri: Option[URI] = None,
     * @note currently, only CommandLineTool documents are supported.
     * @param sourceCode path to the document
     * @param defaultFrag tool/workflow name, in case it is not specified in the document
-    * @param isPacked whether the input is in packed form; ignored if the input is a JSON
+    * @param isGraph whether the input is in packed form; ignored if the input is a JSON
     *                 file with a top-level "\$graph" element.
     * @return a [[Process]]
     */
   def parseString(sourceCode: String,
                   defaultFrag: Option[String] = None,
-                  isPacked: Boolean = false,
+                  isGraph: Boolean = false,
                   mainId: Identifier = Identifier.MainId): ParserResult = {
     val result = parse(
         RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull),
         defaultNamespace = Some(normalizedBaseUri),
         defaultFrag = defaultFrag,
-        isGraph = isPacked,
+        isGraph = isGraph,
         mainId = mainId
     )
     // get the $namespaces and $schemas from a packed workflow
-    if (isPacked) {
+    if (isGraph) {
       val jsDoc = sourceCode.parseJson.asJsObject.fields
       result.copy(namespaces = jsDoc.get("$namespaces"), schemas = jsDoc.get("$schemas"))
     } else {
