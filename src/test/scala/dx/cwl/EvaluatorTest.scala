@@ -68,7 +68,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       val ctx2 = EvaluatorContext(inputs = EvaluatorContext.inputsFromParameters(
           Map(
               CommandInputParameter(
-                  Some(Identifier(namespace = None, frag = Some("f"))),
+                  Some(Identifier(namespace = None, frag = "f")),
                   None,
                   None,
                   CwlFile,
@@ -81,7 +81,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                   loadListing = LoadListing.No
               ) -> FileValue(location = Some(f.toString)),
               CommandInputParameter(
-                  Some(Identifier(namespace = None, frag = Some("d"))),
+                  Some(Identifier(namespace = None, frag = "d")),
                   None,
                   None,
                   CwlDirectory,

@@ -30,7 +30,7 @@ case class CommandInputBinding(position: CwlValue,
                                valueFrom: Option[CwlValue])
 
 object CommandInputBinding {
-  def apply(binding: CommandLineBindingImpl,
+  def parse(binding: CommandLineBindingImpl,
             schemaDefs: Map[String, CwlSchema]): CommandInputBinding = {
     CommandInputBinding(
         translateOptionalObject(binding.getPosition)
@@ -61,7 +61,7 @@ case class CommandInputParameter(id: Option[Identifier],
     with Loadable
 
 object CommandInputParameter {
-  def apply(
+  def parse(
       param: CommandInputParameterImpl,
       schemaDefs: Map[String, CwlSchema],
       stripFragPrefix: Option[String] = None,
@@ -75,7 +75,7 @@ object CommandInputParameter {
         types,
         translateOptional(param.getDefault).map(CwlValue(_, schemaDefs)),
         translateOptional(param.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         },
@@ -97,7 +97,7 @@ case class CommandOutputBinding(glob: Vector[CwlValue],
     extends Loadable
 
 object CommandOutputBinding {
-  def apply(binding: CommandOutputBindingImpl,
+  def parse(binding: CommandOutputBindingImpl,
             schemaDefs: Map[String, CwlSchema]): CommandOutputBinding = {
     CommandOutputBinding(
         translateOptionalArray(binding.getGlob).map(CwlValue(_, schemaDefs)),
@@ -120,7 +120,7 @@ case class CommandOutputParameter(id: Option[Identifier],
     extends OutputParameter
 
 object CommandOutputParameter {
-  def apply(
+  def parse(
       param: CommandOutputParameterImpl,
       schemaDefs: Map[String, CwlSchema],
       stripFragPrefix: Option[String] = None,
@@ -131,7 +131,7 @@ object CommandOutputParameter {
       case Some(_) if stdfile.nonEmpty =>
         throw new RuntimeException(s"outputBinding not allowed for type ${stdfile.get}")
       case Some(binding: CommandOutputBindingImpl) =>
-        Some(CommandOutputBinding(binding, schemaDefs))
+        Some(CommandOutputBinding.parse(binding, schemaDefs))
       case None if stdfile.nonEmpty =>
         Some(
             CommandOutputBinding(glob = Vector(RandomFile(stdfile.get)),
@@ -212,13 +212,13 @@ object CommandLineTool {
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
 
     val rawId = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+    val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
 
     val toolId = Option
       .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
-        Option
-          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+        defaultFrag
+          .map(frag => Identifier(namespace, frag))
           .orElse(
               Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
           )
@@ -234,7 +234,7 @@ object CommandLineTool {
     val (inputParams, isStdin) = tool.getInputs.asScala
       .map {
         case param: CommandInputParameterImpl =>
-          CommandInputParameter(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
+          CommandInputParameter.parse(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
         case other =>
           throw new RuntimeException(s"unexpected CommandInputParameter value ${other}")
       }
@@ -257,10 +257,10 @@ object CommandLineTool {
     val stdin = paramStdin
       .map { param =>
         val paramId = param.id
-          .flatMap(_.frag)
           .getOrElse(
               throw new Exception(s"missing input parameter ${paramStdin}")
           )
+          .frag
         CwlValue(s"$${inputs.${paramId}.path}", allSchemaDefs)
       }
       .orElse(toolStdin)
@@ -272,7 +272,7 @@ object CommandLineTool {
     val (outputParams, stdfile) = tool.getOutputs.asScala
       .map {
         case param: CommandOutputParameterImpl =>
-          CommandOutputParameter(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
+          CommandOutputParameter.parse(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
         case other =>
           throw new RuntimeException(s"unexpected CommandOutputParameter value ${other}")
       }
@@ -293,7 +293,7 @@ object CommandLineTool {
 
     val arguments = translateOptionalArray(tool.getArguments).map {
       case binding: CommandLineBindingImpl =>
-        BindingArgument(CommandInputBinding(binding, allSchemaDefs))
+        BindingArgument(CommandInputBinding.parse(binding, allSchemaDefs))
       case expr =>
         ExprArgument(CwlValue(expr, allSchemaDefs))
     }

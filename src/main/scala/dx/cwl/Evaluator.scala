@@ -691,10 +691,10 @@ object EvaluatorContext {
         inputs
           .collect {
             case param if param.id.isDefined && param.default.isDefined =>
-              param.id.get.frag.get -> finalizeInputValue(param.default.get,
-                                                          param.cwlType,
-                                                          param,
-                                                          inputDir)
+              param.id.get.frag -> finalizeInputValue(param.default.get,
+                                                      param.cwlType,
+                                                      param,
+                                                      inputDir)
           }
           .to(TreeSeqMap)
     )

@@ -237,7 +237,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "any-type-compat"
-      wf.inputs.flatMap(_.id.map(_.frag.get)).toSet shouldBe Set("input1", "input2", "input3")
+      wf.inputs.flatMap(_.id.map(_.frag)).toSet shouldBe Set("input1", "input2", "input3")
     }
 
     "parse packed workflow with JavaScript expressions" in {
@@ -292,7 +292,7 @@ class ParserTest extends AnyWordSpec with Matchers {
 //        "search.cwl.json" -> "main"
     ).map {
       case (filename, frag) =>
-        workflowsConformancePath.resolve(filename) -> Identifier(None, Some(frag))
+        workflowsConformancePath.resolve(filename) -> Identifier(None, frag)
     }
     workflowsConformancePath.toFile.listFiles(cwlFilter).toVector.foreach { wfFile =>
       s"parse workflow ${wfFile}" in {

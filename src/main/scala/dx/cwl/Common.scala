@@ -12,22 +12,33 @@ import scala.util.matching.Regex
   * '/'-delimited string. For frag "foo/bar/baz", parent="foo/bar"
   * and name="baz".
   */
-case class Identifier(namespace: Option[String], frag: Option[String]) {
-  def fullyQualifiedName: Option[String] = {
-    frag.map(f => s"${namespace.getOrElse("")}#${f}")
-  }
+case class Identifier(namespace: Option[String], frag: String) {
+  lazy val fullyQualifiedName: String = s"${namespace.getOrElse("")}#${frag}"
 
   def parent: Option[String] = {
-    frag.flatMap {
-      case n if n.contains('/') => Some(n.substring(0, n.lastIndexOf('/')))
-      case _                    => None
+    if (frag.contains('/')) {
+      Some(frag.substring(0, frag.lastIndexOf('/')))
+    } else {
+      None
     }
   }
 
-  def name: Option[String] = {
-    frag.map {
-      case n if n.contains('/') => n.substring(n.lastIndexOf('/') + 1)
-      case n                    => n
+  def name: String = {
+    if (frag.contains('/')) {
+      frag.substring(frag.lastIndexOf('/') + 1)
+    } else {
+      frag
+    }
+  }
+
+  override def hashCode(): Int = frag.hashCode
+
+  override def equals(obj: Any): Boolean = {
+    (this, obj) match {
+      case (Identifier(Some(namespace1), frag1), Identifier(Some(namespace2), frag2)) =>
+        namespace1 == namespace2 && frag1 == frag2
+      case (Identifier(_, frag1), Identifier(_, frag2)) => frag1 == frag2
+      case _                                            => false
     }
   }
 }
@@ -35,12 +46,13 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
 object Identifier {
   val CwlExtensions = Vector(".cwl", ".cwl.json", ".json")
   val MainFrag = "main"
-  val MainId: Identifier = Identifier(namespace = None, frag = Some(MainFrag))
+  val MainId: Identifier = Identifier(namespace = None, frag = MainFrag)
   val ImportNamespaceRegex: Regex = "^(.+\\.(?:cwl|yml|yaml))/(.+)".r
 
   def fromUri(uri: URI): Identifier = {
     val (namespace, name) = Utils.normalizeAndSplitUri(uri)
-    Identifier(namespace, name)
+    Identifier(namespace,
+               name.getOrElse(throw new Exception(s"uri ${uri} does not contain a fragment")))
   }
 
   def fromSource(source: Path, namespace: Option[String]): Identifier = {
@@ -50,12 +62,12 @@ object Identifier {
         case ext if fileName.endsWith(ext) => fileName.dropRight(ext.length)
       }
       .getOrElse(fileName)
-    Identifier(namespace, Some(name))
+    Identifier(namespace, name)
   }
 
-  def parse(uri: String,
-            stripFragPrefix: Option[String] = None,
-            defaultNamespace: Option[String] = None): Identifier = {
+  def parseUri(uri: String,
+               stripFragPrefix: Option[String] = None,
+               defaultNamespace: Option[String] = None): (Option[String], Option[String]) = {
     assert(stripFragPrefix.forall(_.endsWith("/")), "stripFragPrefix must end with '/'")
     val (namespace, frag) =
       try {
@@ -80,7 +92,14 @@ object Identifier {
         throw new Exception(s"fragment ${f} does not start with prefix ${prefix}")
       case _ => (None, frag)
     }
-    Identifier(importNamespace.orElse(namespace).orElse(defaultNamespace), strippedFrag)
+    (importNamespace.orElse(namespace).orElse(defaultNamespace), strippedFrag)
+  }
+
+  def parse(uri: String,
+            stripFragPrefix: Option[String] = None,
+            defaultNamespace: Option[String] = None): Identifier = {
+    val (namespace, frag) = parseUri(uri, stripFragPrefix, defaultNamespace)
+    Identifier(namespace, frag.getOrElse(s"uri ${uri} does not contain a fragment"))
   }
 
   def get(id: java.util.Optional[String],
@@ -88,14 +107,14 @@ object Identifier {
           defaultFrag: Option[String] = None,
           source: Option[Path] = None,
           stripFragPrefix: Option[String] = None): Option[Identifier] = {
-    translateOptional(id).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)) match {
-      case Some(id) if id.frag.isDefined => Some(id)
-      case id if defaultFrag.isDefined =>
-        id.map(_.copy(frag = defaultFrag))
-          .orElse(Some(Identifier(namespace = None, frag = defaultFrag)))
-      case id if source.isDefined =>
-        Some(fromSource(source.get, id.flatMap(_.namespace)))
-      case _ => None
+    translateOptional(id).map {
+      Identifier.parseUri(_, stripFragPrefix, defaultNamespace) match {
+        case (namespace, Some(frag))                 => Identifier(namespace, frag)
+        case (namespace, _) if defaultFrag.isDefined => Identifier(namespace, defaultFrag.get)
+        case (namespace, _) if source.isDefined      => fromSource(source.get, namespace)
+        case _ =>
+          throw new Exception(s"could not determine frag for id ${id}")
+      }
     }
   }
 }
@@ -121,11 +140,11 @@ object Document {
 trait Identifiable {
   val id: Option[Identifier]
 
-  def getName: Option[String] = id.flatMap(_.frag)
+  def getName: Option[String] = id.map(_.frag)
 
   def hasName: Boolean = getName.isDefined
 
-  def frag: String = id.flatMap(_.frag).getOrElse(throw new Exception(s"${this} has no name"))
+  def frag: String = id.map(_.frag).getOrElse(throw new Exception(s"${this} has no name"))
 
   def parent: Option[String] = {
     if (hasName) {
@@ -136,7 +155,7 @@ trait Identifiable {
   }
 
   def name: String =
-    id.flatMap(_.name).getOrElse(throw new Exception(s"${this} has no name"))
+    id.map(_.name).getOrElse(throw new Exception(s"${this} has no name"))
 }
 
 trait Meta extends Identifiable {

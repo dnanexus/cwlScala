@@ -28,7 +28,7 @@ import scala.jdk.CollectionConverters._
 case class WorkflowInputBinding(loadContents: Option[Boolean])
 
 object WorkflowInputBinding {
-  def apply(binding: InputBindingImpl): WorkflowInputBinding = {
+  def parse(binding: InputBindingImpl): WorkflowInputBinding = {
     WorkflowInputBinding(translateOptional(binding.getLoadContents).map(_.booleanValue()))
   }
 }
@@ -48,14 +48,14 @@ case class WorkflowInputParameter(id: Option[Identifier],
     with Loadable
 
 object WorkflowInputParameter {
-  def apply(param: WorkflowInputParameterImpl,
+  def parse(param: WorkflowInputParameterImpl,
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowInputParameter = {
     val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     assert(stdfile.isEmpty)
     val inputBinding = translateOptional(param.getInputBinding).map {
-      case binding: InputBindingImpl => WorkflowInputBinding(binding)
+      case binding: InputBindingImpl => WorkflowInputBinding.parse(binding)
     }
     WorkflowInputParameter(
         translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
@@ -72,13 +72,13 @@ object WorkflowInputParameter {
     )
   }
 
-  def applyArray(params: java.util.List[java.lang.Object],
+  def parseArray(params: java.util.List[java.lang.Object],
                  schemaDefs: Map[String, CwlSchema],
                  stripPrefix: Option[String] = None,
                  defaultNamespace: Option[String] = None): Vector[WorkflowInputParameter] = {
     params.asScala.toVector.map {
       case param: WorkflowInputParameterImpl =>
-        WorkflowInputParameter(param, schemaDefs, stripPrefix, defaultNamespace)
+        WorkflowInputParameter.parse(param, schemaDefs, stripPrefix, defaultNamespace)
       case other =>
         throw new RuntimeException(s"unexpected WorkflowInputParameter value ${other}")
     }
@@ -130,7 +130,7 @@ case class WorkflowOutputParameter(id: Option[Identifier],
     with Sink
 
 object WorkflowOutputParameter {
-  def apply(param: WorkflowOutputParameterImpl,
+  def parse(param: WorkflowOutputParameterImpl,
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowOutputParameter = {
@@ -143,10 +143,10 @@ object WorkflowOutputParameter {
         .map(source => Identifier.parse(source.toString, stripFragPrefix, defaultNamespace))
         .map { src =>
           // TODO: this is a work-around for a parser bug - remove when fixed
-          if (id.exists(_.frag.isDefined) && src.frag.isDefined) {
-            val prefix = s"${id.flatMap(_.frag).get}/"
-            if (src.frag.get.startsWith(prefix)) {
-              src.copy(frag = src.frag.map(_.drop(prefix.length)))
+          if (id.isDefined) {
+            val prefix = s"${id.get.frag}/"
+            if (src.frag.startsWith(prefix)) {
+              src.copy(frag = src.frag.drop(prefix.length))
             } else {
               src
             }
@@ -170,13 +170,13 @@ object WorkflowOutputParameter {
     )
   }
 
-  def applyArray(params: java.util.List[java.lang.Object],
+  def parseArray(params: java.util.List[java.lang.Object],
                  schemaDefs: Map[String, CwlSchema],
                  stripFragPrefix: Option[String] = None,
                  defaultNamespace: Option[String] = None): Vector[WorkflowOutputParameter] = {
     params.asScala.toVector.map {
       case param: WorkflowOutputParameterImpl =>
-        WorkflowOutputParameter(param, schemaDefs, stripFragPrefix, defaultNamespace)
+        WorkflowOutputParameter.parse(param, schemaDefs, stripFragPrefix, defaultNamespace)
       case other =>
         throw new RuntimeException(s"unexpected WorkflowOutputParameter value ${other}")
     }
@@ -210,7 +210,7 @@ case class WorkflowStepInput(id: Option[Identifier],
     with Loadable
 
 object WorkflowStepInput {
-  def apply(step: WorkflowStepInputImpl,
+  def parse(step: WorkflowStepInputImpl,
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowStepInput = {
@@ -232,13 +232,13 @@ object WorkflowStepInput {
     )
   }
 
-  def applyArray(steps: java.util.List[java.lang.Object],
+  def parseArray(steps: java.util.List[java.lang.Object],
                  schemaDefs: Map[String, CwlSchema],
                  stripFragPrefix: Option[String] = None,
                  defaultNamespace: Option[String] = None): Vector[WorkflowStepInput] = {
     steps.asScala.toVector.map {
       case param: WorkflowStepInputImpl =>
-        WorkflowStepInput(param, schemaDefs, stripFragPrefix, defaultNamespace)
+        WorkflowStepInput.parse(param, schemaDefs, stripFragPrefix, defaultNamespace)
       case other =>
         throw new RuntimeException(s"unexpected WorkflowStepInput value ${other}")
     }
@@ -248,7 +248,7 @@ object WorkflowStepInput {
 case class WorkflowStepOutput(id: Option[Identifier]) extends Identifiable
 
 object WorkflowStepOutput {
-  def apply(step: WorkflowStepOutputImpl,
+  def parse(step: WorkflowStepOutputImpl,
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowStepOutput = {
     WorkflowStepOutput(
@@ -256,12 +256,12 @@ object WorkflowStepOutput {
     )
   }
 
-  def applyArray(steps: java.util.List[java.lang.Object],
+  def parseArray(steps: java.util.List[java.lang.Object],
                  stripFragPrefix: Option[String] = None,
                  defaultNamespace: Option[String] = None): Vector[WorkflowStepOutput] = {
     steps.asScala.toVector.map {
       case param: WorkflowStepOutputImpl =>
-        WorkflowStepOutput(param, stripFragPrefix, defaultNamespace)
+        WorkflowStepOutput.parse(param, stripFragPrefix, defaultNamespace)
       case param: String =>
         WorkflowStepOutput(Some(Identifier.parse(param, stripFragPrefix, defaultNamespace)))
       case other =>
@@ -298,7 +298,7 @@ object WorkflowStep {
     val id = translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix))
     val runResult = step.getRun match {
       case process: ProcessInterface =>
-        val defaultFrag = id.flatMap(_.frag.map(f => s"${f}/run"))
+        val defaultFrag = id.map(i => s"${i.frag}/run")
         ctx.parse(process,
                   defaultNamespace = defaultNamespace,
                   defaultFrag = defaultFrag,
@@ -323,8 +323,8 @@ object WorkflowStep {
         id,
         translateOptional(step.getLabel),
         translateDoc(step.getDoc),
-        WorkflowStepInput.applyArray(step.getIn, allSchemaDefs, stripFragPrefix),
-        WorkflowStepOutput.applyArray(step.getOut, stripFragPrefix),
+        WorkflowStepInput.parseArray(step.getIn, allSchemaDefs, stripFragPrefix),
+        WorkflowStepOutput.parseArray(step.getOut, stripFragPrefix),
         runResult.mainProcess.get,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
         translateOptionalArray(step.getScatter).map(source =>
@@ -387,7 +387,7 @@ object Workflow {
       Requirement.applyRequirements(workflow.getRequirements, ctx.schemaDefs)
     val newContext = ctx.copy(schemaDefs = allSchemaDefs)
     val rawId = Identifier.get(workflow.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+    val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val (steps, newDependencies) =
       WorkflowStep.parseArray(workflow.getSteps,
                               newContext,
@@ -399,8 +399,8 @@ object Workflow {
     val wfId = Option
       .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
-        Option
-          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+        defaultFrag
+          .map(frag => Identifier(namespace, frag))
           .orElse(
               Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
           )
@@ -409,7 +409,7 @@ object Workflow {
               // the document already has a process with the given ID - make it unique by adding a suffix
               Iterator
                 .from(1)
-                .map(i => wfId.copy(frag = Some(s"${wfId.frag.get}-${i}")))
+                .map(i => wfId.copy(frag = s"${wfId.frag}-${i}"))
                 .collectFirst {
                   case id if !newDependencies.contains(id) => id
                 }
@@ -428,8 +428,8 @@ object Workflow {
         translateOptional(workflow.getLabel),
         translateDoc(workflow.getDoc),
         translateOptionalArray(workflow.getIntent).map(translateString),
-        WorkflowInputParameter.applyArray(workflow.getInputs, allSchemaDefs, stripFragPrefix),
-        WorkflowOutputParameter.applyArray(workflow.getOutputs, allSchemaDefs, stripFragPrefix),
+        WorkflowInputParameter.parseArray(workflow.getInputs, allSchemaDefs, stripFragPrefix),
+        WorkflowOutputParameter.parseArray(workflow.getOutputs, allSchemaDefs, stripFragPrefix),
         steps,
         requirements,
         Requirement.applyHints(workflow.getHints, allSchemaDefs, ctx.hintSchemas)
@@ -448,7 +448,7 @@ case class ExpressionToolOutputParameter(id: Option[Identifier],
     extends OutputParameter
 
 object ExpressionToolOutputParameter {
-  def apply(param: ExpressionToolOutputParameterImpl,
+  def parse(param: ExpressionToolOutputParameterImpl,
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): ExpressionToolOutputParameter = {
@@ -465,13 +465,13 @@ object ExpressionToolOutputParameter {
     )
   }
 
-  def applyArray(params: java.util.List[java.lang.Object],
+  def parseArray(params: java.util.List[java.lang.Object],
                  schemaDefs: Map[String, CwlSchema],
                  stripFragPrefix: Option[String] = None,
                  defaultNamespace: Option[String] = None): Vector[ExpressionToolOutputParameter] = {
     params.asScala.toVector.map {
       case param: ExpressionToolOutputParameterImpl =>
-        ExpressionToolOutputParameter(param, schemaDefs, stripFragPrefix, defaultNamespace)
+        ExpressionToolOutputParameter.parse(param, schemaDefs, stripFragPrefix, defaultNamespace)
       case other =>
         throw new RuntimeException(s"unexpected OperationInputParameter value ${other}")
     }
@@ -502,12 +502,12 @@ object ExpressionTool {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(expressionTool.getRequirements, ctx.schemaDefs)
     val rawId = Identifier.get(expressionTool.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+    val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val toolId = Option
       .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
-        Option
-          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+        defaultFrag
+          .map(frag => Identifier(namespace, frag))
           .orElse(
               Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
           )
@@ -521,11 +521,11 @@ object ExpressionTool {
         translateOptional(expressionTool.getLabel),
         translateDoc(expressionTool.getDoc),
         translateOptionalArray(expressionTool.getIntent).map(translateString),
-        WorkflowInputParameter.applyArray(expressionTool.getInputs,
+        WorkflowInputParameter.parseArray(expressionTool.getInputs,
                                           allSchemaDefs,
                                           stripFragPrefix,
                                           defaultNamespace),
-        ExpressionToolOutputParameter.applyArray(expressionTool.getOutputs,
+        ExpressionToolOutputParameter.parseArray(expressionTool.getOutputs,
                                                  allSchemaDefs,
                                                  stripFragPrefix,
                                                  defaultNamespace),
@@ -550,7 +550,7 @@ case class OperationInputParameter(id: Option[Identifier],
     with Loadable
 
 object OperationInputParameter {
-  def apply(param: OperationInputParameterImpl,
+  def parse(param: OperationInputParameterImpl,
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): OperationInputParameter = {
@@ -570,14 +570,14 @@ object OperationInputParameter {
     )
   }
 
-  def applyArray(
+  def parseArray(
       params: java.util.List[java.lang.Object],
       schemaDefs: Map[String, CwlSchema] = Map.empty,
       stripFragPrefix: Option[String] = None
   ): Vector[OperationInputParameter] = {
     params.asScala.toVector.map {
       case param: OperationInputParameterImpl =>
-        OperationInputParameter(param, schemaDefs, stripFragPrefix)
+        OperationInputParameter.parse(param, schemaDefs, stripFragPrefix)
       case other =>
         throw new RuntimeException(s"unexpected OperationInputParameter value ${other}")
     }
@@ -594,7 +594,7 @@ case class OperationOutputParameter(id: Option[Identifier],
     extends OutputParameter
 
 object OperationOutputParameter {
-  def apply(param: OperationOutputParameterImpl,
+  def parse(param: OperationOutputParameterImpl,
             schemaDefs: Map[String, CwlSchema],
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): OperationOutputParameter = {
@@ -611,14 +611,14 @@ object OperationOutputParameter {
     )
   }
 
-  def applyArray(
+  def parseArray(
       params: java.util.List[java.lang.Object],
       schemaDefs: Map[String, CwlSchema] = Map.empty,
       stripFragPrefix: Option[String] = None
   ): Vector[OperationOutputParameter] = {
     params.asScala.toVector.map {
       case param: OperationOutputParameterImpl =>
-        OperationOutputParameter(param, schemaDefs, stripFragPrefix)
+        OperationOutputParameter.parse(param, schemaDefs, stripFragPrefix)
       case other =>
         throw new RuntimeException(s"unexpected OperationOutputParameter value ${other}")
     }
@@ -648,12 +648,12 @@ object Operation {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(operation.getRequirements, ctx.schemaDefs)
     val rawId = Identifier.get(operation.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
+    val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val opId = Option
       .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
-        Option
-          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
+        defaultFrag
+          .map(frag => Identifier(namespace, frag))
           .orElse(
               Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
           )
@@ -667,8 +667,8 @@ object Operation {
         translateOptional(operation.getLabel),
         translateDoc(operation.getDoc),
         translateOptionalArray(operation.getIntent).map(translateString),
-        OperationInputParameter.applyArray(operation.getInputs, allSchemaDefs, stripFragPrefix),
-        OperationOutputParameter.applyArray(operation.getOutputs, allSchemaDefs, stripFragPrefix),
+        OperationInputParameter.parseArray(operation.getInputs, allSchemaDefs, stripFragPrefix),
+        OperationOutputParameter.parseArray(operation.getOutputs, allSchemaDefs, stripFragPrefix),
         requirements,
         Requirement.applyHints(operation.getHints, allSchemaDefs, ctx.hintSchemas)
     )

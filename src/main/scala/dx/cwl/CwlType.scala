@@ -103,18 +103,16 @@ object CwlType {
         case schemaName: String if schemaName.contains("#") =>
           // a schema reference
           val id = Identifier.parse(schemaName)
-          val fqn = id.fullyQualifiedName.getOrElse(
-              throw new Exception(s"invalid schema name ${schemaName}")
-          )
+          val fqn = id.fullyQualifiedName
           val schemaDef = schemaDefs
             .get(fqn)
-            .orElse(id.frag.flatMap(schemaDefs.get))
+            .orElse(schemaDefs.get(id.frag))
             .orElse(innerSchemaDefs.get(fqn))
-            .orElse(id.frag.flatMap(innerSchemaDefs.get))
+            .orElse(innerSchemaDefs.get(id.frag))
           schemaDef match {
             case Some(schemaDef) => (Vector(schemaDef), None, innerSchemaDefs)
-            case None if rawSchemaDefs.contains(fqn) || id.frag.exists(rawSchemaDefs.contains) =>
-              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.frag.get))
+            case None if rawSchemaDefs.contains(fqn) || rawSchemaDefs.contains(id.frag) =>
+              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.frag))
               val (types, stdfile, updatedSchemaDefs) = inner(rawSchemaDef, innerSchemaDefs)
               val newSchemaDef = types match {
                 case Vector(s: CwlSchema) => s
@@ -403,14 +401,13 @@ object CwlSchema {
       case (accu, (name, _)) if accu.contains(name) || schemaDefs.contains(name) => accu
       case (accu, (name, schema)) =>
         val id = Identifier.parse(name)
-        if (id.fullyQualifiedName
-              .exists(fqn => accu.contains(fqn) || schemaDefs.contains(fqn))) {
+        val fqn = id.fullyQualifiedName
+        if (accu.contains(fqn) || schemaDefs.contains(fqn)) {
           accu
         } else {
           val (newSchema, newSchemaDefs) = translateSchema(schema, schemaDefs ++ accu, schemas)
           val newSchemaEntry = newSchema.id
-            .flatMap(_.fullyQualifiedName)
-            .map(fqn => fqn -> newSchema)
+            .map(_.fullyQualifiedName -> newSchema)
             .getOrElse(name -> newSchema)
           accu ++ newSchemaDefs + newSchemaEntry
         }
@@ -488,7 +485,7 @@ object CwlArray {
     val inputBinding = schema match {
       case c: CommandInputArraySchema =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
@@ -560,14 +557,14 @@ object CwlInputRecordField {
     val inputBinding = field match {
       case c: CommandInputRecordField =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
       case _ => None
     }
     CwlInputRecordField(
-        id.name.get,
+        id.name,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
@@ -629,7 +626,7 @@ object CwlInputRecord {
     val inputBinding = schema match {
       case c: CommandInputRecordSchema =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
@@ -702,14 +699,14 @@ object CwlOutputRecordField {
     val outputBinding = field match {
       case c: CommandOutputRecordField =>
         translateOptional(c.getOutputBinding).map {
-          case binding: CommandOutputBindingImpl => CommandOutputBinding(binding, schemaDefs)
+          case binding: CommandOutputBindingImpl => CommandOutputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
       case _ => None
     }
     CwlOutputRecordField(
-        id.name.get,
+        id.name,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
@@ -837,7 +834,7 @@ object CwlEnum {
     val inputBinding = schema match {
       case c: CommandInputEnumSchema =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
