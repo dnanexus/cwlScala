@@ -1,6 +1,6 @@
 # Change log
 
-## in develop
+## 0.7.1 (2021-11-10)
 
 * Update dxCommon version
 
