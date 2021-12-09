@@ -44,7 +44,7 @@ lazy val cwlScala = root.settings(
 )
 
 lazy val dependencies = {
-  val dxCommonVersion = "0.8.0"
+  val dxCommonVersion = "0.10.0"
   val dxYamlVersion = "0.1.0"
   val typesafeVersion = "1.4.1"
   val sprayVersion = "1.3.6"
