@@ -2,6 +2,10 @@
 
 ## in develop
 
+* Update dxCommon version
+
+## 0.7.1 (2021-11-10)
+
 * Handles error when listing folder during path value finalization
 
 ## 0.7.0 (2021-09-23)
