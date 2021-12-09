@@ -1,6 +1,6 @@
 # Change log
 
-## 0.7.1 (2021-11-10)
+## 0.7.2 (2021-12-09)
 
 * Update dxCommon version
 
