@@ -40,7 +40,7 @@ lazy val cwlScala = root.settings(
     settings,
     assemblySettings,
     libraryDependencies ++= dependencies,
-    assemblyJarName in assembly := "cwlScala.jar"
+    assembly / assemblyJarName := "cwlScala.jar"
 )
 
 lazy val dependencies = {
@@ -80,7 +80,8 @@ val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("githu
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
     // exclude Java sources from scaladoc
-    scalacOptions in (Compile, doc) ++= Seq("-no-java-comments", "-no-link-warnings"),
+    Compile / scalacOptions ++= Seq("-no-java-comments", "-no-link-warnings"),
+    doc / scalacOptions ++= Seq("-no-java-comments", "-no-link-warnings"),
     javacOptions ++= Seq("-Xlint:deprecation"),
     // Add Java sources
     Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java",
@@ -160,10 +161,10 @@ val compilerOptions = Seq(
 
 // Assembly
 lazy val assemblySettings = Seq(
-    logLevel in assembly := Level.Info,
+    assembly / logLevel := Level.Info,
     // comment out this line to enable tests in assembly
-    test in assembly := {},
-    assemblyMergeStrategy in assembly := {
+    assembly / test := {},
+    assembly / assemblyMergeStrategy := {
       {
         case PathList("javax", "xml", xs @ _*)               => MergeStrategy.first
         case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
