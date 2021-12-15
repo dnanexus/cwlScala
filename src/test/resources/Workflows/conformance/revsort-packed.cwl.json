@@ -121,12 +121,5 @@
             "stdout": "output.txt",
             "id": "#sorttool.cwl"
         }
-    ],
-    "inputs": [],
-    "outputs": [],
-    "requirements": [
-        {
-            "class": "InlineJavascriptRequirement"
-        }
     ]
 }

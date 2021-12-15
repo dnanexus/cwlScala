@@ -47,12 +47,5 @@
             "baseCommand": "echo",
             "stdout": "out.txt"
         }
-    ],
-    "inputs": [],
-    "outputs": [],
-    "requirements": [
-        {
-            "class": "InlineJavascriptRequirement"
-        }
     ]
 }

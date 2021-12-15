@@ -70,12 +70,5 @@
                 }
             }
         }
-    ],
-    "inputs": [],
-    "outputs": [],
-    "requirements": [
-        {
-            "class": "InlineJavascriptRequirement"
-        }
     ]
 }
