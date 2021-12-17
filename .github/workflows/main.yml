@@ -21,9 +21,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: true
-      - name: Scala formatting
-        run: |
-          sbt scalafmtCheckAll
       - name: Install Java
         uses: actions/setup-java@v1
         with:
@@ -33,9 +30,10 @@ jobs:
           # compile antlr4 sources
           cd ${GITHUB_WORKSPACE}
           make
-      - name: Unit Tests
+      - name: Compile & Tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          sbt scalafmtCheckAll
           sbt test
 
