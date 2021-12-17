@@ -29,18 +29,16 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
-      - name: Scala formatting
-        run: |
-          sbt scalafmtCheckAll
       - name: Install & build
         run: |
           # compile antlr4 sources
           cd ${GITHUB_WORKSPACE}
           make
-      - name: Unit Tests
+      - name: Compile & Test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          sbt scalafmtCheckAll
           sbt test
       - name: Assembly
         env:
