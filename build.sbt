@@ -109,7 +109,7 @@ lazy val settings = Seq(
     crossPaths := false,
     publishMavenStyle := true,
     // scalafmt
-    scalafmtConfig := baseDirectory.value / ".scalafmt.conf",
+    scalafmtConfig := file(".") / ".scalafmt.conf",
     // add sonatype repository settings
     // snapshot versions publish to sonatype snapshot repository
     // other versions publish to sonatype staging repository
