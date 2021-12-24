@@ -15,7 +15,7 @@ def getVersion: String = {
 }
 
 ThisBuild / organization := "com.dnanexus"
-ThisBuild / scalaVersion := "2.13.2"
+ThisBuild / scalaVersion := "2.13.7"
 ThisBuild / developers := List(
     Developer(
         "jdidion",
@@ -158,7 +158,6 @@ val compilerOptions = Seq(
     "-Xlint:doc-detached",
     "-Xlint:inaccessible",
     "-Xlint:infer-any",
-    "-Xlint:nullary-override",
     "-Xlint:nullary-unit",
     "-Xlint:option-implicit",
     "-Xlint:package-object-classes",
