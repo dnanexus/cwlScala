@@ -396,6 +396,7 @@ object CwlValue {
             val cwlType = inferType(value, ctx)
             name -> CwlOutputRecordField(name, cwlType)
         })
+      case _ => throw new Exception(s"unexpected value ${value}")
     }
   }
 }
@@ -470,11 +471,11 @@ object StringValue {
     }
   }
 
-  def fromEnum(obj: Any, enum: CwlEnum): StringValue = {
+  def fromEnum(obj: Any, enumType: CwlEnum): StringValue = {
     obj match {
-      case symbol: String if enum.symbols.contains(symbol) => StringValue(symbol)
+      case symbol: String if enumType.symbols.contains(symbol) => StringValue(symbol)
       case _ =>
-        throw new Exception(s"symbol ${obj} is not one of ${enum.symbols.mkString(",")}")
+        throw new Exception(s"symbol ${obj} is not one of ${enumType.symbols.mkString(",")}")
     }
   }
 
@@ -486,14 +487,14 @@ object StringValue {
   }
 
   @tailrec
-  def deserialize(jsValue: JsValue, enum: CwlEnum): StringValue = {
+  def deserialize(jsValue: JsValue, enumType: CwlEnum): StringValue = {
     jsValue match {
-      case JsString(symbol) if enum.symbols.contains(symbol) =>
+      case JsString(symbol) if enumType.symbols.contains(symbol) =>
         StringValue(symbol)
       case JsObject(fields) if fields.contains("symbol") =>
-        deserialize(fields("symbol"), enum)
+        deserialize(fields("symbol"), enumType)
       case _ =>
-        throw new Exception(s"invalid ${enum} value ${jsValue}")
+        throw new Exception(s"invalid ${enumType} value ${jsValue}")
     }
   }
 }

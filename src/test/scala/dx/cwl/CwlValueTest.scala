@@ -8,7 +8,7 @@ class CwlValueTest extends AnyFlatSpec with Matchers {
   it should "create values from literals" in {
     val sFloat = FloatValue(0.0)
     sFloat.value shouldBe 0.0
-    val jFloat = FloatValue(new java.lang.Double(0.0))
+    val jFloat = FloatValue(java.lang.Double.valueOf(0.0))
     jFloat.value shouldBe 0.0
   }
 

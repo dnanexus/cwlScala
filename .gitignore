@@ -8,3 +8,5 @@ gen/
 # VSCcode
 .metals/
 .vscode/
+
+.java-version

@@ -15,7 +15,7 @@ def getVersion: String = {
 }
 
 ThisBuild / organization := "com.dnanexus"
-ThisBuild / scalaVersion := "2.13.2"
+ThisBuild / scalaVersion := "2.13.7"
 ThisBuild / developers := List(
     Developer(
         "jdidion",
@@ -36,7 +36,7 @@ ThisBuild / licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICEN
 lazy val cwljava = project
   .in(file("cwljava"))
   .settings(
-      javacOptions ++= Seq("-Xlint:deprecation"),
+      settings,
       libraryDependencies ++= Seq(
           dependencies.snakeyaml,
           dependencies.junit
@@ -101,13 +101,15 @@ val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("githu
 
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
+    Compile / doc / scalacOptions ++= Seq("-no-java-comments", "-no-link-warnings"),
+    javacOptions ++= Seq("-Xlint:deprecation", "-source", "1.8", "-target", "1.8"),
     // reduce the maximum number of errors shown by the Scala compiler
     maxErrors := 20,
     // disable publish with scala version, otherwise artifact name will include scala version e.g wdlTools_2.11
     crossPaths := false,
     publishMavenStyle := true,
     // scalafmt
-    scalafmtConfig := baseDirectory.value / ".scalafmt.conf",
+    scalafmtConfig := file(".") / ".scalafmt.conf",
     // add sonatype repository settings
     // snapshot versions publish to sonatype snapshot repository
     // other versions publish to sonatype staging repository
@@ -158,7 +160,6 @@ val compilerOptions = Seq(
     "-Xlint:doc-detached",
     "-Xlint:inaccessible",
     "-Xlint:infer-any",
-    "-Xlint:nullary-override",
     "-Xlint:nullary-unit",
     "-Xlint:option-implicit",
     "-Xlint:package-object-classes",
