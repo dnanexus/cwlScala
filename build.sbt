@@ -37,6 +37,8 @@ lazy val cwljava = project
   .in(file("cwljava"))
   .settings(
       settings,
+      Compile / packageSrc / resources := Seq.empty,
+      Compile / packageBin / resources := Seq.empty,
       libraryDependencies ++= Seq(
           dependencies.snakeyaml,
           dependencies.junit
@@ -189,7 +191,7 @@ lazy val assemblySettings = Seq(
       {
         case PathList("javax", "xml", _ @_*)                 => MergeStrategy.first
         case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
-        case PathList("META_INF", xs @ _*) =>
+        case PathList("META-INF", xs @ _*) =>
           xs map { _.toLowerCase } match {
             case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
               MergeStrategy.discard
