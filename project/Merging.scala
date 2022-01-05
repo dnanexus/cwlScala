@@ -37,12 +37,10 @@ object Merging {
       path map {
         _.toLowerCase
       } match {
-        case "spring.tooling" :: _ =>
-          MergeStrategy.discard
-        case "io.netty.versions.properties" :: Nil =>
-          MergeStrategy.first
-        case "maven" :: "com.google.guava" :: _ =>
-          MergeStrategy.first
+        case "spring.tooling" :: _                 => MergeStrategy.discard
+        case "io.netty.versions.properties" :: Nil => MergeStrategy.first
+        case "maven" :: "com.google.guava" :: _    => MergeStrategy.first
+        case "MANIFEST.MF" :: _                    => MergeStrategy.discard
         case _ =>
           val oldStrategy = (assembly / assemblyMergeStrategy).value
           oldStrategy(x)
