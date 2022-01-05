@@ -101,8 +101,13 @@ val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("githu
 
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
+    Compile / compile / javacOptions ++= Seq("-Xlint:deprecation",
+                                             "-source",
+                                             "1.8",
+                                             "-target",
+                                             "1.8"),
     Compile / doc / scalacOptions ++= Seq("-no-java-comments", "-no-link-warnings"),
-    javacOptions ++= Seq("-Xlint:deprecation", "-source", "1.8", "-target", "1.8"),
+    Compile / doc / sources := Seq((Compile / scalaSource).value),
     // reduce the maximum number of errors shown by the Scala compiler
     maxErrors := 20,
     // disable publish with scala version, otherwise artifact name will include scala version e.g wdlTools_2.11
