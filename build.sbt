@@ -37,8 +37,7 @@ lazy val cwljava = project
   .in(file("cwljava"))
   .settings(
       settings,
-      Compile / packageSrc / resources := Seq.empty,
-      Compile / packageBin / resources := Seq.empty,
+      cwljavaSettings,
       libraryDependencies ++= Seq(
           dependencies.snakeyaml,
           dependencies.junit
@@ -201,4 +200,9 @@ lazy val assemblySettings = Seq(
           customMergeStrategy.value(x)
       }
     }
+)
+
+lazy val cwljavaSettings = Seq(
+    Compile / packageSrc / resources := Seq.empty,
+    Compile / packageBin / resources := Seq.empty
 )
