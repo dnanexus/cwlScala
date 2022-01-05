@@ -203,6 +203,7 @@ lazy val assemblySettings = Seq(
 )
 
 lazy val cwljavaSettings = Seq(
-    Compile / packageSrc / resources := Seq.empty,
-    Compile / packageBin / resources := Seq.empty
+    Compile / packageSrc / unmanagedResources := Seq.empty,
+    Compile / packageBin / unmanagedResources := Seq.empty,
+    publishArtifact := false
 )
