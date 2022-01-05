@@ -37,6 +37,7 @@ lazy val cwljava = project
   .in(file("cwljava"))
   .settings(
       settings,
+      cwljavaSettings,
       libraryDependencies ++= Seq(
           dependencies.snakeyaml,
           dependencies.junit
@@ -101,8 +102,13 @@ val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("githu
 
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
+    Compile / compile / javacOptions ++= Seq("-Xlint:deprecation",
+                                             "-source",
+                                             "1.8",
+                                             "-target",
+                                             "1.8"),
     Compile / doc / scalacOptions ++= Seq("-no-java-comments", "-no-link-warnings"),
-    javacOptions ++= Seq("-Xlint:deprecation", "-source", "1.8", "-target", "1.8"),
+    Compile / doc / sources := Seq((Compile / scalaSource).value),
     // reduce the maximum number of errors shown by the Scala compiler
     maxErrors := 20,
     // disable publish with scala version, otherwise artifact name will include scala version e.g wdlTools_2.11
@@ -184,7 +190,7 @@ lazy val assemblySettings = Seq(
       {
         case PathList("javax", "xml", _ @_*)                 => MergeStrategy.first
         case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
-        case PathList("META_INF", xs @ _*) =>
+        case PathList("META-INF", xs @ _*) =>
           xs map { _.toLowerCase } match {
             case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
               MergeStrategy.discard
@@ -194,4 +200,9 @@ lazy val assemblySettings = Seq(
           customMergeStrategy.value(x)
       }
     }
+)
+
+lazy val cwljavaSettings = Seq(
+    Compile / packageSrc / resources := Seq.empty,
+    Compile / packageBin / resources := Seq.empty
 )
