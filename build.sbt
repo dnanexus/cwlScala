@@ -68,8 +68,8 @@ lazy val root = project
   .dependsOn(cwljava)
 
 lazy val dependencies = new {
-  val dxCommonVersion = "0.10.0"
-  val dxYamlVersion = "0.1.0"
+  val dxCommonVersion = "0.11.0"
+  val dxYamlVersion = "0.1.1"
   val typesafeVersion = "1.4.1"
   val sprayVersion = "1.3.6"
   val scalatestVersion = "3.2.9"
