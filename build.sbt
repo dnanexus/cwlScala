@@ -37,6 +37,7 @@ lazy val cwljava = project
   .in(file("cwljava"))
   .settings(
       settings,
+      cwljavaSettings,
       libraryDependencies ++= Seq(
           dependencies.snakeyaml,
           dependencies.junit
@@ -68,8 +69,8 @@ lazy val root = project
   .dependsOn(cwljava)
 
 lazy val dependencies = new {
-  val dxCommonVersion = "0.10.0"
-  val dxYamlVersion = "0.1.0"
+  val dxCommonVersion = "0.11.0"
+  val dxYamlVersion = "0.1.1"
   val typesafeVersion = "1.4.1"
   val sprayVersion = "1.3.6"
   val scalatestVersion = "3.2.9"
@@ -101,8 +102,13 @@ val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("githu
 
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
+    Compile / compile / javacOptions ++= Seq("-Xlint:deprecation",
+                                             "-source",
+                                             "1.8",
+                                             "-target",
+                                             "1.8"),
     Compile / doc / scalacOptions ++= Seq("-no-java-comments", "-no-link-warnings"),
-    javacOptions ++= Seq("-Xlint:deprecation", "-source", "1.8", "-target", "1.8"),
+    Compile / doc / sources := Seq((Compile / scalaSource).value),
     // reduce the maximum number of errors shown by the Scala compiler
     maxErrors := 20,
     // disable publish with scala version, otherwise artifact name will include scala version e.g wdlTools_2.11
@@ -184,7 +190,7 @@ lazy val assemblySettings = Seq(
       {
         case PathList("javax", "xml", _ @_*)                 => MergeStrategy.first
         case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
-        case PathList("META_INF", xs @ _*) =>
+        case PathList("META-INF", xs @ _*) =>
           xs map { _.toLowerCase } match {
             case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
               MergeStrategy.discard
@@ -194,4 +200,10 @@ lazy val assemblySettings = Seq(
           customMergeStrategy.value(x)
       }
     }
+)
+
+lazy val cwljavaSettings = Seq(
+    Compile / packageSrc / unmanagedResources := Seq.empty,
+    Compile / packageBin / unmanagedResources := Seq.empty,
+    publishArtifact := false
 )
