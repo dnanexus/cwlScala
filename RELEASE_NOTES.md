@@ -1,9 +1,10 @@
 # Change log
 
-## 0.7.3 (2021-01-05)
+## 0.7.4 (2021-01-05)
 
 * Updates code to compile with JDK11
 * Updates build environment to JDK11, Scala 2.13.7, and SBT 1.5.7
+* Fix packaging
 
 ## 0.7.2 (2021-12-09)
 
