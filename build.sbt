@@ -33,18 +33,6 @@ ThisBuild / scmInfo := Some(
 )
 ThisBuild / licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 
-lazy val cwljava = project
-  .in(file("cwljava"))
-  .settings(
-      settings,
-      cwljavaSettings,
-      libraryDependencies ++= Seq(
-          dependencies.snakeyaml,
-          dependencies.junit
-      )
-  )
-  .disablePlugins(AssemblyPlugin)
-
 lazy val root = project
   .in(file("."))
   .settings(
@@ -65,8 +53,6 @@ lazy val root = project
       ),
       assembly / assemblyJarName := "cwlScala.jar"
   )
-  .aggregate(cwljava)
-  .dependsOn(cwljava)
 
 lazy val dependencies = new {
   val dxCommonVersion = "0.11.0"
@@ -102,6 +88,7 @@ val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("githu
 
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
+    Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java",
     Compile / compile / javacOptions ++= Seq("-Xlint:deprecation",
                                              "-source",
                                              "1.8",
@@ -200,10 +187,4 @@ lazy val assemblySettings = Seq(
           customMergeStrategy.value(x)
       }
     }
-)
-
-lazy val cwljavaSettings = Seq(
-    Compile / packageSrc / unmanagedResources := Seq.empty,
-    Compile / packageBin / unmanagedResources := Seq.empty,
-    publishArtifact := false
 )
