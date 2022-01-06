@@ -1,6 +1,6 @@
 import Merging.customMergeStrategy
 import sbt.Keys._
-import sbt.ThisBuild
+import sbt.{ThisBuild, project}
 import sbtassembly.AssemblyPlugin.autoImport._
 import com.typesafe.config._
 import sbtghpackages.GitHubPackagesPlugin.autoImport.githubOwner
@@ -15,7 +15,7 @@ def getVersion: String = {
 }
 
 ThisBuild / organization := "com.dnanexus"
-ThisBuild / scalaVersion := "2.13.2"
+ThisBuild / scalaVersion := "2.13.7"
 ThisBuild / developers := List(
     Developer(
         "jdidion",
@@ -33,19 +33,30 @@ ThisBuild / scmInfo := Some(
 )
 ThisBuild / licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 
-lazy val root = project.in(file("."))
-lazy val cwlScala = root.settings(
-    name := "cwlScala",
-    version := getVersion,
-    settings,
-    assemblySettings,
-    libraryDependencies ++= dependencies,
-    assemblyJarName in assembly := "cwlScala.jar"
-)
+lazy val root = project
+  .in(file("."))
+  .settings(
+      name := "cwlScala",
+      version := getVersion,
+      settings,
+      assemblySettings,
+      libraryDependencies ++= Seq(
+          dependencies.dxCommon,
+          dependencies.dxYaml,
+          dependencies.typesafe,
+          dependencies.spray,
+          dependencies.rhino,
+          dependencies.antlr,
+          dependencies.scalatest,
+          dependencies.snakeyaml,
+          dependencies.junit
+      ),
+      assembly / assemblyJarName := "cwlScala.jar"
+  )
 
-lazy val dependencies = {
-  val dxCommonVersion = "0.9.1-SNAPSHOT"
-  val dxYamlVersion = "0.1.0"
+lazy val dependencies = new {
+  val dxCommonVersion = "0.11.0"
+  val dxYamlVersion = "0.1.1"
   val typesafeVersion = "1.4.1"
   val sprayVersion = "1.3.6"
   val scalatestVersion = "3.2.9"
@@ -54,21 +65,19 @@ lazy val dependencies = {
   val antlr4Version = "4.9.3"
   val junitVersion = "4.13.2"
 
-  Seq(
-      "com.dnanexus" % "dxcommon" % dxCommonVersion,
-      "com.dnanexus" % "dxyaml" % dxYamlVersion,
-      "com.typesafe" % "config" % typesafeVersion,
-      "io.spray" %% "spray-json" % sprayVersion,
-      // cwljava dependencies
-      "org.snakeyaml" % "snakeyaml-engine" % yamlVersion,
-      // rhino dependencies
-      "org.mozilla" % "rhino" % rhinoVersion,
-      // antlr4 dependencies
-      "org.antlr" % "antlr4" % antlr4Version,
-      //---------- Test libraries -------------------//
-      "junit" % "junit" % junitVersion % Test,
-      "org.scalatest" % "scalatest_2.13" % scalatestVersion % Test
-  )
+  val dxCommon = "com.dnanexus" % "dxcommon" % dxCommonVersion
+  val dxYaml = "com.dnanexus" % "dxyaml" % dxYamlVersion
+  val typesafe = "com.typesafe" % "config" % typesafeVersion
+  val spray = "io.spray" %% "spray-json" % sprayVersion
+  // cwljava dependencies
+  val snakeyaml = "org.snakeyaml" % "snakeyaml-engine" % yamlVersion
+  // rhino dependencies
+  val rhino = "org.mozilla" % "rhino" % rhinoVersion
+  // antlr4 dependencies
+  val antlr = "org.antlr" % "antlr4" % antlr4Version
+  //---------- Test libraries -------------------//
+  val junit = "junit" % "junit" % junitVersion % Test
+  val scalatest = "org.scalatest" % "scalatest_2.13" % scalatestVersion % Test
 }
 
 val githubDxScalaResolver = Resolver.githubPackages("dnanexus", "dxScala")
@@ -79,18 +88,21 @@ val releaseTarget = Option(System.getProperty("releaseTarget")).getOrElse("githu
 
 lazy val settings = Seq(
     scalacOptions ++= compilerOptions,
-    // exclude Java sources from scaladoc
-    scalacOptions in (Compile, doc) ++= Seq("-no-java-comments", "-no-link-warnings"),
-    javacOptions ++= Seq("-Xlint:deprecation"),
-    // Add Java sources
     Compile / unmanagedSourceDirectories += baseDirectory.value / "cwljava" / "src" / "main" / "java",
+    Compile / compile / javacOptions ++= Seq("-Xlint:deprecation",
+                                             "-source",
+                                             "1.8",
+                                             "-target",
+                                             "1.8"),
+    Compile / doc / scalacOptions ++= Seq("-no-java-comments", "-no-link-warnings"),
+    Compile / doc / sources := Seq((Compile / scalaSource).value),
     // reduce the maximum number of errors shown by the Scala compiler
     maxErrors := 20,
-    // scalafmt
-    scalafmtConfig := root.base / ".scalafmt.conf",
-    // disable publish with scala version, otherwise artifact name will include scala version
-    // e.g wdlTools_2.11
+    // disable publish with scala version, otherwise artifact name will include scala version e.g wdlTools_2.11
     crossPaths := false,
+    publishMavenStyle := true,
+    // scalafmt
+    scalafmtConfig := file(".") / ".scalafmt.conf",
     // add sonatype repository settings
     // snapshot versions publish to sonatype snapshot repository
     // other versions publish to sonatype staging repository
@@ -103,7 +115,6 @@ lazy val settings = Seq(
     ),
     githubOwner := "dnanexus",
     githubRepository := "cwlScala",
-    publishMavenStyle := true,
     // If an exception is thrown during tests, show the full
     // stack trace, by adding the "-oF" option to the list.
     //
@@ -142,7 +153,6 @@ val compilerOptions = Seq(
     "-Xlint:doc-detached",
     "-Xlint:inaccessible",
     "-Xlint:infer-any",
-    "-Xlint:nullary-override",
     "-Xlint:nullary-unit",
     "-Xlint:option-implicit",
     "-Xlint:package-object-classes",
@@ -160,14 +170,14 @@ val compilerOptions = Seq(
 
 // Assembly
 lazy val assemblySettings = Seq(
-    logLevel in assembly := Level.Info,
+    assembly / logLevel := Level.Info,
     // comment out this line to enable tests in assembly
-    test in assembly := {},
-    assemblyMergeStrategy in assembly := {
+    assembly / test := {},
+    assembly / assemblyMergeStrategy := {
       {
-        case PathList("javax", "xml", _*)                    => MergeStrategy.first
+        case PathList("javax", "xml", _ @_*)                 => MergeStrategy.first
         case PathList("org", "w3c", "dom", "TypeInfo.class") => MergeStrategy.first
-        case PathList("META_INF", xs @ _*) =>
+        case PathList("META-INF", xs @ _*) =>
           xs map { _.toLowerCase } match {
             case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil =>
               MergeStrategy.discard
