@@ -64,7 +64,7 @@ lazy val dependencies = {
   // cwljava dependencies
   val snakeyaml = "org.snakeyaml" % "snakeyaml-engine" % yamlVersion
   val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % jacksonDatabindVersion
-  val jacksonDataformatYaml = "com.fasterxml.jackson.core" % "jackson-dataformat-yaml" % jacksonDataformatYamlVersion
+  val jacksonDataformatYaml = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonDataformatYamlVersion
   // rhino dependencies
   val rhino = "org.mozilla" % "rhino" % rhinoVersion
   // antlr4 dependencies
