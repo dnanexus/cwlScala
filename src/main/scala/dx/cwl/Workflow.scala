@@ -292,7 +292,8 @@ object WorkflowStep {
             rawProcesses: Map[Identifier, java.lang.Object] = Map.empty,
             isGraph: Boolean = false,
             stripFragPrefix: Option[String] = None,
-            defaultNamespace: Option[String] = None): (WorkflowStep, Document) = {
+            defaultNamespace: Option[String] = None,
+            simplifyProcessAutoIds: Boolean = false): (WorkflowStep, Document) = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(step.getRequirements, ctx.schemaDefs)
     val id = translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix))
@@ -302,20 +303,25 @@ object WorkflowStep {
         ctx.parse(process,
                   defaultNamespace = defaultNamespace,
                   defaultFrag = defaultFrag,
-                  dependencies = dependencies)
+                  dependencies = dependencies,
+                  simplifyProcessAutoIds = simplifyProcessAutoIds)
       case uri: String if isGraph =>
-        val runId = Identifier.parse(uri, defaultNamespace = defaultNamespace)
+        val runId = Identifier.parse(uri,
+                                     defaultNamespace = defaultNamespace,
+                                     simplifyFrag = simplifyProcessAutoIds)
         if (dependencies.contains(runId)) {
           ParserResult(Some(dependencies(runId)), dependencies)
         } else if (rawProcesses.contains(runId)) {
           ctx.parse(rawProcesses(runId),
                     dependencies = dependencies,
                     rawProcesses = rawProcesses,
-                    isGraph = true)
+                    isGraph = true,
+                    simplifyProcessAutoIds = simplifyProcessAutoIds)
         } else {
           throw new Exception(s"invalid process ${runId}")
         }
-      case path: String => ctx.parseImport(path, dependencies)
+      case path: String =>
+        ctx.parseImport(path, dependencies, simplifyProcessAutoIds)
       case other =>
         throw new RuntimeException(s"unexpected run value ${other} for step ${step}")
     }
@@ -343,7 +349,8 @@ object WorkflowStep {
                  rawProcesses: Map[Identifier, java.lang.Object] = Map.empty,
                  isGraph: Boolean = false,
                  stripFragPrefix: Option[String] = None,
-                 defaultNamespace: Option[String] = None): (Vector[WorkflowStep], Document) = {
+                 defaultNamespace: Option[String] = None,
+                 simplifyProcessAutoIds: Boolean = false): (Vector[WorkflowStep], Document) = {
     steps.asScala.toVector.foldLeft(Vector.empty[WorkflowStep], dependencies) {
       case ((stepAccu, docAccu), rawStep: WorkflowStepImpl) =>
         val (step, newDoc) =
@@ -353,7 +360,8 @@ object WorkflowStep {
                              rawProcesses,
                              isGraph,
                              stripFragPrefix,
-                             defaultNamespace)
+                             defaultNamespace,
+                             simplifyProcessAutoIds)
         (stepAccu :+ step, newDoc)
       case (_, other) =>
         throw new RuntimeException(s"unexpected WorkflowStep value ${other}")
@@ -382,11 +390,16 @@ object Workflow {
             dependencies: Document = Document.empty,
             rawProcesses: Map[Identifier, Object] = Map.empty,
             isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId): (Workflow, Document) = {
+            mainId: Identifier = Identifier.MainId,
+            simplifyProcessAutoIds: Boolean = false): (Workflow, Document) = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(workflow.getRequirements, ctx.schemaDefs)
     val newContext = ctx.copy(schemaDefs = allSchemaDefs)
-    val rawId = Identifier.get(workflow.getId, defaultNamespace, defaultFrag, source)
+    val rawId = Identifier.get(workflow.getId,
+                               defaultNamespace,
+                               defaultFrag,
+                               source,
+                               simplifyFrag = simplifyProcessAutoIds)
     val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val (steps, newDependencies) =
       WorkflowStep.parseArray(workflow.getSteps,
@@ -395,7 +408,8 @@ object Workflow {
                               rawProcesses,
                               isGraph,
                               stripFragPrefix,
-                              defaultNamespace)
+                              defaultNamespace,
+                              simplifyProcessAutoIds)
     val wfId = Option
       .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
@@ -498,10 +512,15 @@ object ExpressionTool {
             defaultNamespace: Option[String] = None,
             defaultFrag: Option[String] = None,
             isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId): ExpressionTool = {
+            mainId: Identifier = Identifier.MainId,
+            simplifyProcessAutoIds: Boolean = false): ExpressionTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(expressionTool.getRequirements, ctx.schemaDefs)
-    val rawId = Identifier.get(expressionTool.getId, defaultNamespace, defaultFrag, source)
+    val rawId = Identifier.get(expressionTool.getId,
+                               defaultNamespace,
+                               defaultFrag,
+                               source,
+                               simplifyFrag = simplifyProcessAutoIds)
     val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val toolId = Option
       .when(isGraph && rawId.contains(mainId)) {
@@ -644,10 +663,15 @@ object Operation {
             defaultNamespace: Option[String] = None,
             defaultFrag: Option[String] = None,
             isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId): Operation = {
+            mainId: Identifier = Identifier.MainId,
+            simplifyProcessAutoIds: Boolean = false): Operation = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(operation.getRequirements, ctx.schemaDefs)
-    val rawId = Identifier.get(operation.getId, defaultNamespace, defaultFrag, source)
+    val rawId = Identifier.get(operation.getId,
+                               defaultNamespace,
+                               defaultFrag,
+                               source,
+                               simplifyFrag = simplifyProcessAutoIds)
     val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val opId = Option
       .when(isGraph && rawId.contains(mainId)) {
