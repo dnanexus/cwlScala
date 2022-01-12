@@ -299,6 +299,16 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
+    "parse packed workflow with two imports of same process" in {
+      val wfPathPacked =
+        workflowsPath.resolve("conformance").resolve("basename-fields-test.cwl.json")
+      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+          "Workflow"
+      ))
+      // this will throw an exception unless the two processes with the same name are identical
+      workflowsParser.parseFile(wfPathPacked, isGraph = true, simplifyProcessAutoIds = true)
+    }
+
     def parseWorkflowConformance(parser: Parser,
                                  wfFile: File,
                                  mainIds: Map[Path, Identifier] = Map.empty): Unit = {

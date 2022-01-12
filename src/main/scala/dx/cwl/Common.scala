@@ -147,10 +147,14 @@ object Document {
         .getOrElse(
             throw new Exception(s"process ${proc} has no ID")
         )
-      if (doc.contains(id)) {
-        throw new Exception(s"two processes have the same ID ${id}")
+      if (!doc.contains(id)) {
+        doc + (id -> proc)
+      } else if (doc(id) == proc) {
+        // two identical processes with the same id - most likely two separate imports of the same process
+        doc
+      } else {
+        throw new Exception(s"two different processes have the same ID ${id}")
       }
-      doc + (id -> proc)
     }
   }
 }
