@@ -51,7 +51,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "env-wf3.cwl:step_step1:env-tool2.cwl"
+                "id": "env-wf3.cwl@step_step1@env-tool2.cwl"
             },
             "requirements": {
                 "EnvVarRequirement": {

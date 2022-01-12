@@ -146,7 +146,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "count-lines18-wf.cwl:step_step1:run"
+                "id": "count-lines18-wf.cwl@step_step1@run"
             },
             "id": "step1"
         }

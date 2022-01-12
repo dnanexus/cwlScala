@@ -64,7 +64,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "step-valuefrom-wf.cwl:step_step1:wc-tool.cwl"
+                "id": "step-valuefrom-wf.cwl@step_step1@wc-tool.cwl"
             },
             "in": [
                 {
@@ -100,7 +100,7 @@
                     }
                 ],
                 "expression": "$({'output': parseInt(inputs.file1.contents)})",
-                "id": "step-valuefrom-wf.cwl:step_step2:parseInt-tool.cwl"
+                "id": "step-valuefrom-wf.cwl@step_step2@parseInt-tool.cwl"
             },
             "in": [
                 {

@@ -46,7 +46,7 @@
                 ],
                 "stdout": "output.txt",
                 "baseCommand": "wc",
-                "id": "count-lines19-wf.cwl:step_step1:wc3-tool.cwl"
+                "id": "count-lines19-wf.cwl@step_step1@wc3-tool.cwl"
             },
             "in": [
                 {

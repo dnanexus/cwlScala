@@ -56,7 +56,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "io-file-default-wf.cwl:step_step1:run"
+                "id": "io-file-default-wf.cwl@step_step1@run"
             },
             "id": "step1"
         }

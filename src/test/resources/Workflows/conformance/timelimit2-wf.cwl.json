@@ -75,7 +75,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "timelimit2-wf.cwl:step_step1:run"
+                "id": "timelimit2-wf.cwl@step_step1@run"
             },
             "id": "step1"
         },
@@ -121,7 +121,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "timelimit2-wf.cwl:step_step2:run"
+                "id": "timelimit2-wf.cwl@step_step2@run"
             },
             "id": "step2"
         }

@@ -60,7 +60,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "output-arrays-file-wf.cwl:step_step1:run"
+                "id": "output-arrays-file-wf.cwl@step_step1@run"
             },
             "id": "step1"
         },
@@ -106,7 +106,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "output-arrays-file-wf.cwl:step_step2:run"
+                "id": "output-arrays-file-wf.cwl@step_step2@run"
             },
             "id": "step2"
         }

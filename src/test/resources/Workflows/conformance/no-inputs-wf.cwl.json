@@ -44,7 +44,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "no-inputs-wf.cwl:step_step0:run"
+                "id": "no-inputs-wf.cwl@step_step0@run"
             },
             "id": "step0"
         }

@@ -62,7 +62,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "io-union-input-default-wf.cwl:step_step1:run"
+                "id": "io-union-input-default-wf.cwl@step_step1@run"
             },
             "id": "step1"
         }

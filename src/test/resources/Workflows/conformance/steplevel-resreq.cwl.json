@@ -42,7 +42,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "steplevel-resreq.cwl:step_step1:run"
+                "id": "steplevel-resreq.cwl@step_step1@run"
             },
             "in": [],
             "out": [

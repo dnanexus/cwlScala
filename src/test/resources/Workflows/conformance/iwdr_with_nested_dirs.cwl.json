@@ -33,7 +33,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "iwdr_with_nested_dirs.cwl:step_first:run"
+                "id": "iwdr_with_nested_dirs.cwl@step_first@run"
             },
             "in": [],
             "out": [
@@ -77,7 +77,7 @@
                         "id": "ya"
                     }
                 ],
-                "id": "iwdr_with_nested_dirs.cwl:step_second:run"
+                "id": "iwdr_with_nested_dirs.cwl@step_second@run"
             },
             "in": [
                 {

@@ -124,7 +124,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "count-lines8-wf.cwl:step_step1:count-lines1-wf.cwl"
+                "id": "count-lines8-wf.cwl@step_step1@count-lines1-wf.cwl"
             },
             "in": [
                 {

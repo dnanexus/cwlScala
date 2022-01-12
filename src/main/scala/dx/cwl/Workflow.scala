@@ -353,15 +353,14 @@ object WorkflowStep {
                  simplifyProcessAutoIds: Boolean = false): (Vector[WorkflowStep], Document) = {
     steps.asScala.toVector.foldLeft(Vector.empty[WorkflowStep], dependencies) {
       case ((stepAccu, docAccu), rawStep: WorkflowStepImpl) =>
-        val (step, newDoc) =
-          WorkflowStep.parse(rawStep,
-                             ctx,
-                             docAccu,
-                             rawProcesses,
-                             isGraph,
-                             stripFragPrefix,
-                             defaultNamespace,
-                             simplifyProcessAutoIds)
+        val (step, newDoc) = WorkflowStep.parse(rawStep,
+                                                ctx,
+                                                docAccu,
+                                                rawProcesses,
+                                                isGraph,
+                                                stripFragPrefix,
+                                                defaultNamespace,
+                                                simplifyProcessAutoIds)
         (stepAccu :+ step, newDoc)
       case (_, other) =>
         throw new RuntimeException(s"unexpected WorkflowStep value ${other}")

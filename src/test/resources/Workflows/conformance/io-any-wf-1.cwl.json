@@ -48,7 +48,7 @@
                     }
                 ],
                 "baseCommand": "true",
-                "id": "io-any-wf-1.cwl:step_step1:io-any-1.cwl"
+                "id": "io-any-wf-1.cwl@step_step1@io-any-1.cwl"
             },
             "id": "step1"
         }

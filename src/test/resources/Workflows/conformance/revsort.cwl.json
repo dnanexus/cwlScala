@@ -66,7 +66,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "revsort.cwl:step_rev:revtool.cwl"
+                "id": "revsort.cwl@step_rev@revtool.cwl"
             },
             "id": "rev"
         },
@@ -120,7 +120,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "revsort.cwl:step_sorted:sorttool.cwl"
+                "id": "revsort.cwl@step_sorted@sorttool.cwl"
             },
             "id": "sorted"
         }

@@ -59,7 +59,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "io-int-optional-wf.cwl:step_step1:run"
+                "id": "io-int-optional-wf.cwl@step_step1@run"
             },
             "id": "step1"
         }

@@ -62,7 +62,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "pass-unconnected.cwl:step_step1:echo-tool.cwl"
+                "id": "pass-unconnected.cwl@step_step1@echo-tool.cwl"
             },
             "id": "step1"
         }

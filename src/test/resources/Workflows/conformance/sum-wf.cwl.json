@@ -73,7 +73,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "sum-wf.cwl:step_sum:run"
+                "id": "sum-wf.cwl@step_sum@run"
             },
             "id": "sum"
         }

@@ -259,6 +259,25 @@ class ParserTest extends AnyWordSpec with Matchers {
       v shouldBe StringValue("time passed")
     }
 
+    "parse packed workflow with auto-generated process ID" in {
+      val wfPathPacked = workflowsPath.resolve("conformance").resolve("count-lines19-wf.cwl.json")
+      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+          "Workflow"
+      ))
+      val (wf, _) = workflowsParser.parseFile(wfPathPacked,
+                                              isGraph = true,
+                                              simplifyProcessAutoIds = true) match {
+        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
+      }
+      wf.id.map(_.frag) shouldBe Some("count-lines19-wf")
+      val proc = wf.steps.head.run match {
+        case tool: CommandLineTool => tool
+        case _                     => throw new Exception("expected CommandLineTool")
+      }
+      proc.id.map(_.frag) shouldBe Some("wc3-tool")
+    }
+
     def parseWorkflowConformance(parser: Parser,
                                  wfFile: File,
                                  mainIds: Map[Path, Identifier] = Map.empty): Unit = {

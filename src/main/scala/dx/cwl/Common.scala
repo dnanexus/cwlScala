@@ -47,7 +47,7 @@ object Identifier {
   val MainFrag = "main"
   val MainId: Identifier = Identifier(namespace = None, frag = MainFrag)
   private val ImportNamespaceRegex = "^(.+\\.(?:cwl|yml|yaml))/(.+)".r
-  private val autoIdRegex = "([^:]+):step_([^:]+):(.+?)".r
+  private val autoIdRegex = "([^@]+)@step_([^@]+)@(.+?)".r
 
   def stripCwlExtension(fileName: String): String = {
     CwlExtensions

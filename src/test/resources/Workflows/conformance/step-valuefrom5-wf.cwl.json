@@ -66,7 +66,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "step-valuefrom5-wf.cwl:step_step1:run"
+                "id": "step-valuefrom5-wf.cwl@step_step1@run"
             },
             "in": [
                 {
@@ -109,7 +109,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "step-valuefrom5-wf.cwl:step_step2:run"
+                "id": "step-valuefrom5-wf.cwl@step_step2@run"
             },
             "in": [
                 {

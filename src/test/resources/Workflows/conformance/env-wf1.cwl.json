@@ -64,7 +64,7 @@
                     "echo $TEST_ENV"
                 ],
                 "stdout": "out",
-                "id": "env-wf1.cwl:step_step1:env-tool1.cwl"
+                "id": "env-wf1.cwl@step_step1@env-tool1.cwl"
             },
             "in": [
                 {

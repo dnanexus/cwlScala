@@ -75,7 +75,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "timelimit-wf.cwl:step_step1:run"
+                "id": "timelimit-wf.cwl@step_step1@run"
             },
             "id": "step1"
         }
