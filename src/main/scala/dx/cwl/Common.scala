@@ -62,6 +62,9 @@ object Identifier {
   // .cwl suffix.
   def simplifyAutoId(frag: String): String = {
     stripCwlExtension(frag match {
+      case autoIdRegex(_, stepName, "run") =>
+        // anonymous process - prepend the step name to increase the chance it is unique
+        s"${stepName}_run"
       case autoIdRegex(_, _, fileName) => fileName
       case _                           => frag
     })
