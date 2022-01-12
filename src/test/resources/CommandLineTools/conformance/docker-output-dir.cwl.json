@@ -24,5 +24,6 @@
     "baseCommand": [
         "touch",
         "/other/thing"
-    ]
+    ],
+    "id": "docker-output-dir.cwl"
 }

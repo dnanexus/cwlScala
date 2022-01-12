@@ -92,9 +92,11 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "count-lines2-wf.cwl:step_step2:run"
             },
             "id": "step2"
         }
-    ]
+    ],
+    "id": "count-lines2-wf.cwl"
 }

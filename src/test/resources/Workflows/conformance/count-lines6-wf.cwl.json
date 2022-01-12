@@ -72,7 +72,8 @@
                     }
                 ],
                 "stdout": "output.txt",
-                "baseCommand": "wc"
+                "baseCommand": "wc",
+                "id": "count-lines6-wf.cwl:step_step1:wc3-tool.cwl"
             },
             "scatter": "file1",
             "in": [
@@ -90,5 +91,6 @@
             ],
             "id": "step1"
         }
-    ]
+    ],
+    "id": "count-lines6-wf.cwl"
 }

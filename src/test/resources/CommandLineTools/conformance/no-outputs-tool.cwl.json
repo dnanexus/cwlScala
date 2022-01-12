@@ -23,5 +23,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "no-outputs-tool.cwl"
 }

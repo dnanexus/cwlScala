@@ -101,5 +101,6 @@
             },
             "id": "step1"
         }
-    ]
+    ],
+    "id": "scatter-wf2.cwl"
 }

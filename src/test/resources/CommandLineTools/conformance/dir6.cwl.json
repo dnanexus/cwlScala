@@ -41,5 +41,6 @@
         },
         "sort"
     ],
-    "stdout": "output.txt"
+    "stdout": "output.txt",
+    "id": "dir6.cwl"
 }

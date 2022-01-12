@@ -45,5 +45,6 @@
         }
     ],
     "baseCommand": "echo",
-    "stdout": "out.txt"
+    "stdout": "out.txt",
+    "id": "echo-position-expr.cwl"
 }

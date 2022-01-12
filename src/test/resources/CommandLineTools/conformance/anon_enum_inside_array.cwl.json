@@ -58,5 +58,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "anon_enum_inside_array.cwl"
 }

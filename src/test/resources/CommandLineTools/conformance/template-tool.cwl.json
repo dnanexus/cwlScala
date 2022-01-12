@@ -42,5 +42,6 @@
     "baseCommand": [
         "cat",
         "foo.txt"
-    ]
+    ],
+    "id": "template-tool.cwl"
 }

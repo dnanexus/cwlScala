@@ -46,5 +46,6 @@
         "-s",
         "adir/original.txt",
         "symlink.txt"
-    ]
+    ],
+    "id": "symlink-legal.cwl"
 }

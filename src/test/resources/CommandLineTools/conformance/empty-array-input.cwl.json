@@ -46,5 +46,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "empty-array-input.cwl"
 }

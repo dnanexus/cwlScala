@@ -32,5 +32,6 @@
     "arguments": [
         "python",
         "$(inputs.script)"
-    ]
+    ],
+    "id": "cwloutput-nolimit.cwl"
 }

@@ -44,5 +44,6 @@
             "type": "stdout",
             "id": "test_result"
         }
-    ]
+    ],
+    "id": "recursive-input-directory.cwl"
 }

@@ -39,5 +39,6 @@
             "id": "testdir"
         }
     ],
-    "baseCommand": "true"
+    "baseCommand": "true",
+    "id": "iwd-fileobjs2.cwl"
 }

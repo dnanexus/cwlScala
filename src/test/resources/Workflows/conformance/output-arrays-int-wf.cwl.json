@@ -55,7 +55,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "output-arrays-int-wf.cwl:step_step1:run"
             },
             "id": "step1"
         },
@@ -94,7 +95,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "output-arrays-int-wf.cwl:step_step2:run"
             },
             "id": "step2"
         },
@@ -130,9 +132,11 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "output-arrays-int-wf.cwl:step_step3:run"
             },
             "id": "step3"
         }
-    ]
+    ],
+    "id": "output-arrays-int-wf.cwl"
 }

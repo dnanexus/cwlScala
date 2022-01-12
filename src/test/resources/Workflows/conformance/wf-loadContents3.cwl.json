@@ -40,7 +40,8 @@
                         "id": "my_int"
                     }
                 ],
-                "expression": "${ return { \"my_int\": parseInt(inputs.my_number.contents) }; }\n"
+                "expression": "${ return { \"my_int\": parseInt(inputs.my_number.contents) }; }\n",
+                "id": "wf-loadContents3.cwl:step_one:run"
             },
             "in": [
                 {
@@ -60,5 +61,6 @@
             "outputSource": "one/my_int",
             "id": "my_int"
         }
-    ]
+    ],
+    "id": "wf-loadContents3.cwl"
 }

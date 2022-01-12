@@ -25,5 +25,6 @@
             },
             "id": "out"
         }
-    ]
+    ],
+    "id": "optional-numerical-output-0.cwl"
 }

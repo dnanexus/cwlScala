@@ -64,7 +64,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "fail-unconnected.cwl:step_step1:fail-unspecified-input.cwl"
             },
             "id": "step1"
         }
@@ -76,5 +77,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "fail-unconnected.cwl"
 }

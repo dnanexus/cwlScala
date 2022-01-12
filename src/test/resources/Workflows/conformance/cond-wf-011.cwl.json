@@ -72,7 +72,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "cond-wf-011.cwl:step_step1:cat.cwl"
             },
             "when": "$(inputs.in3 % 2 == 0)",
             "out": [
@@ -114,5 +115,6 @@
         {
             "class": "SubworkflowFeatureRequirement"
         }
-    ]
+    ],
+    "id": "cond-wf-011.cwl"
 }

@@ -39,5 +39,6 @@
         },
         "sort"
     ],
-    "stdout": "output.txt"
+    "stdout": "output.txt",
+    "id": "dir4.cwl"
 }

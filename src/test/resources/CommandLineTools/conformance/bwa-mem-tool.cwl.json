@@ -95,5 +95,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "bwa-mem-tool.cwl"
 }

@@ -27,5 +27,6 @@
     "stdout": "cores.txt",
     "arguments": [
         "$(runtime.cores)"
-    ]
+    ],
+    "id": "dynresreq-dir.cwl"
 }

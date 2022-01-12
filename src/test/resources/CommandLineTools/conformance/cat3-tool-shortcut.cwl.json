@@ -28,5 +28,6 @@
             "id": "output_file"
         }
     ],
-    "baseCommand": "cat"
+    "baseCommand": "cat",
+    "id": "cat3-tool-shortcut.cwl"
 }

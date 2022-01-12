@@ -22,5 +22,6 @@
     "stdout": "cores.txt",
     "arguments": [
         "$(runtime.cores)"
-    ]
+    ],
+    "id": "cores_float.cwl"
 }

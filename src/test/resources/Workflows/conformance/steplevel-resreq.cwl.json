@@ -41,7 +41,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "steplevel-resreq.cwl:step_step1:run"
             },
             "in": [],
             "out": [
@@ -56,5 +57,6 @@
             "outputSource": "step1/output",
             "id": "out"
         }
-    ]
+    ],
+    "id": "steplevel-resreq.cwl"
 }

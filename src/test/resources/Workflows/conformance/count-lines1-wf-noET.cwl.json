@@ -43,7 +43,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "count-lines1-wf-noET.cwl:step_step1:wc-tool.cwl"
             },
             "in": [
                 {
@@ -64,5 +65,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "count-lines1-wf-noET.cwl"
 }

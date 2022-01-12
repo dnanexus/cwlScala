@@ -46,5 +46,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "valueFrom-constant.cwl"
 }

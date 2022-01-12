@@ -30,5 +30,6 @@
             "id": "out"
         }
     ],
-    "stdout": "output.txt"
+    "stdout": "output.txt",
+    "id": "vf-concat.cwl"
 }

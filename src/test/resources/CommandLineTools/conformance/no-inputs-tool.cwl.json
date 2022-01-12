@@ -26,5 +26,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "no-inputs-tool.cwl"
 }

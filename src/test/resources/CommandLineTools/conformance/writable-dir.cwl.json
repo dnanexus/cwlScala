@@ -29,5 +29,6 @@
     "arguments": [
         "touch",
         "emptyWritableDir/blurg"
-    ]
+    ],
+    "id": "writable-dir.cwl"
 }

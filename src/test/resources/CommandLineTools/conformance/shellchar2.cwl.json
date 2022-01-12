@@ -24,5 +24,6 @@
     "baseCommand": "echo",
     "arguments": [
         "foo 1>&2"
-    ]
+    ],
+    "id": "shellchar2.cwl"
 }

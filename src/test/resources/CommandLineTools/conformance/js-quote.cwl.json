@@ -44,5 +44,6 @@
     "baseCommand": [
         "echo"
     ],
-    "arguments": []
+    "arguments": [],
+    "id": "js-quote.cwl"
 }

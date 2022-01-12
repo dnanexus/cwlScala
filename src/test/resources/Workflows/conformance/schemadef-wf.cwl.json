@@ -85,9 +85,11 @@
                     }
                 ],
                 "stdout": "output.txt",
-                "baseCommand": "echo"
+                "baseCommand": "echo",
+                "id": "schemadef-wf.cwl:step_step1:schemadef-tool.cwl"
             },
             "id": "step1"
         }
-    ]
+    ],
+    "id": "schemadef-wf.cwl"
 }

@@ -30,5 +30,6 @@
             "id": "filelist"
         }
     ],
-    "baseCommand": "true"
+    "baseCommand": "true",
+    "id": "iwd-passthrough3.cwl"
 }

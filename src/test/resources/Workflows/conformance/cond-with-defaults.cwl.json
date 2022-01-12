@@ -85,7 +85,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "cond-with-defaults.cwl:step_step_paired:action.cwl"
             },
             "when": "$(inputs.single === null)",
             "scatter": [
@@ -150,7 +151,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "cond-with-defaults.cwl:step_step_single:action.cwl"
             },
             "when": "$(inputs.single !== null)",
             "in": [
@@ -172,5 +174,6 @@
             ],
             "id": "step_single"
         }
-    ]
+    ],
+    "id": "cond-with-defaults.cwl"
 }

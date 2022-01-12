@@ -221,5 +221,6 @@
             }
         }
     ],
-    "baseCommand": "true"
+    "baseCommand": "true",
+    "id": "params2.cwl"
 }

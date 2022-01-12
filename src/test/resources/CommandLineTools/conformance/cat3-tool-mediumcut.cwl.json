@@ -29,5 +29,6 @@
         }
     ],
     "baseCommand": "cat",
-    "stdout": "cat-out"
+    "stdout": "cat-out",
+    "id": "cat3-tool-mediumcut.cwl"
 }

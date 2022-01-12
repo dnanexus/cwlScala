@@ -44,5 +44,6 @@
         },
         "=",
         "$(runtime.tmpdir)"
-    ]
+    ],
+    "id": "envvar2.cwl"
 }

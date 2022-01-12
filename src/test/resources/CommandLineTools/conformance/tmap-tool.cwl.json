@@ -309,5 +309,6 @@
     "arguments": [
         "tmap",
         "mapall"
-    ]
+    ],
+    "id": "tmap-tool.cwl"
 }

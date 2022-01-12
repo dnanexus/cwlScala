@@ -52,9 +52,11 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "io-int-wf.cwl:step_step1:run"
             },
             "id": "step1"
         }
-    ]
+    ],
+    "id": "io-int-wf.cwl"
 }

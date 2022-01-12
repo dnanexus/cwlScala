@@ -25,5 +25,6 @@
             "id": "filelist"
         }
     ],
-    "baseCommand": "true"
+    "baseCommand": "true",
+    "id": "iwd-nolimit.cwl"
 }

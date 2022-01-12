@@ -24,5 +24,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "shellchar.cwl"
 }

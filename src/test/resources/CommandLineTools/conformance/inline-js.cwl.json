@@ -56,5 +56,6 @@
             "prefix": "-E",
             "valueFrom": "$(false)"
         }
-    ]
+    ],
+    "id": "inline-js.cwl"
 }

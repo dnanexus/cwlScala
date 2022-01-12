@@ -43,7 +43,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "no-inputs-wf.cwl:step_step0:run"
             },
             "id": "step0"
         }
@@ -55,5 +56,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "no-inputs-wf.cwl"
 }

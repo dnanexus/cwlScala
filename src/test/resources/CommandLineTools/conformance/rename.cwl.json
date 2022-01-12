@@ -34,5 +34,6 @@
             },
             "id": "outfile"
         }
-    ]
+    ],
+    "id": "rename.cwl"
 }

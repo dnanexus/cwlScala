@@ -23,5 +23,6 @@
             "shellQuote": false
         }
     ],
-    "stderr": "std.err"
+    "stderr": "std.err",
+    "id": "stderr-mediumcut.cwl"
 }

@@ -60,5 +60,6 @@
             "type": "stdout",
             "id": "result"
         }
-    ]
+    ],
+    "id": "anon_enum_inside_array_inside_schemadef.cwl"
 }

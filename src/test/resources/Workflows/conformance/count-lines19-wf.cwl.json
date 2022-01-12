@@ -45,7 +45,8 @@
                     }
                 ],
                 "stdout": "output.txt",
-                "baseCommand": "wc"
+                "baseCommand": "wc",
+                "id": "count-lines19-wf.cwl:step_step1:wc3-tool.cwl"
             },
             "in": [
                 {
@@ -69,5 +70,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "count-lines19-wf.cwl"
 }

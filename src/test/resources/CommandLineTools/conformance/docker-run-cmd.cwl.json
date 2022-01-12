@@ -23,5 +23,6 @@
     "baseCommand": [
         "-c",
         "echo 'moo' > cow"
-    ]
+    ],
+    "id": "docker-run-cmd.cwl"
 }

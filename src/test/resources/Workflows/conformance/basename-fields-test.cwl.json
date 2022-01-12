@@ -64,7 +64,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "basename-fields-test.cwl:step_root:echo-file-tool.cwl"
             },
             "in": [
                 {
@@ -114,7 +115,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "basename-fields-test.cwl:step_ext:echo-file-tool.cwl"
             },
             "in": [
                 {
@@ -131,5 +133,6 @@
             ],
             "id": "ext"
         }
-    ]
+    ],
+    "id": "basename-fields-test.cwl"
 }

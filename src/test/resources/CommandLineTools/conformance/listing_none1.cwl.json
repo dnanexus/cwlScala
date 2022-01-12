@@ -21,5 +21,6 @@
             "id": "out"
         }
     ],
-    "baseCommand": "true"
+    "baseCommand": "true",
+    "id": "listing_none1.cwl"
 }

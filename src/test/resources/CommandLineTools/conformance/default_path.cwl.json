@@ -20,5 +20,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "default_path.cwl"
 }

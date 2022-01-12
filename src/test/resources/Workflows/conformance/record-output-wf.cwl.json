@@ -126,7 +126,8 @@
                         "position": 7,
                         "shellQuote": false
                     }
-                ]
+                ],
+                "id": "record-output-wf.cwl:step_step1:record-output.cwl"
             },
             "in": [
                 {
@@ -147,5 +148,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "record-output-wf.cwl"
 }

@@ -25,5 +25,6 @@
         }
     ],
     "stdout": "output.txt",
-    "baseCommand": "wc"
+    "baseCommand": "wc",
+    "id": "wc2-tool.cwl"
 }

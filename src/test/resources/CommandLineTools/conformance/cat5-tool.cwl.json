@@ -39,5 +39,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "cat5-tool.cwl"
 }

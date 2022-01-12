@@ -38,5 +38,6 @@
         }
     ],
     "stdout": "output.txt",
-    "baseCommand": "echo"
+    "baseCommand": "echo",
+    "id": "schemadef-tool.cwl"
 }

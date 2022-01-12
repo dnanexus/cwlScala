@@ -63,7 +63,8 @@
                     "-c",
                     "echo $TEST_ENV"
                 ],
-                "stdout": "out"
+                "stdout": "out",
+                "id": "env-wf1.cwl:step_step1:env-tool1.cwl"
             },
             "in": [
                 {
@@ -76,5 +77,6 @@
             ],
             "id": "step1"
         }
-    ]
+    ],
+    "id": "env-wf1.cwl"
 }

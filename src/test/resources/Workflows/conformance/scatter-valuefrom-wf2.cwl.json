@@ -130,5 +130,6 @@
             },
             "id": "step1"
         }
-    ]
+    ],
+    "id": "scatter-valuefrom-wf2.cwl"
 }

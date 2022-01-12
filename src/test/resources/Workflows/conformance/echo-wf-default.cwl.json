@@ -36,7 +36,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "echo-wf-default.cwl:step_step1:echo-tool-default.cwl"
             },
             "in": [
                 {
@@ -64,5 +65,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "echo-wf-default.cwl"
 }

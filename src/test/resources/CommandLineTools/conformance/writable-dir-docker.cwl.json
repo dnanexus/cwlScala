@@ -35,5 +35,6 @@
     "arguments": [
         "touch",
         "emptyWritableDir/blurg"
-    ]
+    ],
+    "id": "writable-dir-docker.cwl"
 }

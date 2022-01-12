@@ -46,7 +46,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "cond-wf-010.cwl:step_step1:foo.cwl"
             },
             "when": "$(inputs.a_new_var > 3)",
             "out": [
@@ -81,5 +82,6 @@
         {
             "class": "SubworkflowFeatureRequirement"
         }
-    ]
+    ],
+    "id": "cond-wf-010.cwl"
 }

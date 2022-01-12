@@ -32,5 +32,6 @@
             "id": "out"
         }
     ],
-    "stdout": "out.txt"
+    "stdout": "out.txt",
+    "id": "bash-dollar-quote.cwl"
 }

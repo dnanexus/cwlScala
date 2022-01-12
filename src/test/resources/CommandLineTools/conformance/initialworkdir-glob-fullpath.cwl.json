@@ -38,5 +38,6 @@
     ],
     "baseCommand": [
         "touch"
-    ]
+    ],
+    "id": "initialworkdir-glob-fullpath.cwl"
 }

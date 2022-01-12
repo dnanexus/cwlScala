@@ -45,5 +45,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "stage-unprovided-file.cwl"
 }

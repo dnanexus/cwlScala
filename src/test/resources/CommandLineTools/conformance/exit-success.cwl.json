@@ -17,5 +17,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "exit-success.cwl"
 }

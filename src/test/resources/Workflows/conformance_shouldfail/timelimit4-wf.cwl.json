@@ -78,9 +78,11 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "timelimit4-wf.cwl:step_step1:run"
             },
             "id": "step1"
         }
-    ]
+    ],
+    "id": "timelimit4-wf.cwl"
 }

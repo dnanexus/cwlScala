@@ -60,7 +60,8 @@
                 "stdout": "cores.txt",
                 "arguments": [
                     "$(runtime.cores)"
-                ]
+                ],
+                "id": "dynresreq-workflow-stepdefault.cwl:step_count:dynresreq.cwl"
             },
             "id": "count"
         },
@@ -100,7 +101,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "dynresreq-workflow-stepdefault.cwl:step_report:cat-tool.cwl"
             },
             "id": "report"
         }
@@ -112,5 +114,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "dynresreq-workflow-stepdefault.cwl"
 }

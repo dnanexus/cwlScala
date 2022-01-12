@@ -39,5 +39,6 @@
             "shellQuote": false,
             "valueFrom": "head -n10 /tmp2j3y7rpb/input/stuff.txt > /output/head.txt"
         }
-    ]
+    ],
+    "id": "iwd-container-entryname2.cwl"
 }

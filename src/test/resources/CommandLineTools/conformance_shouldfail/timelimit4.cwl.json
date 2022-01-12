@@ -19,5 +19,6 @@
     "baseCommand": [
         "sleep",
         "15"
-    ]
+    ],
+    "id": "timelimit4.cwl"
 }

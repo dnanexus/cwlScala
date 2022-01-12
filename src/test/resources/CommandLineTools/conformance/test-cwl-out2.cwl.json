@@ -26,5 +26,6 @@
             "valueFrom": "echo foo > foo && echo '{\"foo\": {\"location\": \"file://$(runtime.outdir)/foo\", \"class\": \"File\"} }' > cwl.output.json\n",
             "shellQuote": false
         }
-    ]
+    ],
+    "id": "test-cwl-out2.cwl"
 }

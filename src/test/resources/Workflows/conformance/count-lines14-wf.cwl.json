@@ -149,9 +149,11 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "count-lines14-wf.cwl:step_step1:run"
             },
             "id": "step1"
         }
-    ]
+    ],
+    "id": "count-lines14-wf.cwl"
 }

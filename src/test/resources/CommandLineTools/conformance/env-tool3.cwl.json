@@ -26,5 +26,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "env-tool3.cwl"
 }

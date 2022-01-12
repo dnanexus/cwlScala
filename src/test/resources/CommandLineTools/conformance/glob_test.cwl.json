@@ -28,5 +28,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "glob_test.cwl"
 }

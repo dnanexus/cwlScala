@@ -22,5 +22,6 @@
     ],
     "baseCommand": [
         "echo"
-    ]
+    ],
+    "id": "glob-path-error.cwl"
 }

@@ -29,5 +29,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "imported-hint.cwl"
 }

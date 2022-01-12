@@ -25,7 +25,8 @@
                         "id": "output"
                     }
                 ],
-                "expression": "$({'output': null })"
+                "expression": "$({'output': null })",
+                "id": "count-lines11-null-step-wf-noET.cwl:step_step0:null-expression3-tool.cwl"
             },
             "in": [],
             "out": [
@@ -61,7 +62,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "count-lines11-null-step-wf-noET.cwl:step_step1:wc-tool.cwl"
             },
             "in": [
                 {
@@ -86,5 +88,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "count-lines11-null-step-wf-noET.cwl"
 }

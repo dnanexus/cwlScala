@@ -39,5 +39,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "formattest3.cwl"
 }

@@ -29,5 +29,6 @@
             "id": "same"
         }
     ],
-    "baseCommand": "echo"
+    "baseCommand": "echo",
+    "id": "iwdr_dir_literal_real_file.cwl"
 }

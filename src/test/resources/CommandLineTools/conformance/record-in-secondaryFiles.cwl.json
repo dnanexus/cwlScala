@@ -40,5 +40,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "record-in-secondaryFiles.cwl"
 }

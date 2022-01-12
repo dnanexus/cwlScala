@@ -170,9 +170,11 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "count-lines15-wf.cwl:step_step1:run"
             },
             "id": "step1"
         }
-    ]
+    ],
+    "id": "count-lines15-wf.cwl"
 }

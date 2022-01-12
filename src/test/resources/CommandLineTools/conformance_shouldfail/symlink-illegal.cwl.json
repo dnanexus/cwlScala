@@ -40,5 +40,6 @@
         "-s",
         "/tmp/original.txt",
         "symlink.txt"
-    ]
+    ],
+    "id": "symlink-illegal.cwl"
 }

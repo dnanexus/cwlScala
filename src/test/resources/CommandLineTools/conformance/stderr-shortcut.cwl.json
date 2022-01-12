@@ -22,5 +22,6 @@
             "valueFrom": "echo foo 1>&2",
             "shellQuote": false
         }
-    ]
+    ],
+    "id": "stderr-shortcut.cwl"
 }

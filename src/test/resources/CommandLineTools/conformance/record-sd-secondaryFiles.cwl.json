@@ -42,5 +42,6 @@
         "-a",
         "-f",
         "$(inputs.record_input.f2[1].path).s3"
-    ]
+    ],
+    "id": "record-sd-secondaryFiles.cwl"
 }

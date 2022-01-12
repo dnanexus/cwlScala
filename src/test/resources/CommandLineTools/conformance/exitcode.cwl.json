@@ -25,5 +25,6 @@
     "arguments": [
         "exit",
         "7"
-    ]
+    ],
+    "id": "exitcode.cwl"
 }

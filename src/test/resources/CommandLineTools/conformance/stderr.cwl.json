@@ -26,5 +26,6 @@
             "shellQuote": false
         }
     ],
-    "stderr": "error.txt"
+    "stderr": "error.txt",
+    "id": "stderr.cwl"
 }

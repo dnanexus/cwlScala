@@ -30,5 +30,6 @@
             "shellQuote": false,
             "valueFrom": "test \"$(inputs.file1.path)\" = \"$(runtime.outdir)/bob.txt\"\n"
         }
-    ]
+    ],
+    "id": "initialwork-path.cwl"
 }

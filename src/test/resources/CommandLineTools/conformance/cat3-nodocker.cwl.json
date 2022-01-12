@@ -28,5 +28,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "cat3-nodocker.cwl"
 }

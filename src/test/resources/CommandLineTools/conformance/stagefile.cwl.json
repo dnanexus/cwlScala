@@ -41,5 +41,6 @@
     "arguments": [
         "-c",
         "f = open(\"bob.txt\", \"r+\")\nf.seek(8)\nf.write(\"Bob.    \")\nf.close()\n"
-    ]
+    ],
+    "id": "stagefile.cwl"
 }

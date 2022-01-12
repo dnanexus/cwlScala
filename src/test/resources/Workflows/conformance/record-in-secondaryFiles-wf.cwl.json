@@ -75,7 +75,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "record-in-secondaryFiles-wf.cwl:step_step1:record-in-secondaryFiles.cwl"
             },
             "id": "step1"
         }
@@ -87,5 +88,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "record-in-secondaryFiles-wf.cwl"
 }

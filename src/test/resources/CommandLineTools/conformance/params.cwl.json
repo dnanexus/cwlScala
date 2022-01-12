@@ -221,5 +221,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "params.cwl"
 }

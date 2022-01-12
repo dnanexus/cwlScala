@@ -30,5 +30,6 @@
         }
     ],
     "baseCommand": [],
-    "stdout": "output.txt"
+    "stdout": "output.txt",
+    "id": "size-expression-tool.cwl"
 }

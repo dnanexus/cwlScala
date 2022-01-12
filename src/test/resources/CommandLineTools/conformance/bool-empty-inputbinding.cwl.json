@@ -40,5 +40,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "bool-empty-inputbinding.cwl"
 }

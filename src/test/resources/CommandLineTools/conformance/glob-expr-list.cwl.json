@@ -30,5 +30,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "glob-expr-list.cwl"
 }

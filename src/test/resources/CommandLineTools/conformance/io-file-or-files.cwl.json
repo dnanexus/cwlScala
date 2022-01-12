@@ -34,5 +34,6 @@
         }
     ],
     "baseCommand": [],
-    "stdout": "output.txt"
+    "stdout": "output.txt",
+    "id": "io-file-or-files.cwl"
 }

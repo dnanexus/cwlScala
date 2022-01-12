@@ -64,7 +64,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "inpdir_update_wf.cwl:step_step1:mkdir.cwl"
             },
             "id": "step1"
         },
@@ -117,7 +118,8 @@
                 "arguments": [
                     "touch",
                     "inp/blurb"
-                ]
+                ],
+                "id": "inpdir_update_wf.cwl:step_step2:updatedir_inplace.cwl"
             },
             "id": "step2"
         },
@@ -171,9 +173,11 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "inpdir_update_wf.cwl:step_step3:run"
             },
             "id": "step3"
         }
-    ]
+    ],
+    "id": "inpdir_update_wf.cwl"
 }

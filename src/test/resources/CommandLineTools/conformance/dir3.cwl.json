@@ -27,5 +27,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "dir3.cwl"
 }

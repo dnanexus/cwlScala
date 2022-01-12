@@ -24,5 +24,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "glob_directory.cwl"
 }

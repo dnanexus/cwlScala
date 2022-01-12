@@ -35,5 +35,6 @@
             "id": "out"
         }
     ],
-    "stdout": "out.txt"
+    "stdout": "out.txt",
+    "id": "bash-line-continuation-with-expression.cwl"
 }

@@ -21,5 +21,6 @@
             "shellQuote": false,
             "valueFrom": "echo \"cow\" > \"$(runtime.outdir)/foo\" &&\necho \"moo\" > \"$(runtime.tmpdir)/foo\" &&\necho '{\"foo\": {\"path\": \"$(runtime.outdir)/foo\", \"class\": \"File\"} }' > cwl.output.json\n"
         }
-    ]
+    ],
+    "id": "runtime-paths-distinct.cwl"
 }

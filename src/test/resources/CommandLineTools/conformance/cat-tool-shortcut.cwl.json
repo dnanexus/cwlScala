@@ -28,5 +28,6 @@
     "baseCommand": [
         "cat"
     ],
-    "stdout": "output"
+    "stdout": "output",
+    "id": "cat-tool-shortcut.cwl"
 }

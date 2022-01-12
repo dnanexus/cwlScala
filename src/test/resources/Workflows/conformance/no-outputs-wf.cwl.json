@@ -42,7 +42,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "no-outputs-wf.cwl:step_step0:run"
             },
             "id": "step0"
         }
@@ -54,5 +55,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "no-outputs-wf.cwl"
 }

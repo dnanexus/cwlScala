@@ -56,5 +56,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "cat1-testcli.cwl"
 }

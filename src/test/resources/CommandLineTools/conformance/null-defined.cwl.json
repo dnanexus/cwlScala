@@ -30,5 +30,6 @@
     "arguments": [
         "echo",
         "$(inputs.file1 === null ? \"t\" : \"f\")"
-    ]
+    ],
+    "id": "null-defined.cwl"
 }

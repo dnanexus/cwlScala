@@ -45,7 +45,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "count-lines11-extra-step-wf.cwl:step_step0:cat-tool.cwl"
             },
             "in": [
                 {
@@ -86,7 +87,8 @@
                     {
                         "class": "InlineJavascriptRequirement"
                     }
-                ]
+                ],
+                "id": "count-lines11-extra-step-wf.cwl:step_step1:wc-tool.cwl"
             },
             "in": [
                 {
@@ -124,7 +126,8 @@
                         "id": "output"
                     }
                 ],
-                "expression": "$({'output': parseInt(inputs.file1.contents)})"
+                "expression": "$({'output': parseInt(inputs.file1.contents)})",
+                "id": "count-lines11-extra-step-wf.cwl:step_step2:parseInt-tool.cwl"
             },
             "in": [
                 {
@@ -145,5 +148,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "count-lines11-extra-step-wf.cwl"
 }

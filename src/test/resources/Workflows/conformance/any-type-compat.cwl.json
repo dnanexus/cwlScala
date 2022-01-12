@@ -49,5 +49,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "any-type-compat.cwl"
 }

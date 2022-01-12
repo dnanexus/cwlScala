@@ -68,5 +68,6 @@
             "shellQuote": false
         }
     ],
-    "baseCommand": []
+    "baseCommand": [],
+    "id": "docker-array-secondaryfiles.cwl"
 }

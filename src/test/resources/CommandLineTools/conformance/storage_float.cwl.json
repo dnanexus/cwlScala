@@ -28,5 +28,6 @@
         "$(runtime.ram)",
         "$(runtime.tmpdirSize)",
         "$(runtime.outdirSize)"
-    ]
+    ],
+    "id": "storage_float.cwl"
 }

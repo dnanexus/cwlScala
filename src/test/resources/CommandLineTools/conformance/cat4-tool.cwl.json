@@ -29,5 +29,6 @@
         {
             "class": "InlineJavascriptRequirement"
         }
-    ]
+    ],
+    "id": "cat4-tool.cwl"
 }

@@ -22,5 +22,6 @@
         {
             "valueFrom": "import urllib.request\nassert(urllib.request.urlopen(\"http://commonwl.org\").code == 200)"
         }
-    ]
+    ],
+    "id": "networkaccess.cwl"
 }
