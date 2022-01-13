@@ -24,25 +24,14 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
     }
   }
 
+  def parentIdentifier: Option[Identifier] = {
+    parent.map(p => Identifier(namespace, Some(p)))
+  }
+
   def name: Option[String] = {
     frag.map {
       case n if n.contains('/') => n.substring(n.lastIndexOf('/') + 1)
       case n                    => n
-    }
-  }
-
-  /**
-    * Returns an iterator over all ancestor identifers and this identifier. For example, if this identifier has frag
-    * A/B/C, then the iterator yields identifiers with fragments [A, A/B, A/B/C].
-    */
-  def iter: Iterator[Identifier] = {
-    if (this.frag.isEmpty) {
-      Iterator.empty[Identifier]
-    } else {
-      val parentIter = this.parent
-        .map(parentFrag => Identifier(this.namespace, Some(parentFrag)).iter)
-        .getOrElse(Iterator.empty[Identifier])
-      parentIter ++ Iterator.fill(1)(this)
     }
   }
 }
@@ -133,7 +122,25 @@ object Document {
   }
 
   implicit class DocumentLookup(doc: Document) {
-    def lookup[T <: Identifiable](id: Identifier): T = {}
+
+    /**
+      * Resolves a process or step from an identifier.
+      */
+    def lookup(id: Identifier): Option[Identifiable] = {
+      doc.get(id).orElse {
+        id.parentIdentifier.flatMap { p =>
+          lookup(p) match {
+            case Some(w: Workflow) =>
+              w.steps.collectFirst {
+                case step if step.id.contains(id) => step
+              }
+            case Some(s: WorkflowStep) if s.run.id.contains(id) => Some(s.run)
+            case other =>
+              throw new Exception(s"cannot resolve ${id} in ${other}")
+          }
+        }
+      }
+    }
   }
 }
 
