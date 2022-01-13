@@ -34,10 +34,16 @@ case class Identifier(namespace: Option[String], frag: String) {
 
   override def equals(obj: Any): Boolean = {
     (this, obj) match {
-      case (Identifier(Some(namespace1), frag1), Identifier(Some(namespace2), frag2)) =>
-        namespace1 == namespace2 && frag1 == frag2
       case (Identifier(_, frag1), Identifier(_, frag2)) => frag1 == frag2
       case _                                            => false
+    }
+  }
+
+  def equalsWithNamespace(that: Identifier): Boolean = {
+    (this, that) match {
+      case (Identifier(Some(ns1), frag1), Identifier(Some(ns2), frag2)) =>
+        ns1 == ns2 && frag1 == frag2
+      case _ => this.frag == that.frag
     }
   }
 }
@@ -153,7 +159,9 @@ object Document {
         // two identical processes with the same id - most likely two separate imports of the same process
         doc
       } else {
-        throw new Exception(s"two different processes have the same ID ${id}")
+        throw new Exception(
+            s"two different processes have the same ID ${id}: ${doc(id)} != ${proc}"
+        )
       }
     }
   }
@@ -166,7 +174,7 @@ trait Identifiable {
 
   def hasName: Boolean = getName.isDefined
 
-  def frag: String = id.map(_.frag).getOrElse(throw new Exception(s"${this} has no name"))
+  def frag: String = id.map(_.frag).getOrElse(throw new Exception(s"${this} has no ID"))
 
   def parent: Option[String] = {
     if (hasName) {
@@ -176,8 +184,9 @@ trait Identifiable {
     }
   }
 
-  def name: String =
+  def name: String = {
     id.map(_.name).getOrElse(throw new Exception(s"${this} has no name"))
+  }
 }
 
 trait Meta extends Identifiable {
