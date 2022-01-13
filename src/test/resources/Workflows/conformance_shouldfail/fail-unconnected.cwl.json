@@ -65,7 +65,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "fail-unconnected.cwl:step_step1:fail-unspecified-input.cwl"
+                "id": "fail-unconnected.cwl@step_step1@fail-unspecified-input.cwl"
             },
             "id": "step1"
         }

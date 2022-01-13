@@ -108,7 +108,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "scatter-valuefrom-inputs-wf1.cwl:step_step1:run"
+                "id": "scatter-valuefrom-inputs-wf1.cwl@step_step1@run"
             },
             "id": "step1"
         }

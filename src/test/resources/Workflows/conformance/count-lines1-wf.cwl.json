@@ -44,7 +44,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "count-lines1-wf.cwl:step_step1:wc-tool.cwl"
+                "id": "count-lines1-wf.cwl@step_step1@wc-tool.cwl"
             },
             "in": [
                 {
@@ -79,7 +79,7 @@
                     }
                 ],
                 "expression": "$({'output': parseInt(inputs.file1.contents)})",
-                "id": "count-lines1-wf.cwl:step_step2:parseInt-tool.cwl"
+                "id": "count-lines1-wf.cwl@step_step2@parseInt-tool.cwl"
             },
             "in": [
                 {

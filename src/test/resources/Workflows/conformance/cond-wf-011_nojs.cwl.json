@@ -97,7 +97,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "cond-wf-011_nojs.cwl:step_step1:cat.cwl"
+                "id": "cond-wf-011_nojs.cwl@step_step1@cat.cwl"
             },
             "when": "$(inputs.another_input)",
             "out": [

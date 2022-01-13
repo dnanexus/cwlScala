@@ -61,7 +61,7 @@
                 "arguments": [
                     "$(runtime.cores)"
                 ],
-                "id": "dynresreq-workflow-tooldefault.cwl:step_count:dynresreq-default.cwl"
+                "id": "dynresreq-workflow-tooldefault.cwl@step_count@dynresreq-default.cwl"
             },
             "id": "count"
         },
@@ -102,7 +102,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "dynresreq-workflow-tooldefault.cwl:step_report:cat-tool.cwl"
+                "id": "dynresreq-workflow-tooldefault.cwl@step_report@cat-tool.cwl"
             },
             "id": "report"
         }

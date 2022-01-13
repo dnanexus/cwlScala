@@ -133,7 +133,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "output-arrays-int-wf.cwl:step_step3:run"
+                "id": "output-arrays-int-wf.cwl@step_step3@run"
             },
             "id": "step3"
         }

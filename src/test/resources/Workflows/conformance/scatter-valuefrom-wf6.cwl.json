@@ -66,7 +66,7 @@
                         "class": "InlineJavascriptRequirement"
                     }
                 ],
-                "id": "scatter-valuefrom-wf6.cwl:step_step1:scatter-valueFrom-tool.cwl"
+                "id": "scatter-valuefrom-wf6.cwl@step_step1@scatter-valueFrom-tool.cwl"
             },
             "scatter": [
                 "scattered_message"

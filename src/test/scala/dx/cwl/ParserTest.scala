@@ -264,9 +264,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked,
-                                              isGraph = true,
-                                              simplifyProcessAutoIds = true) match {
+      val (wf, _) = workflowsParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
@@ -283,9 +281,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked,
-                                              isGraph = true,
-                                              simplifyProcessAutoIds = true) match {
+      val (wf, _) = workflowsParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
@@ -306,7 +302,7 @@ class ParserTest extends AnyWordSpec with Matchers {
           "Workflow"
       ))
       // this will throw an exception unless the two processes with the same name are identical
-      workflowsParser.parseFile(wfPathPacked, isGraph = true, simplifyProcessAutoIds = true)
+      workflowsParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true)
     }
 
     def parseWorkflowConformance(parser: Parser,
