@@ -34,6 +34,23 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
       case n                    => n
     }
   }
+
+  override def hashCode(): Int = frag.hashCode
+
+  override def equals(obj: Any): Boolean = {
+    (this, obj) match {
+      case (Identifier(_, Some(frag1)), Identifier(_, Some(frag2))) => frag1 == frag2
+      case _                                                        => false
+    }
+  }
+
+  def equalsWithNamespace(that: Identifier): Boolean = {
+    (this, that) match {
+      case (Identifier(Some(ns1), frag1), Identifier(Some(ns2), frag2)) =>
+        ns1 == ns2 && frag1 == frag2
+      case _ => this.frag == that.frag
+    }
+  }
 }
 
 object Identifier {
@@ -118,28 +135,6 @@ object Document {
         throw new Exception(s"two processes have the same ID ${id}")
       }
       doc + (id -> proc)
-    }
-  }
-
-  implicit class DocumentLookup(doc: Document) {
-
-    /**
-      * Resolves a process or step from an identifier.
-      */
-    def lookup(id: Identifier): Option[Identifiable] = {
-      doc.get(id).orElse {
-        id.parentIdentifier.flatMap { p =>
-          lookup(p) match {
-            case Some(w: Workflow) =>
-              w.steps.collectFirst {
-                case step if step.id.contains(id) => step
-              }
-            case Some(s: WorkflowStep) if s.run.id.contains(id) => Some(s.run)
-            case other =>
-              throw new Exception(s"cannot resolve ${id} in ${other}")
-          }
-        }
-      }
     }
   }
 }
