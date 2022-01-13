@@ -30,6 +30,21 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
       case n                    => n
     }
   }
+
+  /**
+    * Returns an iterator over all ancestor identifers and this identifier. For example, if this identifier has frag
+    * A/B/C, then the iterator yields identifiers with fragments [A, A/B, A/B/C].
+    */
+  def iter: Iterator[Identifier] = {
+    if (this.frag.isEmpty) {
+      Iterator.empty[Identifier]
+    } else {
+      val parentIter = this.parent
+        .map(parentFrag => Identifier(this.namespace, Some(parentFrag)).iter)
+        .getOrElse(Iterator.empty[Identifier])
+      parentIter ++ Iterator.fill(1)(this)
+    }
+  }
 }
 
 object Identifier {
@@ -115,6 +130,10 @@ object Document {
       }
       doc + (id -> proc)
     }
+  }
+
+  implicit class DocumentLookup(doc: Document) {
+    def lookup[T <: Identifiable](id: Identifier): T = {}
   }
 }
 
