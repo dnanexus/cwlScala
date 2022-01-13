@@ -1,5 +1,6 @@
 package dx.cwl
 
+import dx.cwl.Document.DocumentLookup
 import dx.util.FileUtils
 
 import java.nio.file.{Path, Paths}
@@ -199,9 +200,14 @@ class ParserTest extends AnyWordSpec with Matchers {
     "parse packed workflow in a graph" in {
       val wfPathPacked = workflowsPath.resolve("basename-fields-test-packed.json")
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
-      val (_, _) = workflowParser.parseFile(wfPathPacked) match {
+      val (_, doc) = workflowParser.parseFile(wfPathPacked) match {
         case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
         case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+      }
+      doc.lookup(Identifier(namespace = None, frag = Some("main/ext"))) match {
+        case Some(_: WorkflowStep) => ()
+        case Some(other)           => throw new Exception(s"expected WorkflowStep not ${other}")
+        case None                  => throw new Exception("main/ext not found in document")
       }
       val stringParser = Parser.create(Some(URI.create("file:/null")))
       val (wf, _) = stringParser.parseString(FileUtils.readFileContent(wfPathPacked),
