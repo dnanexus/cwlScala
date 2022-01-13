@@ -7,9 +7,9 @@ import java.net.URI
 import java.nio.file.Path
 
 /**
-  * An identifier of the form [namespace]#frag, where frag is a
-  * '/'-delimited string. For frag "foo/bar/baz", parent="foo/bar"
-  * and name="baz".
+  * An identifier of the form [namespace]#frag, where frag is a '/'-delimited string. For frag "foo/bar/baz",
+  * parent="foo/bar" and name="baz".
+  * Note that two `Identifier`s are considered equal if their `frag`s are equal - namespaces are not considered.
   */
 case class Identifier(namespace: Option[String], frag: String) {
   lazy val fullyQualifiedName: String = s"${namespace.getOrElse("")}#${frag}"
