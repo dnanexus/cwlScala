@@ -49,7 +49,9 @@ lazy val root = project
           dependencies.antlr,
           dependencies.scalatest,
           dependencies.snakeyaml,
-          dependencies.junit
+          dependencies.junit,
+          dependencies.jacksonDatabind,
+          dependencies.jacksonDataformatYaml
       ),
       assembly / assemblyJarName := "cwlScala.jar"
   )
@@ -61,6 +63,8 @@ lazy val dependencies = new {
   val sprayVersion = "1.3.6"
   val scalatestVersion = "3.2.9"
   val yamlVersion = "2.3"
+  val jacksonDatabindVersion = "2.13.1"
+  val jacksonDataformatYamlVersion = "2.13.1"
   val rhinoVersion = "1.7.13"
   val antlr4Version = "4.9.3"
   val junitVersion = "4.13.2"
@@ -71,6 +75,8 @@ lazy val dependencies = new {
   val spray = "io.spray" %% "spray-json" % sprayVersion
   // cwljava dependencies
   val snakeyaml = "org.snakeyaml" % "snakeyaml-engine" % yamlVersion
+  val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % jacksonDatabindVersion
+  val jacksonDataformatYaml = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonDataformatYamlVersion
   // rhino dependencies
   val rhino = "org.mozilla" % "rhino" % rhinoVersion
   // antlr4 dependencies

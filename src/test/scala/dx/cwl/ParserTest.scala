@@ -204,7 +204,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
         case other                                 => throw new Exception(s"expected Workflow, not ${other}")
       }
-      doc.lookup(Identifier(namespace = None, frag = Some("main/ext"))) match {
+      doc.lookup(Identifier(namespace = None, frag = Some("basename-fields-test-packed/ext"))) match {
         case Some(_: WorkflowStep) => ()
         case Some(other)           => throw new Exception(s"expected WorkflowStep not ${other}")
         case None                  => throw new Exception("main/ext not found in document")
