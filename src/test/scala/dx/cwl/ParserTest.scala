@@ -175,6 +175,31 @@ class ParserTest extends AnyWordSpec with Matchers {
       records.head.frag shouldBe "vcf2maf_params"
     }
 
+    "parse anonymous enum type in packed tool" in {
+      val tool = toolsConformanceParser.parseFile(
+          toolsConformancePath.resolve("anon_enum_inside_array_inside_schemadef.cwl.json")
+      ) match {
+        case ParserResult(Some(tool: CommandLineTool), _, _, _) => tool
+        case other                                              => throw new Exception(s"expected CommandLineTool not ${other}")
+      }
+      tool.inputs.size shouldBe 1
+      val recType = tool.inputs.head.cwlType match {
+        case rec: CwlInputRecord => rec
+        case other               => throw new Exception(s"expected CwlInputRecord not ${other}")
+      }
+      recType.fields.size shouldBe 2
+      recType.fields("species").cwlType match {
+        case CwlOptional(e: CwlEnum) =>
+          e.symbols shouldBe Vector("homo_sapiens", "mus_musculus")
+        case other => throw new Exception(s"expected CwlOptional(CwlEnum) not ${other}")
+      }
+      recType.fields("ncbi_build").cwlType match {
+        case CwlOptional(e: CwlEnum) =>
+          e.symbols shouldBe Vector("GRCh37", "GRCh38", "GRCm38")
+        case other => throw new Exception(s"expected CwlOptional(CwlEnum) not ${other}")
+      }
+    }
+
     val expressionToolsConformancePath = getPath("/ExpressionTools/conformance")
     val expressionToolsConformanceParser = Parser.create(Some(expressionToolsConformancePath.toUri))
     expressionToolsConformancePath.toFile.listFiles(cwlFilter).toVector.foreach { toolFile =>
