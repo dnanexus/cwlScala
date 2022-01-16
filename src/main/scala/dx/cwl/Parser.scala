@@ -1,6 +1,7 @@
 package dx.cwl
 
 import dx.cwl.Document.{Document, DocumentAdder}
+import dx.cwl.Utils.yamlToJson
 import dx.util.{FileUtils, JsUtils}
 import dx.yaml._
 
@@ -146,15 +147,15 @@ case class Parser(baseUri: Option[URI] = None,
     }
   }
 
-  def parse(doc: Object,
-            source: Option[Path] = None,
-            defaultNamespace: Option[String] = None,
-            defaultFrag: Option[String] = None,
-            dependencies: Document = Document.empty,
-            rawProcesses: Map[Identifier, Object] = Map.empty,
-            isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId,
-            simplifyProcessAutoIds: Boolean = false): ParserResult = {
+  private[cwl] def parse(doc: Object,
+                         source: Option[Path] = None,
+                         defaultNamespace: Option[String] = None,
+                         defaultFrag: Option[String] = None,
+                         dependencies: Document = Document.empty,
+                         rawProcesses: Map[Identifier, Object] = Map.empty,
+                         isGraph: Boolean = false,
+                         mainId: Identifier = Identifier.MainId,
+                         simplifyProcessAutoIds: Boolean = false): ParserResult = {
     doc match {
       case commandLineTool: CommandLineToolImpl =>
         val proc = CommandLineTool.parse(commandLineTool,
@@ -284,11 +285,13 @@ case class Parser(baseUri: Option[URI] = None,
           simplifyProcessAutoIds = simplifyProcessAutoIds
       )
       // get the $namespaces and $schemas from a packed workflow
-      val finalResult = if (isGraph) {
+      val finalResult = if (path.toString.endsWith(".cwl")) {
+        val yamlDoc = FileUtils.readFileContent(path).parseYaml.asYamlObject.fields
+        result.copy(namespaces = yamlDoc.get(YamlString("$namespaces")).map(yamlToJson),
+                    schemas = yamlDoc.get(YamlString("$schemas")).map(yamlToJson))
+      } else {
         val jsDoc = JsUtils.jsFromFile(path).asJsObject.fields
         result.copy(namespaces = jsDoc.get("$namespaces"), schemas = jsDoc.get("$schemas"))
-      } else {
-        result
       }
       cache = cache + (path -> finalResult)
       finalResult
@@ -320,12 +323,16 @@ case class Parser(baseUri: Option[URI] = None,
         mainId = mainId,
         simplifyProcessAutoIds = simplifyProcessAutoIds
     )
-    // get the $namespaces and $schemas from a packed workflow
-    if (isGraph) {
+    // get the $namespaces and $schemas - we can't guess the format from the file extension so
+    // we try both json and yaml
+    try {
       val jsDoc = sourceCode.parseJson.asJsObject.fields
       result.copy(namespaces = jsDoc.get("$namespaces"), schemas = jsDoc.get("$schemas"))
-    } else {
-      result
+    } catch {
+      case _: Throwable =>
+        val yamlDoc = sourceCode.parseYaml.asYamlObject.fields
+        result.copy(namespaces = yamlDoc.get(YamlString("$namespaces")).map(yamlToJson),
+                    schemas = yamlDoc.get(YamlString("$schemas")).map(yamlToJson))
     }
   }
 
