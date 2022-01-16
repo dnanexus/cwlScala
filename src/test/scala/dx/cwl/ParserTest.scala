@@ -296,12 +296,12 @@ class ParserTest extends AnyWordSpec with Matchers {
           case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
           case other                                       => throw new Exception(s"expected Workflow, not ${other}")
         }
-      wf.id.map(_.frag) shouldBe Some("count-lines19-wf")
+      wf.id.map(_.frag) shouldBe Some("count-lines19-wf.cwl")
       val proc = wf.steps.head.run match {
         case tool: CommandLineTool => tool
         case _                     => throw new Exception("expected CommandLineTool")
       }
-      proc.id.map(_.frag) shouldBe Some("wc3-tool")
+      proc.id.map(_.frag) shouldBe Some("wc3-tool.cwl")
     }
 
     "parse packed workflow with auto-generated anonymous process ID" in {
@@ -314,7 +314,7 @@ class ParserTest extends AnyWordSpec with Matchers {
           case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
           case other                                       => throw new Exception(s"expected Workflow, not ${other}")
         }
-      wf.id.map(_.frag) shouldBe Some("timelimit2-wf")
+      wf.id.map(_.frag) shouldBe Some("timelimit2-wf.cwl")
       wf.steps.zipWithIndex.foreach {
         case (step, idx) =>
           step.run match {

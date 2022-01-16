@@ -64,16 +64,15 @@ object Identifier {
   }
 
   // packing a workflow with `cwlpack --add-ids` automatically adds any missing IDs of the form
-  // `(<workflow_filename>:step_<step_id>:)?<tool_filename>.cwl`. This function strips off the prefix (if any) and the
-  // .cwl suffix.
+  // `(<workflow_filename>:step_<step_id>:)?<tool_filename>.cwl`. This function strips off the prefix (if any).
   def simplifyAutoId(frag: String): String = {
-    stripCwlExtension(frag match {
+    frag match {
       case autoIdRegex(_, stepName, "run") =>
         // anonymous process - prepend the step name to increase the chance it is unique
         s"${stepName}_run"
       case autoIdRegex(_, _, fileName) => fileName
       case _                           => frag
-    })
+    }
   }
 
   def fromUri(uri: URI, simplifyFrag: Boolean = false): Identifier = {
