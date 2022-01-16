@@ -400,15 +400,14 @@ object Workflow {
                                source,
                                simplifyFrag = simplifyProcessAutoIds)
     val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
-    val (steps, newDependencies) =
-      WorkflowStep.parseArray(workflow.getSteps,
-                              newContext,
-                              dependencies,
-                              rawProcesses,
-                              isGraph,
-                              stripFragPrefix,
-                              defaultNamespace,
-                              simplifyProcessAutoIds)
+    val (steps, newDependencies) = WorkflowStep.parseArray(workflow.getSteps,
+                                                           newContext,
+                                                           dependencies,
+                                                           rawProcesses,
+                                                           isGraph,
+                                                           stripFragPrefix,
+                                                           defaultNamespace,
+                                                           simplifyProcessAutoIds)
     val wfId = Option
       .when(isGraph && rawId.contains(mainId)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)

@@ -35,7 +35,7 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     "parse inline record schema" in {
       val result =
-        toolsParser.parseFile(toolsPath.resolve("record-in-format.cwl.json"), isGraph = true)
+        toolsParser.parseFile(toolsPath.resolve("record-in-format.cwl.json"))
       val tool = result.mainProcess match {
         case Some(tool: CommandLineTool) => tool
         case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -55,8 +55,7 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     "parse record type with secondaryFiles" in {
       val result =
-        toolsParser.parseFile(toolsPath.resolve("record-sd-secondaryFiles.cwl.json"),
-                              isGraph = true)
+        toolsParser.parseFile(toolsPath.resolve("record-sd-secondaryFiles.cwl.json"))
       val tool = result.mainProcess match {
         case Some(tool: CommandLineTool) => tool
         case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -75,7 +74,7 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     "parse packed tool with imported output parameters" in {
-      val result = toolsParser.parseFile(toolsPath.resolve("params2.cwl.json"), isGraph = true)
+      val result = toolsParser.parseFile(toolsPath.resolve("params2.cwl.json"))
       val tool = result.mainProcess match {
         case Some(tool: CommandLineTool) => tool
         case other                       => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -88,7 +87,7 @@ class ParserTest extends AnyWordSpec with Matchers {
 
     "parse packed tool with schema" in {
       val result =
-        toolsParser.parseFile(toolsPath.resolve("formattest2.cwl.json"), isGraph = true)
+        toolsParser.parseFile(toolsPath.resolve("formattest2.cwl.json"))
       result.mainProcess match {
         case Some(_: CommandLineTool) => ()
         case other                    => throw new Exception(s"expected CommandLineTool, not ${other}")
@@ -252,25 +251,12 @@ class ParserTest extends AnyWordSpec with Matchers {
       wf.name shouldBe "basename-fields-test"
     }
 
-    "parse packed workflow not in a graph" in {
-      val wfPathPacked = workflowsPath.resolve("any-type-compat.cwl.json")
-      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
-          "Workflow"
-      ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked, isGraph = true) match {
-        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
-        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
-      }
-      wf.name shouldBe "any-type-compat"
-      wf.inputs.flatMap(_.id.map(_.frag)).toSet shouldBe Set("input1", "input2", "input3")
-    }
-
     "parse packed workflow with JavaScript expressions" in {
       val wfPathPacked = workflowsPath.resolve("timelimit2-wf.cwl.json")
       workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked, isGraph = true) match {
+      val (wf, _) = workflowsParser.parseFile(wfPathPacked) match {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
@@ -284,15 +270,32 @@ class ParserTest extends AnyWordSpec with Matchers {
       v shouldBe StringValue("time passed")
     }
 
-    "parse packed workflow with auto-generated process ID" in {
-      val wfPathPacked = workflowsPath.resolve("conformance").resolve("count-lines19-wf.cwl.json")
-      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+    val workflowsConformancePath = workflowsPath.resolve("conformance")
+    val workflowConformanceParser = Parser.create(Some(workflowsConformancePath.toUri))
+
+    "parse packed workflow not in a graph" in {
+      val wfPathPacked = workflowsConformancePath.resolve("any-type-compat.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
+      val (wf, _) = workflowConformanceParser.parseFile(wfPathPacked) match {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
+      wf.name shouldBe "any-type-compat.cwl"
+      wf.inputs.flatMap(_.id.map(_.frag)).toSet shouldBe Set("input1", "input2", "input3")
+    }
+
+    "parse packed workflow with auto-generated process ID" in {
+      val wfPathPacked = workflowsConformancePath.resolve("count-lines19-wf.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+          "Workflow"
+      ))
+      val (wf, _) =
+        workflowConformanceParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
+          case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+          case other                                       => throw new Exception(s"expected Workflow, not ${other}")
+        }
       wf.id.map(_.frag) shouldBe Some("count-lines19-wf")
       val proc = wf.steps.head.run match {
         case tool: CommandLineTool => tool
@@ -302,14 +305,15 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     "parse packed workflow with auto-generated anonymous process ID" in {
-      val wfPathPacked = workflowsPath.resolve("conformance").resolve("timelimit2-wf.cwl.json")
-      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+      val wfPathPacked = workflowsConformancePath.resolve("timelimit2-wf.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
-      val (wf, _) = workflowsParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
-        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
-        case other                                       => throw new Exception(s"expected Workflow, not ${other}")
-      }
+      val (wf, _) =
+        workflowConformanceParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
+          case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+          case other                                       => throw new Exception(s"expected Workflow, not ${other}")
+        }
       wf.id.map(_.frag) shouldBe Some("timelimit2-wf")
       wf.steps.zipWithIndex.foreach {
         case (step, idx) =>
@@ -321,13 +325,12 @@ class ParserTest extends AnyWordSpec with Matchers {
     }
 
     "parse packed workflow with two imports of same process" in {
-      val wfPathPacked =
-        workflowsPath.resolve("conformance").resolve("basename-fields-test.cwl.json")
-      workflowsParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+      val wfPathPacked = workflowsConformancePath.resolve("basename-fields-test.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
           "Workflow"
       ))
       // this will throw an exception unless the two processes with the same name are identical
-      workflowsParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true)
+      workflowConformanceParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true)
     }
 
     def parseWorkflowConformance(parser: Parser,
@@ -348,8 +351,6 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
     }
 
-    val workflowsConformancePath = workflowsPath.resolve("conformance")
-    val workflowConformanceParser = Parser.create(Some(workflowsConformancePath.toUri))
     // Some workflow conformance tests are in $graph format but do not have a #main process; instead, the main process
     // id is specified as part of the tool name in conformance_tests.yaml.
     val workflowMainProcesses = Map(
