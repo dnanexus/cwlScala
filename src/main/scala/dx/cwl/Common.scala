@@ -14,7 +14,7 @@ import java.nio.file.Path
 case class Identifier(namespace: Option[String], frag: String) {
   lazy val fullyQualifiedName: String = s"${namespace.getOrElse("")}#${frag}"
 
-  def parent: Option[String] = {
+  lazy val parent: Option[String] = {
     if (frag.contains('/')) {
       Some(frag.substring(0, frag.lastIndexOf('/')))
     } else {
@@ -22,7 +22,13 @@ case class Identifier(namespace: Option[String], frag: String) {
     }
   }
 
-  def name: String = {
+  lazy val parentId: Option[Identifier] = {
+    parent.map(p => Identifier(namespace, p))
+  }
+
+  def hasParent: Boolean = parent.isDefined
+
+  lazy val name: String = {
     if (frag.contains('/')) {
       frag.substring(frag.lastIndexOf('/') + 1)
     } else {
@@ -53,7 +59,6 @@ object Identifier {
   val MainFrag = "main"
   val MainId: Identifier = Identifier(namespace = None, frag = MainFrag)
   private val ImportNamespaceRegex = "^(.+\\.(?:cwl|yml|yaml))/(.+)".r
-  private val autoIdRegex = "([^@]+)@step_([^@]+)@(.+?)".r
 
   def stripCwlExtension(fileName: String): String = {
     CwlExtensions
@@ -63,22 +68,10 @@ object Identifier {
       .getOrElse(fileName)
   }
 
-  // packing a workflow with `cwlpack --add-ids` automatically adds any missing IDs of the form
-  // `(<workflow_filename>:step_<step_id>:)?<tool_filename>.cwl`. This function strips off the prefix (if any).
-  def simplifyAutoId(frag: String): String = {
-    frag match {
-      case autoIdRegex(_, stepName, "run") =>
-        // anonymous process - prepend the step name to increase the chance it is unique
-        s"${stepName}_run"
-      case autoIdRegex(_, _, fileName) => fileName
-      case _                           => frag
-    }
-  }
-
-  def fromUri(uri: URI, simplifyFrag: Boolean = false): Identifier = {
+  def fromUri(uri: URI): Identifier = {
     val (namespace, name) = Utils.normalizeAndSplitUri(uri)
     val frag = name.getOrElse(throw new Exception(s"uri ${uri} does not contain a fragment"))
-    Identifier(namespace, if (simplifyFrag) simplifyAutoId(frag) else frag)
+    Identifier(namespace, frag)
   }
 
   def fromSource(source: Path, namespace: Option[String]): Identifier = {
@@ -86,10 +79,7 @@ object Identifier {
   }
 
   def parseUri(uri: String,
-               stripFragPrefix: Option[String] = None,
-               defaultNamespace: Option[String] = None,
-               simplifyFrag: Boolean = false): (Option[String], Option[String]) = {
-    assert(stripFragPrefix.forall(_.endsWith("/")), "stripFragPrefix must end with '/'")
+               defaultNamespace: Option[String] = None): (Option[String], Option[String]) = {
     val (namespace, frag) =
       try {
         Utils.normalizeAndSplitUri(URI.create(uri))
@@ -99,39 +89,27 @@ object Identifier {
           (None, Some(uri.drop(2)))
         case _: Throwable => Utils.splitUri(uri)
       }
-    val simplifiedFrag = frag.map(f => if (simplifyFrag) simplifyAutoId(f) else f)
-    val (importNamespace, strippedFrag) = (simplifiedFrag, stripFragPrefix) match {
-      case (None, _) => (None, None)
-      case (Some(f), Some(prefix)) if f.startsWith(prefix) =>
-        (None, Some(f.drop(prefix.length)))
-      case (Some(ImportNamespaceRegex(importNamespace, f)), _) =>
-        // The frag may start with a different prefix, indicating the element was
-        // imported from another document - try to parse out that prefix. If the
-        // uri is absolute, then prepend the existing namespace.
+    val (importNamespace, strippedFrag) = frag match {
+      case Some(ImportNamespaceRegex(importNamespace, f)) =>
+        // The frag may start with a different prefix, indicating the element was imported from another document -
+        // try to parse out that prefix. If the uri is absolute, then prepend the existing namespace.
         (namespace.map(ns => s"${ns}#${importNamespace}").orElse(Some(importNamespace)), Some(f))
-      case (Some(f), Some(prefix)) =>
-        throw new Exception(s"fragment ${f} does not start with prefix ${prefix}")
-      case _ => (None, simplifiedFrag)
+      case _ => (None, frag)
     }
     (importNamespace.orElse(namespace).orElse(defaultNamespace), strippedFrag)
   }
 
-  def parse(uri: String,
-            stripFragPrefix: Option[String] = None,
-            defaultNamespace: Option[String] = None,
-            simplifyFrag: Boolean = false): Identifier = {
-    val (namespace, frag) = parseUri(uri, stripFragPrefix, defaultNamespace, simplifyFrag)
+  def parse(uri: String, defaultNamespace: Option[String] = None): Identifier = {
+    val (namespace, frag) = parseUri(uri, defaultNamespace)
     Identifier(namespace, frag.getOrElse(s"uri ${uri} does not contain a fragment"))
   }
 
   def get(id: java.util.Optional[String],
           defaultNamespace: Option[String],
           defaultFrag: Option[String] = None,
-          source: Option[Path] = None,
-          stripFragPrefix: Option[String] = None,
-          simplifyFrag: Boolean = false): Option[Identifier] = {
+          source: Option[Path] = None): Option[Identifier] = {
     translateOptional(id).map {
-      Identifier.parseUri(_, stripFragPrefix, defaultNamespace, simplifyFrag) match {
+      Identifier.parseUri(_, defaultNamespace) match {
         case (namespace, Some(frag))                 => Identifier(namespace, frag)
         case (namespace, _) if defaultFrag.isDefined => Identifier(namespace, defaultFrag.get)
         case (namespace, _) if source.isDefined      => fromSource(source.get, namespace)

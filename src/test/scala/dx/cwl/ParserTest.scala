@@ -230,7 +230,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
-      wf.name shouldBe "count-lines1-wf-packed"
+      wf.name shouldBe "main"
     }
 
     "parse packed workflow in a graph" in {
@@ -244,11 +244,11 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
       val stringParser = Parser.create(Some(URI.create("file:/null")))
       val (wf, _) = stringParser.parseString(FileUtils.readFileContent(wfPathPacked),
-                                             Some("basename-fields-test")) match {
+                                             defaultMainFrag = Some("basename-fields-test")) match {
         case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
-      wf.name shouldBe "basename-fields-test"
+      wf.name shouldBe "main"
     }
 
     "parse packed workflow with JavaScript expressions" in {
@@ -292,7 +292,7 @@ class ParserTest extends AnyWordSpec with Matchers {
           "Workflow"
       ))
       val (wf, _) =
-        workflowConformanceParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
+        workflowConformanceParser.parseFile(wfPathPacked) match {
           case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
           case other                                       => throw new Exception(s"expected Workflow, not ${other}")
         }
@@ -301,7 +301,7 @@ class ParserTest extends AnyWordSpec with Matchers {
         case tool: CommandLineTool => tool
         case _                     => throw new Exception("expected CommandLineTool")
       }
-      proc.id.map(_.frag) shouldBe Some("wc3-tool.cwl")
+      proc.id.map(_.frag) shouldBe Some("step1/count-lines19-wf.cwl@step_step1@wc3-tool.cwl")
     }
 
     "parse packed workflow with auto-generated anonymous process ID" in {
@@ -310,7 +310,7 @@ class ParserTest extends AnyWordSpec with Matchers {
           "Workflow"
       ))
       val (wf, _) =
-        workflowConformanceParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true) match {
+        workflowConformanceParser.parseFile(wfPathPacked) match {
           case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
           case other                                       => throw new Exception(s"expected Workflow, not ${other}")
         }
@@ -318,8 +318,11 @@ class ParserTest extends AnyWordSpec with Matchers {
       wf.steps.zipWithIndex.foreach {
         case (step, idx) =>
           step.run match {
-            case tool: CommandLineTool => tool.id.map(_.frag) shouldBe Some(s"step${idx + 1}_run")
-            case _                     => throw new Exception("expected CommandLineTool")
+            case tool: CommandLineTool =>
+              tool.id.map(_.frag) shouldBe Some(
+                  s"step${idx + 1}/timelimit2-wf.cwl@step_step${idx + 1}@run"
+              )
+            case _ => throw new Exception("expected CommandLineTool")
           }
       }
     }
@@ -330,7 +333,7 @@ class ParserTest extends AnyWordSpec with Matchers {
           "Workflow"
       ))
       // this will throw an exception unless the two processes with the same name are identical
-      workflowConformanceParser.parseFile(wfPathPacked, simplifyProcessAutoIds = true)
+      workflowConformanceParser.parseFile(wfPathPacked)
     }
 
     def parseWorkflowConformance(parser: Parser,

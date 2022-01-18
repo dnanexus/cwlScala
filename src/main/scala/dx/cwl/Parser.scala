@@ -149,55 +149,34 @@ case class Parser(baseUri: Option[URI] = None,
 
   private[cwl] def parse(doc: Object,
                          source: Option[Path] = None,
-                         defaultNamespace: Option[String] = None,
-                         defaultFrag: Option[String] = None,
-                         dependencies: Document = Document.empty,
-                         rawProcesses: Map[Identifier, Object] = Map.empty,
-                         isGraph: Boolean = false,
                          mainId: Option[Identifier] = None,
-                         simplifyProcessAutoIds: Boolean = false): ParserResult = {
+                         defaultNamespace: Option[String] = None,
+                         defaultMainFrag: Option[String] = None,
+                         isGraph: Boolean = false,
+                         dependencies: Document = Document.empty,
+                         rawProcesses: Map[Identifier, Object] = Map.empty): ParserResult = {
     doc match {
       case commandLineTool: CommandLineToolImpl =>
-        val proc = CommandLineTool.parse(commandLineTool,
-                                         this,
-                                         source,
-                                         defaultNamespace,
-                                         defaultFrag,
-                                         isGraph,
-                                         mainId,
-                                         simplifyProcessAutoIds)
+        val proc =
+          CommandLineTool.parse(commandLineTool, this, source, defaultNamespace, defaultMainFrag)
         ParserResult(Some(proc), dependencies.addProcess(proc))
       case expressionTool: ExpressionToolImpl =>
-        val proc = ExpressionTool.parse(expressionTool,
-                                        this,
-                                        source,
-                                        defaultNamespace,
-                                        defaultFrag,
-                                        isGraph,
-                                        mainId,
-                                        simplifyProcessAutoIds)
+        val proc =
+          ExpressionTool.parse(expressionTool, this, source, defaultNamespace, defaultMainFrag)
         ParserResult(Some(proc), dependencies.addProcess(proc))
       case operation: OperationImpl =>
-        val proc = Operation.parse(operation,
-                                   this,
-                                   source,
-                                   defaultNamespace,
-                                   defaultFrag,
-                                   isGraph,
-                                   mainId,
-                                   simplifyProcessAutoIds)
+        val proc =
+          Operation.parse(operation, this, source, defaultNamespace, defaultMainFrag)
         ParserResult(Some(proc), dependencies.addProcess(proc))
       case workflow: WorkflowImpl =>
         val (wf, doc) = Workflow.parse(workflow,
                                        this,
                                        source,
                                        defaultNamespace,
-                                       defaultFrag,
-                                       dependencies,
-                                       rawProcesses,
+                                       defaultMainFrag,
                                        isGraph,
-                                       mainId,
-                                       simplifyProcessAutoIds)
+                                       dependencies,
+                                       rawProcesses)
         ParserResult(Some(wf), doc)
       case graph: java.util.List[_] =>
         // this is the result of parsing a workflow packed as a $graph - if there is a process with ID "#main" then
@@ -213,7 +192,7 @@ case class Parser(baseUri: Option[URI] = None,
           }
           .map {
             case (id, process) =>
-              Identifier.parse(id, simplifyFrag = simplifyProcessAutoIds) -> process
+              Identifier.parse(id) -> process
           }
           .toMap
         val graphMainId = mainId.getOrElse {
@@ -243,24 +222,22 @@ case class Parser(baseUri: Option[URI] = None,
                   val ParserResult(proc, newAccu, _, _) = parse(
                       rawProc,
                       source = source,
-                      defaultNamespace = defaultNamespace,
-                      defaultFrag = defaultFrag,
-                      dependencies = accu,
-                      rawProcesses = rawProcesses,
-                      isGraph = true,
                       mainId = Some(graphMainId),
-                      simplifyProcessAutoIds = simplifyProcessAutoIds
+                      defaultNamespace = defaultNamespace,
+                      defaultMainFrag = defaultMainFrag,
+                      isGraph = true,
+                      dependencies = accu,
+                      rawProcesses = rawProcesses
                   )
                   (proc, newAccu)
                 case _ =>
                   val ParserResult(_, newAccu, _, _) = parse(
                       rawProc,
-                      defaultNamespace = defaultNamespace,
-                      dependencies = accu,
-                      rawProcesses = rawProcesses,
-                      isGraph = true,
                       mainId = Some(graphMainId),
-                      simplifyProcessAutoIds = simplifyProcessAutoIds
+                      defaultNamespace = defaultNamespace,
+                      isGraph = true,
+                      dependencies = accu,
+                      rawProcesses = rawProcesses
                   )
                   (main, newAccu)
               }
@@ -271,20 +248,9 @@ case class Parser(baseUri: Option[URI] = None,
     }
   }
 
-  /**
-    * Parses a CWL document from a file.
-    * @param path path to the document
-    * @param defaultFrag tool/workflow name, in case it is not specified in the document.
-    *                    If not specified, the name of the file without .cwl is used.
-    * @param mainId  the identifier of the main process.
-    * @param simplifyProcessAutoIds whether to simplify process IDs that are automatically generated by cwlpack run
-    *                               with `--add-ids` option.
-    * @return a [[ParserResult]]
-    */
-  def parseFile(path: Path,
-                defaultFrag: Option[String] = None,
-                mainId: Option[Identifier] = None,
-                simplifyProcessAutoIds: Boolean = false): ParserResult = {
+  private[cwl] def parseImport(relPath: String,
+                               dependencies: Document = Document.empty): ParserResult = {
+    val path = baseUri.map(uri => Paths.get(uri.resolve(relPath))).getOrElse(Paths.get(relPath))
     if (cache.contains(path)) {
       cache(path)
     } else {
@@ -292,9 +258,32 @@ case class Parser(baseUri: Option[URI] = None,
           RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
           source = Some(path),
           defaultNamespace = Some(normalizedBaseUri),
-          defaultFrag = defaultFrag,
+          dependencies = dependencies
+      )
+      cache = cache + (path -> result)
+      result
+    }
+  }
+
+  /**
+    * Parses a CWL document from a file.
+    * @param path path to the document
+    * @param mainId the identifier of the main process.
+    * @param defaultMainFrag main process name, in case it is not specified in the document.
+    * @return a [[ParserResult]]
+    */
+  def parseFile(path: Path,
+                mainId: Option[Identifier] = None,
+                defaultMainFrag: Option[String] = None): ParserResult = {
+    if (cache.contains(path)) {
+      cache(path)
+    } else {
+      val result = parse(
+          RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
+          source = Some(path),
           mainId = mainId,
-          simplifyProcessAutoIds = simplifyProcessAutoIds
+          defaultNamespace = Some(normalizedBaseUri),
+          defaultMainFrag = defaultMainFrag
       )
       // get the $namespaces and $schemas from a packed workflow
       val finalResult = if (path.toString.endsWith(".cwl")) {
@@ -313,23 +302,19 @@ case class Parser(baseUri: Option[URI] = None,
   /**
     * Parses a CWL document from a string.
     * @note currently, only CommandLineTool documents are supported.
-    * @param sourceCode path to the document
-    * @param defaultFrag tool/workflow name, in case it is not specified in the document
-    * @param mainId  the identifier of the main process.
-    * @param simplifyProcessAutoIds whether to simplify process IDs that are automatically generated by cwlpack run
-    *                               with `--add-ids` option.
+    * @param sourceCode path to the document.
+    * @param mainId the identifier of the main process.
+    * @param defaultMainFrag main process name, in case it is not specified in the document.
     * @return a [[Process]]
     */
   def parseString(sourceCode: String,
-                  defaultFrag: Option[String] = None,
                   mainId: Option[Identifier] = None,
-                  simplifyProcessAutoIds: Boolean = false): ParserResult = {
+                  defaultMainFrag: Option[String] = None): ParserResult = {
     val result = parse(
         RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull),
         defaultNamespace = Some(normalizedBaseUri),
-        defaultFrag = defaultFrag,
         mainId = mainId,
-        simplifyProcessAutoIds = simplifyProcessAutoIds
+        defaultMainFrag = defaultMainFrag
     )
     // get the $namespaces and $schemas - we can't guess the format from the file extension so
     // we try both json and yaml
@@ -341,25 +326,6 @@ case class Parser(baseUri: Option[URI] = None,
         val yamlDoc = sourceCode.parseYaml.asYamlObject.fields
         result.copy(namespaces = yamlDoc.get(YamlString("$namespaces")).map(yamlToJson),
                     schemas = yamlDoc.get(YamlString("$schemas")).map(yamlToJson))
-    }
-  }
-
-  def parseImport(relPath: String,
-                  dependencies: Document = Document.empty,
-                  simplifyProcessAutoIds: Boolean = false): ParserResult = {
-    val path = baseUri.map(uri => Paths.get(uri.resolve(relPath))).getOrElse(Paths.get(relPath))
-    if (cache.contains(path)) {
-      cache(path)
-    } else {
-      val result = parse(
-          RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
-          source = Some(path),
-          defaultNamespace = Some(normalizedBaseUri),
-          dependencies = dependencies,
-          simplifyProcessAutoIds = simplifyProcessAutoIds
-      )
-      cache = cache + (path -> result)
-      result
     }
   }
 }
