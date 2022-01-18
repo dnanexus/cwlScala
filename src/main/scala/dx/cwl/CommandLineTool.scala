@@ -212,7 +212,7 @@ object CommandLineTool {
             defaultNamespace: Option[String],
             defaultFrag: Option[String] = None,
             isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId,
+            mainId: Option[Identifier] = None,
             simplifyProcessAutoIds: Boolean = false): CommandLineTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
@@ -223,7 +223,7 @@ object CommandLineTool {
                                simplifyFrag = simplifyProcessAutoIds)
     val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val toolId = Option
-      .when(isGraph && rawId.contains(mainId)) {
+      .when(isGraph && mainId.forall(rawId.contains)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         defaultFrag
           .map(frag => Identifier(namespace, frag))

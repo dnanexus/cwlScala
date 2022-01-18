@@ -389,7 +389,7 @@ object Workflow {
             dependencies: Document = Document.empty,
             rawProcesses: Map[Identifier, Object] = Map.empty,
             isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId,
+            mainId: Option[Identifier] = None,
             simplifyProcessAutoIds: Boolean = false): (Workflow, Document) = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(workflow.getRequirements, ctx.schemaDefs)
@@ -409,7 +409,7 @@ object Workflow {
                                                            defaultNamespace,
                                                            simplifyProcessAutoIds)
     val wfId = Option
-      .when(isGraph && rawId.contains(mainId)) {
+      .when(isGraph && mainId.forall(rawId.contains)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         defaultFrag
           .map(frag => Identifier(namespace, frag))
@@ -510,7 +510,7 @@ object ExpressionTool {
             defaultNamespace: Option[String] = None,
             defaultFrag: Option[String] = None,
             isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId,
+            mainId: Option[Identifier] = None,
             simplifyProcessAutoIds: Boolean = false): ExpressionTool = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(expressionTool.getRequirements, ctx.schemaDefs)
@@ -521,7 +521,7 @@ object ExpressionTool {
                                simplifyFrag = simplifyProcessAutoIds)
     val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val toolId = Option
-      .when(isGraph && rawId.contains(mainId)) {
+      .when(isGraph && mainId.forall(rawId.contains)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         defaultFrag
           .map(frag => Identifier(namespace, frag))
@@ -661,7 +661,7 @@ object Operation {
             defaultNamespace: Option[String] = None,
             defaultFrag: Option[String] = None,
             isGraph: Boolean = false,
-            mainId: Identifier = Identifier.MainId,
+            mainId: Option[Identifier] = None,
             simplifyProcessAutoIds: Boolean = false): Operation = {
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(operation.getRequirements, ctx.schemaDefs)
@@ -672,7 +672,7 @@ object Operation {
                                simplifyFrag = simplifyProcessAutoIds)
     val stripFragPrefix = if (isGraph) rawId.map(i => s"${i.frag}/") else None
     val opId = Option
-      .when(isGraph && rawId.contains(mainId)) {
+      .when(isGraph && mainId.forall(rawId.contains)) {
         val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
         defaultFrag
           .map(frag => Identifier(namespace, frag))

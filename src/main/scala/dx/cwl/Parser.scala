@@ -154,7 +154,7 @@ case class Parser(baseUri: Option[URI] = None,
                          dependencies: Document = Document.empty,
                          rawProcesses: Map[Identifier, Object] = Map.empty,
                          isGraph: Boolean = false,
-                         mainId: Identifier = Identifier.MainId,
+                         mainId: Option[Identifier] = None,
                          simplifyProcessAutoIds: Boolean = false): ParserResult = {
     doc match {
       case commandLineTool: CommandLineToolImpl =>
@@ -216,14 +216,30 @@ case class Parser(baseUri: Option[URI] = None,
               Identifier.parse(id, simplifyFrag = simplifyProcessAutoIds) -> process
           }
           .toMap
+        val graphMainId = mainId.getOrElse {
+          if (rawProcesses.size == 1) {
+            rawProcesses.head._1
+          } else if (rawProcesses.keySet.contains(Identifier.MainId)) {
+            Identifier.MainId
+          } else {
+            val wfs = rawProcesses.collect {
+              case (id, _: WorkflowImpl) => id
+            }
+            if (wfs.size == 1) {
+              wfs.head
+            } else {
+              throw new Exception("cannot determine main process in graph")
+            }
+          }
+        }
         val (mainProcess, newDependencies) =
           rawProcesses.foldLeft(Option.empty[Process], dependencies) {
             case ((main, accu), (id, _)) if accu.contains(id) => (main, accu)
             case ((main, accu), (id, rawProc)) =>
               (id, main) match {
-                case (id, Some(_)) if id == mainId =>
-                  throw new Exception(s"more than one process has ID ${mainId}")
-                case (id, None) if id == mainId =>
+                case (id, Some(_)) if id == graphMainId =>
+                  throw new Exception(s"more than one process has ID ${graphMainId}")
+                case (id, None) if id == graphMainId =>
                   val ParserResult(proc, newAccu, _, _) = parse(
                       rawProc,
                       source = source,
@@ -232,7 +248,7 @@ case class Parser(baseUri: Option[URI] = None,
                       dependencies = accu,
                       rawProcesses = rawProcesses,
                       isGraph = true,
-                      mainId = mainId,
+                      mainId = Some(graphMainId),
                       simplifyProcessAutoIds = simplifyProcessAutoIds
                   )
                   (proc, newAccu)
@@ -243,7 +259,7 @@ case class Parser(baseUri: Option[URI] = None,
                       dependencies = accu,
                       rawProcesses = rawProcesses,
                       isGraph = true,
-                      mainId = mainId,
+                      mainId = Some(graphMainId),
                       simplifyProcessAutoIds = simplifyProcessAutoIds
                   )
                   (main, newAccu)
@@ -267,7 +283,7 @@ case class Parser(baseUri: Option[URI] = None,
     */
   def parseFile(path: Path,
                 defaultFrag: Option[String] = None,
-                mainId: Identifier = Identifier.MainId,
+                mainId: Option[Identifier] = None,
                 simplifyProcessAutoIds: Boolean = false): ParserResult = {
     if (cache.contains(path)) {
       cache(path)
@@ -306,7 +322,7 @@ case class Parser(baseUri: Option[URI] = None,
     */
   def parseString(sourceCode: String,
                   defaultFrag: Option[String] = None,
-                  mainId: Identifier = Identifier.MainId,
+                  mainId: Option[Identifier] = None,
                   simplifyProcessAutoIds: Boolean = false): ParserResult = {
     val result = parse(
         RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull),

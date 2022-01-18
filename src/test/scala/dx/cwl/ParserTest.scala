@@ -343,7 +343,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
       if (isWorkflow) {
         val mainId = mainIds.getOrElse(wfPath, Identifier.MainId)
-        parser.parseFile(wfFile.toPath, mainId = mainId) match {
+        parser.parseFile(wfFile.toPath, mainId = Some(mainId)) match {
           case ParserResult(Some(_: Workflow), _, _, _) => ()
           case other =>
             throw new AssertionError(s"expected Workflow, not ${other}")
