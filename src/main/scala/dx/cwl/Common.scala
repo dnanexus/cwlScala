@@ -5,6 +5,7 @@ import org.w3id.cwl.cwl1_2.{CWLVersion, LoadListingEnum, SecondaryFileSchemaImpl
 
 import java.net.URI
 import java.nio.file.Path
+import scala.util.matching.Regex
 
 /**
   * An identifier of the form [namespace]#frag, where frag is a '/'-delimited string. For frag "foo/bar/baz",
@@ -204,6 +205,23 @@ trait Process extends Meta {
   val outputs: Vector[OutputParameter]
   val requirements: Vector[Requirement]
   val hints: Vector[Hint]
+
+  // packing a workflow with `cwlpack --add-ids` automatically adds any missing IDs of the form
+  // `(<workflow_filename>:step_<step_id>:)?<tool_filename>.cwl`. This function strips off the
+  // prefix (if any) and the .cwl suffix.
+  def simpleName: String = {
+    Identifier.stripCwlExtension(name match {
+      case Process.autoNameRegex(_, stepName, "run") =>
+        // anonymous process - prepend the step name to increase the chance it is unique
+        s"${stepName}_run"
+      case Process.autoNameRegex(_, _, fileName) => fileName
+      case _                                     => frag
+    })
+  }
+}
+
+object Process {
+  val autoNameRegex: Regex = "([^@]+)@step_([^@]+)@(.+?)".r
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#SecondaryFileSchema
