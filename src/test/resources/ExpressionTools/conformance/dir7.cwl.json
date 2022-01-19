@@ -21,5 +21,6 @@
             "id": "dir"
         }
     ],
-    "expression": "${\nreturn {\"dir\": {\"class\": \"Directory\", \"basename\": \"a_directory\", \"listing\": inputs.files}};\n}"
+    "expression": "${\nreturn {\"dir\": {\"class\": \"Directory\", \"basename\": \"a_directory\", \"listing\": inputs.files}};\n}",
+    "id": "dir7.cwl"
 }

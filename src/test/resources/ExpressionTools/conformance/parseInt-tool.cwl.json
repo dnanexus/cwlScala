@@ -19,5 +19,6 @@
             "id": "output"
         }
     ],
-    "expression": "$({'output': parseInt(inputs.file1.contents)})"
+    "expression": "$({'output': parseInt(inputs.file1.contents)})",
+    "id": "parseInt-tool.cwl"
 }

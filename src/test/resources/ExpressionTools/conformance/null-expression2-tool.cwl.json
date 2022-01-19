@@ -18,5 +18,6 @@
             "id": "output"
         }
     ],
-    "expression": "$({'output': (inputs.i1 == 'the-default' ? 1 : 2)})"
+    "expression": "$({'output': (inputs.i1 == 'the-default' ? 1 : 2)})",
+    "id": "null-expression2-tool.cwl"
 }
