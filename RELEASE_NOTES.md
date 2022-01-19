@@ -1,5 +1,10 @@
 # Change log
 
+## in develop
+
+* Updates build environment to SBT 1.6.1
+* Updates sbt-scalafmt plugin to 2.4.6 and scalafmt to 3.3.1
+
 ## 0.7.4 (2021-01-05)
 
 * Updates code to compile with JDK11
