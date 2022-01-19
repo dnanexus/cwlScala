@@ -364,7 +364,11 @@ case class Workflow(source: Option[String],
                     steps: Vector[WorkflowStep],
                     requirements: Vector[Requirement],
                     hints: Vector[Hint])
-    extends Process
+    extends Process {
+  override def copySimplifyId: Workflow = {
+    this.copy(id = id.map(Process.simplifyId))
+  }
+}
 
 object Workflow {
   def parse(workflow: WorkflowImpl,
@@ -383,20 +387,6 @@ object Workflow {
         .orElse(
             Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
         )
-//          .map { wfId =>
-//            if (newDependencies.contains(wfId)) {
-//              // the document already has a process with the given ID - make it unique by adding a suffix
-//              Iterator
-//                .from(1)
-//                .map(i => wfId.copy(frag = s"${wfId.frag}-${i}"))
-//                .collectFirst {
-//                  case id if !newDependencies.contains(id) => id
-//                }
-//                .get
-//            } else {
-//              wfId
-//            }
-//          }
     }
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(workflow.getRequirements, ctx.schemaDefs)
@@ -474,7 +464,11 @@ case class ExpressionTool(source: Option[String],
                           expression: CwlValue,
                           requirements: Vector[Requirement],
                           hints: Vector[Hint])
-    extends Process
+    extends Process {
+  override def copySimplifyId: ExpressionTool = {
+    this.copy(id = id.map(Process.simplifyId))
+  }
+}
 
 object ExpressionTool {
   def parse(expressionTool: ExpressionToolImpl,
@@ -611,7 +605,11 @@ case class Operation(source: Option[String],
                      outputs: Vector[OperationOutputParameter],
                      requirements: Vector[Requirement],
                      hints: Vector[Hint])
-    extends Process
+    extends Process {
+  override def copySimplifyId: Operation = {
+    this.copy(id = id.map(Process.simplifyId))
+  }
+}
 
 object Operation {
   def parse(operation: OperationImpl,

@@ -189,7 +189,11 @@ case class CommandLineTool(source: Option[String],
                            successCodes: Set[Int],
                            temporaryFailCodes: Set[Int],
                            permanentFailCodes: Set[Int])
-    extends Process
+    extends Process {
+  override def copySimplifyId: CommandLineTool = {
+    this.copy(id = id.map(Process.simplifyId))
+  }
+}
 
 object CommandLineTool {
 

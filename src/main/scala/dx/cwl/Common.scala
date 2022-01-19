@@ -209,19 +209,27 @@ trait Process extends Meta {
   // packing a workflow with `cwlpack --add-ids` automatically adds any missing IDs of the form
   // `(<workflow_filename>:step_<step_id>:)?<tool_filename>.cwl`. This function strips off the
   // prefix (if any) and the .cwl suffix.
-  def simpleName: String = {
+  def simpleName: String = Process.simplifyName(name)
+
+  def copySimplifyId: Process
+}
+
+object Process {
+  val autoNameRegex: Regex = "([^@]+)@step_([^@]+)@(.+?)".r
+
+  def simplifyName(name: String): String = {
     Identifier.stripCwlExtension(name match {
       case Process.autoNameRegex(_, stepName, "run") =>
         // anonymous process - prepend the step name to increase the chance it is unique
         s"${stepName}_run"
       case Process.autoNameRegex(_, _, fileName) => fileName
-      case _                                     => frag
+      case _                                     => name
     })
   }
-}
 
-object Process {
-  val autoNameRegex: Regex = "([^@]+)@step_([^@]+)@(.+?)".r
+  def simplifyId(id: Identifier): Identifier = {
+    id.copy(namespace = None, frag = simplifyName(id.name))
+  }
 }
 
 // https://www.commonwl.org/v1.2/CommandLineTool.html#SecondaryFileSchema
