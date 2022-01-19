@@ -94,8 +94,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                   loadListing = LoadListing.Shallow
               ) -> DirectoryValue(location = Some(d.toString))
           )
-      )
-      )
+      ))
       evaluator("$(inputs.f.path)", CwlString, ctx2)._2 shouldBe StringValue(f.toString)
       evaluator("$(inputs.f.basename)", CwlString, ctx2)._2 shouldBe StringValue("test.txt")
       evaluator("$(inputs.f.dirname)", CwlString, ctx2)._2 shouldBe StringValue(tmpdir.toString)

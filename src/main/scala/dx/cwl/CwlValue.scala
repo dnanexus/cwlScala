@@ -272,9 +272,8 @@ object CwlValue {
           case _ =>
             ObjectValue(
                 o.map {
-                    case (name, value) => name -> deserialize(value, schemaDefs)
-                  }
-                  .to(TreeSeqMap)
+                  case (name, value) => name -> deserialize(value, schemaDefs)
+                }.to(TreeSeqMap)
             )
         }
       case _ =>
@@ -352,7 +351,7 @@ object CwlValue {
     (cwlType, jsValue) match {
       case (CwlOptional(_: CwlMulti), JsNull) => (cwlType, NullValue)
       case (m: CwlMulti, _)                   => deserializeMulti(jsValue, m, schemaDefs)
-      case _                                  => (cwlType, deserializeSingle(jsValue, cwlType, schemaDefs))
+      case _ => (cwlType, deserializeSingle(jsValue, cwlType, schemaDefs))
     }
   }
 
@@ -1153,8 +1152,7 @@ object ArrayValue {
             schemaDefs: Map[String, CwlSchema]): ArrayValue = {
     ArrayValue(
         array.asScala.toVector.map(obj =>
-          CwlValue(obj.asInstanceOf[java.lang.Object], cwlType.itemType, schemaDefs)
-        )
+          CwlValue(obj.asInstanceOf[java.lang.Object], cwlType.itemType, schemaDefs))
     )
   }
 

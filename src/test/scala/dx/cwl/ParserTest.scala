@@ -191,7 +191,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (wf, _) = workflowParser.parseFile(wfPathPacked) match {
         case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case other => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "count-lines1-wf-packed"
     }
@@ -201,13 +201,13 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (_, _) = workflowParser.parseFile(wfPathPacked) match {
         case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case other => throw new Exception(s"expected Workflow, not ${other}")
       }
       val stringParser = Parser.create(Some(URI.create("file:/null")))
       val (wf, _) = stringParser.parseString(FileUtils.readFileContent(wfPathPacked),
                                              Some("basename-fields-test")) match {
         case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case other => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "basename-fields-test"
     }
@@ -217,7 +217,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (wf, _) = workflowParser.parseFile(wfPathPacked, isPacked = true) match {
         case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case other => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "any-type-compat"
       wf.inputs.flatMap(_.id.map(_.frag.get)).toSet shouldBe Set("input1", "input2", "input3")
@@ -228,11 +228,11 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowParser.detectVersionAndClass(wfPathPacked) shouldBe Some("v1.2", "Workflow")
       val (wf, _) = workflowParser.parseFile(wfPathPacked, isPacked = true) match {
         case ParserResult(wf: Workflow, doc, _, _) => (wf, doc)
-        case other                                 => throw new Exception(s"expected Workflow, not ${other}")
+        case other => throw new Exception(s"expected Workflow, not ${other}")
       }
       val out = wf.steps.head.run.outputs.head match {
         case out: CommandOutputParameter => out.outputBinding.get.outputEval.get
-        case other                       => throw new Exception(s"expected CommandOutputParameter not ${other}")
+        case other => throw new Exception(s"expected CommandOutputParameter not ${other}")
       }
       out shouldBe StringValue("$(\"time passed\")")
       val (t, v) = Evaluator(jsEnabled = true).evaluate(out, CwlString, EvaluatorContext.empty)

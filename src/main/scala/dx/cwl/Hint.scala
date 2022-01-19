@@ -240,8 +240,7 @@ object LoadListingRequirement extends HintSchema {
   override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
     LoadListingRequirement(value = hint
       .get("loadListing")
-      .map(name => LoadListing.from(LoadListingEnum.fromDocumentVal(name.toString)))
-    )
+      .map(name => LoadListing.from(LoadListingEnum.fromDocumentVal(name.toString))))
   }
 }
 
@@ -295,14 +294,14 @@ object SoftwarePackage {
           .get("version")
           .map {
             case versions: java.util.Collection[_] => versions.asScala.map(_.toString).toVector
-            case other                             => throw new Exception(s"invalid version ${other}")
+            case other => throw new Exception(s"invalid version ${other}")
           }
           .getOrElse(Vector.empty),
         specs = hint
           .get("specs")
           .map {
             case versions: java.util.Collection[_] => versions.asScala.map(_.toString).toVector
-            case other                             => throw new Exception(s"invalid version ${other}")
+            case other => throw new Exception(s"invalid version ${other}")
           }
           .getOrElse(Vector.empty)
     )

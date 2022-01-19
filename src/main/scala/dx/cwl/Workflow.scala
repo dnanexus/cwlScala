@@ -215,8 +215,7 @@ object WorkflowStepInput {
             stripFragPrefix: Option[String] = None,
             defaultNamespace: Option[String] = None): WorkflowStepInput = {
     val sources = translateOptionalArray(step.getSource).map(source =>
-      Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
-    )
+      Identifier.parse(source.toString, stripFragPrefix, defaultNamespace))
     WorkflowStepInput(
         translateOptional(step.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
         translateOptional(step.getLabel),
@@ -332,8 +331,7 @@ object WorkflowStep {
         runResult.process,
         translateOptional(step.getWhen).map(CwlValue(_, allSchemaDefs)),
         translateOptionalArray(step.getScatter).map(source =>
-          Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)
-        ),
+          Identifier.parse(source.toString, stripFragPrefix, defaultNamespace)),
         translateOptional(step.getScatterMethod).map(ScatterMethod.from),
         requirements,
         Requirement.applyHints(step.getHints, allSchemaDefs, ctx.hintSchemas)

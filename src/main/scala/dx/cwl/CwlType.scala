@@ -483,7 +483,7 @@ object CwlArray {
     val (name, label, doc) = schema match {
       case schema: InputArraySchema  => (schema.getName, schema.getLabel, schema.getDoc)
       case schema: OutputArraySchema => (schema.getName, schema.getLabel, schema.getDoc)
-      case other                     => throw new RuntimeException(s"unexpected array schema ${other}")
+      case other => throw new RuntimeException(s"unexpected array schema ${other}")
     }
     val inputBinding = schema match {
       case c: CommandInputArraySchema =>
@@ -832,7 +832,7 @@ object CwlEnum {
     val (name, label, doc) = schema match {
       case schema: InputEnumSchema  => (schema.getName, schema.getLabel, schema.getDoc)
       case schema: OutputEnumSchema => (schema.getName, schema.getLabel, schema.getDoc)
-      case other                    => throw new RuntimeException(s"unexpected array schema ${other}")
+      case other => throw new RuntimeException(s"unexpected array schema ${other}")
     }
     val inputBinding = schema match {
       case c: CommandInputEnumSchema =>
