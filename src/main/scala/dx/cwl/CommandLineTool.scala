@@ -58,7 +58,23 @@ case class CommandInputParameter(id: Option[Identifier],
                                  loadContents: Boolean,
                                  loadListing: LoadListing.LoadListing)
     extends InputParameter
-    with Loadable
+    with Loadable {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CommandInputParameter = {
+    copy(
+        id = id.map(
+            _.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object CommandInputParameter {
   def parse(
@@ -117,7 +133,23 @@ case class CommandOutputParameter(id: Option[Identifier],
                                   secondaryFiles: Vector[SecondaryFile],
                                   format: Option[CwlValue],
                                   streamable: Boolean)
-    extends OutputParameter
+    extends OutputParameter {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CommandOutputParameter = {
+    copy(
+        id = id.map(
+            _.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object CommandOutputParameter {
   def parse(
@@ -190,8 +222,29 @@ case class CommandLineTool(source: Option[String],
                            temporaryFailCodes: Set[Int],
                            permanentFailCodes: Set[Int])
     extends Process {
-  override def copySimplifyId: CommandLineTool = {
-    this.copy(id = id.map(Process.simplifyId))
+  override def copySimplifyIds(
+      dropNamespace: Boolean,
+      replacePrefix: (Either[Boolean, String], Option[String]),
+      simplifyAutoNames: Boolean,
+      dropCwlExtension: Boolean
+  ): CommandLineTool = {
+    val (simplifiedId, childReplacePrefix) =
+      getIdAndChildReplacePrefix(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+    copy(
+        id = simplifiedId,
+        inputs = inputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        ),
+        outputs = outputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        )
+    )
   }
 }
 

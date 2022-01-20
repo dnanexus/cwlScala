@@ -336,6 +336,79 @@ class ParserTest extends AnyWordSpec with Matchers {
       workflowConformanceParser.parseFile(wfPathPacked)
     }
 
+    "parse packed workflow with nested workflow" in {
+      val wfPathPacked = workflowsConformancePath.resolve("count-lines18-wf.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+          "Workflow"
+      ))
+      val (wf, _) =
+        workflowConformanceParser.parseFile(wfPathPacked) match {
+          case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+          case other                                       => throw new Exception(s"expected Workflow, not ${other}")
+        }
+      wf.steps.size shouldBe 1
+      val nestedWf = wf.steps.head.run match {
+        case wf: Workflow => wf
+        case other        => throw new Exception(s"expected workflow not ${other}")
+      }
+      val simplifiedWf = nestedWf.copySimplifyIds(
+          dropNamespace = true,
+          replacePrefix = (Left(true), None),
+          simplifyAutoNames = true,
+          dropCwlExtension = true
+      )
+
+      simplifiedWf.id shouldBe Some(Identifier(None, "step1_run"))
+      simplifiedWf.inputs.size shouldBe 1
+      simplifiedWf.inputs.head.id shouldBe Some(Identifier(None, "step1_run/file1"))
+      simplifiedWf.outputs.size shouldBe 1
+      simplifiedWf.outputs.head.sources.head shouldBe Identifier(None, "step2/output")
+      simplifiedWf.steps.size shouldBe 2
+
+      val step1 = simplifiedWf.steps(0)
+      step1.id shouldBe Some(Identifier(None, "step1_run/step1"))
+      step1.inputs.size shouldBe 1
+      step1.inputs.head.id shouldBe Some(Identifier(None, "step1_run/step1/file1"))
+      step1.inputs.head.sources.size shouldBe 1
+      step1.inputs.head.sources.head shouldBe Identifier(None, "step1_run/file1")
+      step1.outputs.size shouldBe 1
+      step1.outputs.head.id shouldBe Some(Identifier(None, "step1_run/step1/output"))
+
+      val simplifiedTool = simplifiedWf.steps(0).run match {
+        case tool: CommandLineTool => tool
+        case other                 => throw new Exception(s"expected CommandLineTool, not ${other}")
+      }
+      simplifiedTool.inputs.size shouldBe 1
+      simplifiedTool.inputs.head.id shouldBe Some(
+          Identifier(None, "step1_run/step1/step1_run_step1_run/file1")
+      )
+      simplifiedTool.outputs.size shouldBe 1
+      simplifiedTool.outputs.head.id shouldBe Some(
+          Identifier(None, "step1_run/step1/step1_run_step1_run/output")
+      )
+
+      val step2 = simplifiedWf.steps(1)
+      step2.id shouldBe Some(Identifier(None, "step1_run/step2"))
+      step2.inputs.size shouldBe 1
+      step2.inputs.head.id shouldBe Some(Identifier(None, "step1_run/step2/file1"))
+      step2.inputs.head.sources.size shouldBe 1
+      step2.inputs.head.sources.head shouldBe Identifier(None, "step1_run/step1/output")
+      step2.outputs.size shouldBe 1
+      step2.outputs.head.id shouldBe Some(Identifier(None, "step1_run/step2/output"))
+
+      val simplifiedExpr = simplifiedWf.steps(1).run match {
+        case tool: ExpressionTool => tool
+        case other                => throw new Exception(s"expected ExpressionTool, not ${other}")
+      }
+      simplifiedExpr.inputs.head.id shouldBe Some(
+          Identifier(None, "step1_run/step2/step1_run_step2_run/file1")
+      )
+      simplifiedExpr.outputs.size shouldBe 1
+      simplifiedExpr.outputs.head.id shouldBe Some(
+          Identifier(None, "step1_run/step2/step1_run_step2_run/output")
+      )
+    }
+
     def parseWorkflowConformance(parser: Parser,
                                  wfFile: File,
                                  mainIds: Map[Path, Identifier] = Map.empty): Unit = {

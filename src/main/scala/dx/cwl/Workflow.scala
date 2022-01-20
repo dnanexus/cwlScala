@@ -45,7 +45,21 @@ case class WorkflowInputParameter(id: Option[Identifier],
                                   loadContents: Boolean,
                                   loadListing: LoadListing.LoadListing)
     extends InputParameter
-    with Loadable
+    with Loadable {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): WorkflowInputParameter = {
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object WorkflowInputParameter {
   def parse(param: WorkflowInputParameterImpl,
@@ -126,7 +140,23 @@ case class WorkflowOutputParameter(id: Option[Identifier],
                                    linkMerge: Option[LinkMergeMethod.LinkMergeMethod],
                                    pickValue: Option[PickValueMethod.PickValueMethod])
     extends OutputParameter
-    with Sink
+    with Sink {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): WorkflowOutputParameter = {
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension),
+        sources =
+          sources.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+    )
+  }
+}
 
 object WorkflowOutputParameter {
   def parse(param: WorkflowOutputParameterImpl,
@@ -204,7 +234,18 @@ case class WorkflowStepInput(id: Option[Identifier],
                              loadListing: LoadListing.LoadListing)
     extends Identifiable
     with Sink
-    with Loadable
+    with Loadable {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): WorkflowStepInput = {
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        sources =
+          sources.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+    )
+  }
+}
 
 object WorkflowStepInput {
   def parse(step: WorkflowStepInputImpl,
@@ -240,7 +281,16 @@ object WorkflowStepInput {
   }
 }
 
-case class WorkflowStepOutput(id: Option[Identifier]) extends Identifiable
+case class WorkflowStepOutput(id: Option[Identifier]) extends Identifiable {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): WorkflowStepOutput = {
+    WorkflowStepOutput(id =
+      id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+    )
+  }
+}
 
 object WorkflowStepOutput {
   def parse(step: WorkflowStepOutputImpl,
@@ -276,7 +326,25 @@ case class WorkflowStep(id: Option[Identifier],
                         scatterMethod: Option[ScatterMethod.ScatterMethod],
                         requirements: Vector[Requirement],
                         hints: Vector[Hint])
-    extends Identifiable
+    extends Identifiable {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): WorkflowStep = {
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        inputs = inputs.map(
+            _.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        outputs = outputs.map(
+            _.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        run = run.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension),
+        scatter =
+          scatter.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+    )
+  }
+}
 
 object WorkflowStep {
   def parse(
@@ -365,8 +433,36 @@ case class Workflow(source: Option[String],
                     requirements: Vector[Requirement],
                     hints: Vector[Hint])
     extends Process {
-  override def copySimplifyId: Workflow = {
-    this.copy(id = id.map(Process.simplifyId))
+
+  override def copySimplifyIds(
+      dropNamespace: Boolean,
+      replacePrefix: (Either[Boolean, String], Option[String]),
+      simplifyAutoNames: Boolean,
+      dropCwlExtension: Boolean
+  ): Workflow = {
+    val (simplifiedId, childReplacePrefix) =
+      getIdAndChildReplacePrefix(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+    this.copy(
+        id = simplifiedId,
+        inputs = inputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        ),
+        outputs = outputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        ),
+        steps = steps.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        )
+    )
   }
 }
 
@@ -421,7 +517,23 @@ case class ExpressionToolOutputParameter(id: Option[Identifier],
                                          secondaryFiles: Vector[SecondaryFile],
                                          format: Option[CwlValue],
                                          streamable: Boolean)
-    extends OutputParameter
+    extends OutputParameter {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): ExpressionToolOutputParameter = {
+    copy(
+        id = id.map(
+            _.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object ExpressionToolOutputParameter {
   def parse(param: ExpressionToolOutputParameterImpl,
@@ -465,8 +577,29 @@ case class ExpressionTool(source: Option[String],
                           requirements: Vector[Requirement],
                           hints: Vector[Hint])
     extends Process {
-  override def copySimplifyId: ExpressionTool = {
-    this.copy(id = id.map(Process.simplifyId))
+  override def copySimplifyIds(
+      dropNamespace: Boolean,
+      replacePrefix: (Either[Boolean, String], Option[String]),
+      simplifyAutoNames: Boolean,
+      dropCwlExtension: Boolean
+  ): ExpressionTool = {
+    val (simplifiedId, childReplacePrefix) =
+      getIdAndChildReplacePrefix(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+    copy(
+        id = simplifiedId,
+        inputs = inputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        ),
+        outputs = outputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        )
+    )
   }
 }
 
@@ -519,7 +652,23 @@ case class OperationInputParameter(id: Option[Identifier],
                                    loadContents: Boolean,
                                    loadListing: LoadListing.LoadListing)
     extends InputParameter
-    with Loadable
+    with Loadable {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): OperationInputParameter = {
+    copy(
+        id = id.map(
+            _.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object OperationInputParameter {
   def parse(param: OperationInputParameterImpl,
@@ -562,7 +711,23 @@ case class OperationOutputParameter(id: Option[Identifier],
                                     secondaryFiles: Vector[SecondaryFile],
                                     format: Option[CwlValue],
                                     streamable: Boolean)
-    extends OutputParameter
+    extends OutputParameter {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): OperationOutputParameter = {
+    copy(
+        id = id.map(
+            _.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object OperationOutputParameter {
   def parse(param: OperationOutputParameterImpl,
@@ -606,8 +771,29 @@ case class Operation(source: Option[String],
                      requirements: Vector[Requirement],
                      hints: Vector[Hint])
     extends Process {
-  override def copySimplifyId: Operation = {
-    this.copy(id = id.map(Process.simplifyId))
+  override def copySimplifyIds(
+      dropNamespace: Boolean,
+      replacePrefix: (Either[Boolean, String], Option[String]),
+      simplifyAutoNames: Boolean,
+      dropCwlExtension: Boolean
+  ): Operation = {
+    val (simplifiedId, childReplacePrefix) =
+      getIdAndChildReplacePrefix(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+    copy(
+        id = simplifiedId,
+        inputs = inputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        ),
+        outputs = outputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        )
+    )
   }
 }
 

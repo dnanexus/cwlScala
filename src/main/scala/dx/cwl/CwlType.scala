@@ -181,6 +181,21 @@ object CwlType {
     val (cwlType, stdfile, _) = translateRaw(t, schemaDefs, Map.empty)
     (cwlType, stdfile)
   }
+
+  def copySimplifyIds(cwlType: CwlType,
+                      dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlType = {
+    cwlType match {
+      case i: Identifiable =>
+        i.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension) match {
+          case t: CwlType => t
+          case other      => throw new Exception(s"expected CwlType, not ${other}")
+        }
+      case _ => cwlType
+    }
+  }
 }
 
 case object CwlNull extends CwlType {
@@ -471,6 +486,13 @@ case class CwlArray(itemType: CwlType,
       case _                      => false
     }
   }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlArray = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+  }
 }
 
 object CwlArray {
@@ -617,6 +639,13 @@ case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
       case _ => false
     }
   }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlInputRecord = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+  }
 }
 
 object CwlInputRecord {
@@ -755,6 +784,13 @@ case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
       case _ => false
     }
   }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlOutputRecord = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+  }
 }
 
 object CwlOutputRecord {
@@ -821,6 +857,13 @@ case class CwlEnum(symbols: Vector[String],
       case CwlString                                                     => true
       case _                                                             => false
     }
+  }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlEnum = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
   }
 }
 

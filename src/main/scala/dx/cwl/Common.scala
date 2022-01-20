@@ -53,13 +53,38 @@ case class Identifier(namespace: Option[String], frag: String) {
       case _ => this.frag == that.frag
     }
   }
+
+  /**
+    * Copy this identifier and simplify the namespace and/or frag.
+    * @param dropNamespace drop the namespace
+    * @param replacePrefix replace the prefix - tuple of (toRemove, toAdd), where toRemove is one of Left(false) -
+    *                      don't remove any of the prefix, Left(true) - remove the entire prefix, or Right(string) where
+    *                      string is the prefix to remove; and toAdd is an optional prefix to add after the removal.
+    * @param simplifyAutoName if true, simplify any auto-generated IDs. Packing a workflow with `cwlpack --add-ids` will
+    *                         add any missing process IDs with format {workflow_name}@step_{step_name}@{process_name},
+    *                         where process_name is either the file name from which the process was imported, or the
+    *                         generic "run". If the later, then the ID will be updated to {step_name}_run, otherwise
+    *                         {process_name}.
+    * @param dropCwlExtension if true, and if the ID ends in one of the standard CWL file extensions (.cwl, .cwl.json,
+    *                         or .json), drop the extension.
+    */
+  def simplify(dropNamespace: Boolean = false,
+               replacePrefix: (Either[Boolean, String], Option[String]) = (Left(false), None),
+               simplifyAutoName: Boolean = false,
+               dropCwlExtension: Boolean = false): Identifier = {
+    Identifier(
+        Option.when(!dropNamespace)(namespace).flatten,
+        Identifier.simplifyFrag(frag, replacePrefix, simplifyAutoName, dropCwlExtension)
+    )
+  }
 }
 
 object Identifier {
   val CwlExtensions = Vector(".cwl", ".cwl.json", ".json")
   val MainFrag = "main"
   val MainId: Identifier = Identifier(namespace = None, frag = MainFrag)
-  private val ImportNamespaceRegex = "^(.+\\.(?:cwl|yml|yaml))/(.+)".r
+  val importNamespaceRegex: Regex = "^(.+\\.(?:cwl|yml|yaml))/(.+)".r
+  val splitFragRegex: Regex = "(.+/)?(.+)".r
 
   def stripCwlExtension(fileName: String): String = {
     CwlExtensions
@@ -67,6 +92,46 @@ object Identifier {
         case ext if fileName.endsWith(ext) => fileName.dropRight(ext.length)
       }
       .getOrElse(fileName)
+  }
+
+  def simplifyFrag(frag: String,
+                   replacePrefix: (Either[Boolean, String], Option[String]) = (Left(false), None),
+                   simplifyAutoName: Boolean = false,
+                   dropCwlExtension: Boolean = false): String = {
+    val (prefix, name) = (frag, replacePrefix) match {
+      case (splitFragRegex(null, name), (Left(_) | Right(""), Some(toAdd))) => (Some(toAdd), name)
+      case (splitFragRegex(null, name), _)                                  => (None, name)
+      case (splitFragRegex(prefix, name), (Right(toDrop), Some(toAdd)))
+          if prefix.startsWith(toDrop) =>
+        (Some(s"${toAdd}${prefix.drop(toDrop.length)}"), name)
+      case (splitFragRegex(prefix, name), (Right(toDrop), None)) if prefix.startsWith(toDrop) =>
+        (Some(prefix.drop(toDrop.length)), name)
+      case (splitFragRegex(prefix, name), (Left(false), Some(toAdd))) =>
+        (Some(s"${toAdd}${prefix}"), name)
+      case (splitFragRegex(_, name), (Left(true), toAdd)) => (toAdd, name)
+      case (splitFragRegex(prefix, name), _)              => (Option(prefix), name)
+      case _                                              => throw new Exception(s"invalid frag ${frag}")
+    }
+    val simpleName = if (simplifyAutoName) {
+      val parts = name.split('@').toVector
+      if (parts.size >= 3) {
+        parts.indexOf("run", 2) match {
+          case -1 => parts.last
+          case i =>
+            parts.drop(i - 1).map(s => if (s.startsWith("step_")) s.drop(5) else s).mkString("_")
+        }
+      } else {
+        name
+      }
+    } else {
+      name
+    }
+    val nameWithoutExt = if (dropCwlExtension) {
+      stripCwlExtension(simpleName)
+    } else {
+      simpleName
+    }
+    s"${prefix.getOrElse("")}${nameWithoutExt}"
   }
 
   def fromUri(uri: URI): Identifier = {
@@ -91,7 +156,7 @@ object Identifier {
         case _: Throwable => Utils.splitUri(uri)
       }
     val (importNamespace, strippedFrag) = frag match {
-      case Some(ImportNamespaceRegex(importNamespace, f)) =>
+      case Some(importNamespaceRegex(importNamespace, f)) =>
         // The frag may start with a different prefix, indicating the element was imported from another document -
         // try to parse out that prefix. If the uri is absolute, then prepend the existing namespace.
         (namespace.map(ns => s"${ns}#${importNamespace}").orElse(Some(importNamespace)), Some(f))
@@ -165,6 +230,13 @@ trait Identifiable {
   def name: String = {
     id.map(_.name).getOrElse(throw new Exception(s"${this} has no name"))
   }
+
+  def copySimplifyIds(
+      dropNamespace: Boolean,
+      replacePrefix: (Either[Boolean, String], Option[String]),
+      simplifyAutoNames: Boolean,
+      dropCwlExtension: Boolean
+  ): Identifiable
 }
 
 trait Meta extends Identifiable {
@@ -207,28 +279,40 @@ trait Process extends Meta {
   val hints: Vector[Hint]
 
   // packing a workflow with `cwlpack --add-ids` automatically adds any missing IDs of the form
-  // `(<workflow_filename>:step_<step_id>:)?<tool_filename>.cwl`. This function strips off the
-  // prefix (if any) and the .cwl suffix.
-  def simpleName: String = Process.simplifyName(name)
-
-  def copySimplifyId: Process
-}
-
-object Process {
-  val autoNameRegex: Regex = "([^@]+)@step_([^@]+)@(.+?)".r
-
-  def simplifyName(name: String): String = {
-    Identifier.stripCwlExtension(name match {
-      case Process.autoNameRegex(_, stepName, "run") =>
-        // anonymous process - prepend the step name to increase the chance it is unique
-        s"${stepName}_run"
-      case Process.autoNameRegex(_, _, fileName) => fileName
-      case _                                     => name
-    })
+  // `(<workflow_filename>@step_<step_id>@)?<tool_filename>.cwl`. This function returns <tool_filename>.
+  // If tool_filename is "run" (the default), then the step_id is prepended (e.g. "step1_run").
+  def simpleName: String = {
+    Identifier.simplifyFrag(name, simplifyAutoName = true, dropCwlExtension = true)
   }
 
-  def simplifyId(id: Identifier): Identifier = {
-    id.copy(namespace = None, frag = simplifyName(id.name))
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): Process
+
+  protected def getIdAndChildReplacePrefix(
+      dropNamespace: Boolean,
+      replacePrefix: (Either[Boolean, String], Option[String]),
+      simplifyAutoNames: Boolean,
+      dropCwlExtension: Boolean
+  ): (Option[Identifier], (Either[Boolean, String], Option[String])) = {
+    val (prefixToDrop, prefixToAdd) = (id.map(_.frag), replacePrefix) match {
+      case (_, (Left(false) | Right(""), toAdd)) => (None, toAdd)
+      case (Some(Identifier.splitFragRegex(prefix, _)), (Left(true), toAdd)) =>
+        (Option(prefix), toAdd)
+      case (Some(Identifier.splitFragRegex(prefix, _)), (Right(toDrop), toAdd))
+          if Option(prefix).exists(_.startsWith(toDrop)) =>
+        (Some(toDrop), toAdd)
+      case _ => (None, None)
+    }
+    val simplifiedId = id.map(
+        _.simplify(dropNamespace,
+                   (prefixToDrop.toRight(false), prefixToAdd),
+                   simplifyAutoNames,
+                   dropCwlExtension)
+    )
+    (simplifiedId,
+     (id.map(i => s"${i.frag}/").toRight(false), simplifiedId.map(i => s"${i.frag}/")))
   }
 }
 

@@ -65,6 +65,7 @@
                     {
                         "run": {
                             "class": "CommandLineTool",
+                            "id": "count-lines18-wf.cwl@step_step1@run@step_step1@run",
                             "inputs": [
                                 {
                                     "type": "File",
@@ -124,7 +125,8 @@
                                     "id": "output"
                                 }
                             ],
-                            "expression": "$({'output': parseInt(inputs.file1.contents)})"
+                            "expression": "$({'output': parseInt(inputs.file1.contents)})",
+                            "id": "count-lines18-wf.cwl@step_step1@run@step_step2@run"
                         },
                         "in": [
                             {
