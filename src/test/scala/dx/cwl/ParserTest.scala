@@ -409,6 +409,20 @@ class ParserTest extends AnyWordSpec with Matchers {
       )
     }
 
+    "parse a packed workflow in graph format and determine the correct main process" in {
+      val wfPathPacked = workflowsConformancePath.resolve("conflict-wf.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+          "Workflow"
+      ))
+      val (wf, doc) = workflowConformanceParser.parseFile(wfPathPacked) match {
+        case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+        case other =>
+          throw new Exception(s"expected main process to be a workflow, not ${other}")
+      }
+      wf.id.map(_.name) shouldBe Some("collision")
+      doc.size shouldBe 3
+    }
+
     def parseWorkflowConformance(parser: Parser,
                                  wfFile: File,
                                  mainIds: Map[Path, Identifier] = Map.empty): Unit = {

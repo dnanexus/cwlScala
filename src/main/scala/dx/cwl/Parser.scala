@@ -62,13 +62,25 @@ case class Parser(baseUri: Option[URI] = None,
             val YamlObject(procFields) = graph.head
             (version, procFields.get(classKey).map(cls => yamlToString(cls)))
           } else {
-            val cls = graph.collectFirst {
-              case YamlObject(fields)
-                  if fields.contains(classKey) && fields
-                    .get(YamlString("id"))
-                    .exists(id => Identifier.parse(yamlToString(id)).equals(mainId)) =>
-                yamlToString(fields(classKey))
-            }
+            val cls = graph
+              .collectFirst {
+                case YamlObject(fields)
+                    if fields.contains(classKey) && fields
+                      .get(YamlString("id"))
+                      .exists(id => Identifier.parse(yamlToString(id)).equals(mainId)) =>
+                  yamlToString(fields(classKey))
+              }
+              .orElse {
+                Option.when(graph.count {
+                  case YamlObject(fields)
+                      if fields
+                        .contains(YamlString("id")) && fields
+                        .get(YamlString("class"))
+                        .contains(YamlString("Workflow")) =>
+                    true
+                  case _ => false
+                } == 1)("Workflow")
+              }
             (version, cls)
           }
         } else {
@@ -97,13 +109,25 @@ case class Parser(baseUri: Option[URI] = None,
             val JsObject(procFields) = graph.head
             (version, procFields.get("class").map(cls => jsvToString(cls)))
           } else {
-            val cls = graph.collectFirst {
-              case JsObject(fields)
-                  if fields.contains("class") && fields
-                    .get("id")
-                    .exists(id => Identifier.parse(jsvToString(id)).equals(mainId)) =>
-                jsvToString(fields("class"))
-            }
+            val cls = graph
+              .collectFirst {
+                // first try to find a process with id 'main'
+                case JsObject(fields)
+                    if fields.contains("class") && fields
+                      .get("id")
+                      .exists(id => Identifier.parse(jsvToString(id)).equals(mainId)) =>
+                  jsvToString(fields("class"))
+              }
+              .orElse {
+                // fall back to looking for a single workflow
+                Option.when(graph.count {
+                  case JsObject(fields)
+                      if fields
+                        .contains("id") && fields.get("class").contains(JsString("Workflow")) =>
+                    true
+                  case _ => false
+                } == 1)("Workflow")
+              }
             (version, cls)
           }
         } else {
