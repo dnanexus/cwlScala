@@ -866,7 +866,8 @@ case class Evaluator(jsEnabled: Boolean = false,
     * @param value the value to evaluate
     * @param cwlType the type to which the result must be coercible
     * @param ctx the evaluation context
-    * @param coerce whether to actually coerce the result to `cwlType`
+    * @param coerce whether to actually coerce the result to `cwlType`; if false, it is only checked whether the type
+    *               of the result can be coerced to `cwlType`, not whether the result value is actually coercible.
     * @return (CwlType, CwlValue), where CwlValue is the result value and CwlType is the actual type to which the result
     *         is coercible (either `cwlType` or a more specific subtype thereof).
     */

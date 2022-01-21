@@ -11,6 +11,7 @@
 * Adds `Identifiable.copySimplifyIds` method to deep-copy objects with simplified IDs
 * Adds `CwlEnum.symbolNames` function for getting enum symbols without any namespace prefixes
 * Adds `coerce` option to `Evaluator.evaluate` to actually perform type coercion, rather than just checking that the result is coercible to the specified type
+* Trims `StringValue` when coercing to primitive types
 
 ## 0.7.4 (2021-01-05)
 

@@ -442,15 +442,19 @@ case class StringValue(value: String) extends PrimitiveValue with IntIndexable {
 
   override def coerceToOther(targetType: CwlType): CwlValue = {
     targetType match {
-      case CwlBoolean   => BooleanValue(value.toBoolean)
-      case CwlInt       => IntValue(value.toInt)
-      case CwlLong      => LongValue(value.toLong)
-      case CwlFloat     => FloatValue(value.toFloat)
-      case CwlDouble    => DoubleValue(value.toDouble)
+      case CwlBoolean => BooleanValue(value.trim.toBoolean)
+      case CwlInt     => IntValue(value.trim.toInt)
+      case CwlLong    => LongValue(value.trim.toLong)
+      case CwlFloat   => FloatValue(value.trim.toFloat)
+      case CwlDouble  => DoubleValue(value.trim.toDouble)
+      // TODO: not sure whether to trim files/directories, since they may be allowed to have whitespace
       case CwlFile      => FileValue(value)
       case CwlDirectory => DirectoryValue(value)
-      case enum: CwlEnum if enum.symbols.contains(value) =>
+      case enum: CwlEnum if enum.symbols.contains(value) || enum.symbolNames.contains(value) =>
         this
+      case enum: CwlEnum
+          if enum.symbols.contains(value.trim) || enum.symbolNames.contains(value.trim) =>
+        StringValue(value.trim)
       case _ => throw new RuntimeException
     }
   }
