@@ -493,7 +493,7 @@ object EvaluatorContext {
   def finalizeInputValue(value: CwlValue,
                          cwlType: CwlType,
                          param: Identifiable with Loadable,
-                         inputDir: Path,
+                         inputDir: Path = Paths.get("."),
                          fileResolver: FileSourceResolver = FileSourceResolver.get,
                          ignoreMissingRequired: Boolean = false): CwlValue = {
     def finalizeFileSources(fileSources: Vector[FileSource],
@@ -569,6 +569,7 @@ object EvaluatorContext {
           }
           val dirname = Option(newPath.getParent).getOrElse(inputDir)
           val newChecksum = f.checksum // TODO
+          val newSecondaryFiles = f.secondaryFiles.map(finalizePath)
           val fileExists = newPath.toFile.exists()
           val newSize = (f.size, newFileSource) match {
             case (Some(size), _)         => Some(size)
@@ -581,11 +582,17 @@ object EvaluatorContext {
               }
             case _ => None
           }
-          val newSecondaryFiles = f.secondaryFiles.map(finalizePath)
-          val newContents = if (param.loadContents && f.contents.isEmpty && fileExists) {
-            Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
-          } else {
-            f.contents
+          val newContents = (f.contents, newFileSource) match {
+            case (Some(contents), _) => Some(contents)
+            case (None, _) if param.loadContents && fileExists =>
+              Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
+            case (None, f: FileNode) if param.loadContents =>
+              try {
+                Some(f.readString)
+              } catch {
+                case _: Throwable => None
+              }
+            case _ => None
           }
           FileValue(
               Some(newLocation.toString),
@@ -630,13 +637,50 @@ object EvaluatorContext {
     }
 
     (cwlType, value) match {
-      case (t, NullValue) if CwlOptional.isOptional(t) || ignoreMissingRequired =>
+      case (_, NullValue) if CwlOptional.isOptional(cwlType) || ignoreMissingRequired =>
         NullValue
       case (_, NullValue) =>
-        throw new Exception(s"missing required input ${param.frag}")
-      case (CwlFile, f: FileValue)           => finalizePath(f)
-      case (CwlDirectory, d: DirectoryValue) => finalizePath(d)
-      case _                                 => value
+        throw new Exception(s"missing required input ${param.id}")
+      case (CwlOptional(t), _) =>
+        finalizeInputValue(value, t, param, inputDir, fileResolver, ignoreMissingRequired)
+      case (_, f: FileValue)      => finalizePath(f)
+      case (_, d: DirectoryValue) => finalizePath(d)
+      case (array: CwlArray, ArrayValue(items)) =>
+        ArrayValue(
+            items.map(
+                finalizeInputValue(_,
+                                   array.itemType,
+                                   param,
+                                   inputDir,
+                                   fileResolver,
+                                   ignoreMissingRequired)
+            )
+        )
+      case (rec: CwlRecord, ObjectValue(items)) =>
+        ObjectValue(
+            items.map {
+              case (k, v) =>
+                k -> finalizeInputValue(v,
+                                        rec.fields(k).cwlType,
+                                        param,
+                                        inputDir,
+                                        fileResolver,
+                                        ignoreMissingRequired)
+            }
+        )
+      case (_, ObjectValue(items)) =>
+        ObjectValue(
+            items.map {
+              case (k, v) =>
+                k -> finalizeInputValue(v,
+                                        CwlOptional(CwlAny),
+                                        param,
+                                        inputDir,
+                                        fileResolver,
+                                        ignoreMissingRequired)
+            }
+        )
+      case _ => value
     }
   }
 
