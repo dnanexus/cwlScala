@@ -113,6 +113,15 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
           "filename.txt"
       )
     }
+
+    "coerce results" in {
+      val ctx = EvaluatorContext(StringValue("1"))
+      evaluator.evaluate(StringValue("$(self)"), CwlInt, ctx, coerce = true)._2 shouldBe IntValue(1)
+      evaluator.evaluate(StringValue("$(self)"),
+                         CwlMulti(Vector(CwlInt, CwlBoolean)),
+                         ctx,
+                         coerce = true) shouldBe (CwlInt, IntValue(1))
+    }
   }
 
   private case class SplitTest(s: String, expected: EcmaString)
@@ -155,5 +164,4 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       }
     }
   }
-
 }

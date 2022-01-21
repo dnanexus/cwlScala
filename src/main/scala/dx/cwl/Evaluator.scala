@@ -861,7 +861,19 @@ case class Evaluator(jsEnabled: Boolean = false,
     }
   }
 
-  def evaluate(value: CwlValue, cwlType: CwlType, ctx: EvaluatorContext): (CwlType, CwlValue) = {
+  /**
+    * Evaluates a CwlValue, which may be a parameter reference or javascript expression.
+    * @param value the value to evaluate
+    * @param cwlType the type to which the result must be coercible
+    * @param ctx the evaluation context
+    * @param coerce whether to actually coerce the result to `cwlType`
+    * @return (CwlType, CwlValue), where CwlValue is the result value and CwlType is the actual type to which the result
+    *         is coercible (either `cwlType` or a more specific subtype thereof).
+    */
+  def evaluate(value: CwlValue,
+               cwlType: CwlType,
+               ctx: EvaluatorContext,
+               coerce: Boolean = false): (CwlType, CwlValue) = {
     def evaluateObject(obj: ObjectValue,
                        fields: Map[String, CwlRecordField]): (Map[String, CwlType], ObjectValue) = {
       val (types, values) = obj.fields.map {
@@ -919,7 +931,12 @@ case class Evaluator(jsEnabled: Boolean = false,
         case _ => (innerType, innerValue.coerceTo(innerType))
       }
     }
-    inner(value, cwlType)
+    if (coerce) {
+      val (resultType, resultValue) = inner(value, cwlType)
+      (resultType, resultValue.coerceTo(resultType))
+    } else {
+      inner(value, cwlType)
+    }
   }
 
   def evaluateMap(
