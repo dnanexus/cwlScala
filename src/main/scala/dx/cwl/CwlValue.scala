@@ -12,6 +12,7 @@ import scala.jdk.CollectionConverters._
   * Marker trait for all CWL values.
   */
 sealed trait CwlValue {
+  def cwlType: CwlType
 
   /**
     * Converts this value to JSON
@@ -23,10 +24,12 @@ sealed trait CwlValue {
     */
   def coercibleTo(targetType: CwlType): Boolean = false
 
-  def coerceTo(targetType: CwlType): CwlValue = ???
+  def coerceTo(targetType: CwlType): (CwlType, CwlValue) = ???
 }
 
 case object NullValue extends CwlValue {
+  override val cwlType: CwlType = CwlNull
+
   override val toJson: JsValue = JsNull
 
   override val toString: String = "null"
@@ -38,32 +41,25 @@ case object NullValue extends CwlValue {
     CwlNull.coercibleTo(targetType)
   }
 
-  override def coerceTo(targetType: CwlType): CwlValue = {
+  override def coerceTo(targetType: CwlType): (CwlType, CwlValue) = {
     if (targetType == CwlNull || CwlOptional.isOptional(targetType)) {
-      NullValue
+      (targetType, NullValue)
     } else {
       throw new Exception(s"null is not coercible to ${targetType}")
     }
   }
 }
 
-/**
-  * Parent of all primitive types. Every primitive value maps
-  * to a single, static [[CwlType]].
-  */
-sealed trait PrimitiveValue extends CwlValue {
-  val cwlType: CwlType
-
-  override def coercibleTo(targetType: CwlType): Boolean = {
-    cwlType.coercibleTo(targetType)
-  }
-
+sealed trait NonNullValue extends CwlValue {
   protected def coerceToOther(targetType: CwlType): CwlValue = ???
 
-  override def coerceTo(targetType: CwlType): CwlValue = {
+  override def coerceTo(targetType: CwlType): (CwlType, CwlValue) = {
     targetType match {
-      case this.cwlType | CwlAny => this
-      case CwlOptional(t)        => coerceTo(t)
+      case t if t == this.cwlType => (targetType, this)
+      case CwlAny                 => (this.cwlType, this)
+      case CwlOptional(t) =>
+        val (coercedType, coercedValue) = coerceTo(t)
+        (CwlOptional(coercedType), coercedValue)
       case CwlMulti(types) =>
         types.iterator
           .map { t =>
@@ -81,10 +77,20 @@ sealed trait PrimitiveValue extends CwlValue {
                   s"cannot coerce ${this} to any of types ${types.mkString(",")}"
               )
           )
-      case _ if coercibleTo(targetType) => coerceToOther(targetType)
+      case _ if coercibleTo(targetType) => (targetType, coerceToOther(targetType))
       case _ =>
         throw new Exception(s"${this} is not coercible to ${targetType}")
     }
+  }
+}
+
+/**
+  * Parent of all primitive types. Every primitive value maps
+  * to a single, static [[CwlType]].
+  */
+sealed trait PrimitiveValue extends NonNullValue {
+  override def coercibleTo(targetType: CwlType): Boolean = {
+    cwlType.coercibleTo(targetType)
   }
 }
 
@@ -1082,38 +1088,14 @@ case class RandomFile(stdfile: StdFile.StdFile) extends PrimitiveValue {
   }
 }
 
-sealed trait ContainerValue extends CwlValue {
-  protected def coerceToOther(targetType: CwlType): CwlValue
-
-  override def coerceTo(targetType: CwlType): CwlValue = {
-    targetType match {
-      case CwlAny         => this
-      case CwlOptional(t) => coerceTo(t)
-      case CwlMulti(types) =>
-        types.iterator
-          .map { t =>
-            try {
-              Some(coerceTo(t))
-            } catch {
-              case _: Throwable => None
-            }
-          }
-          .collectFirst {
-            case Some(result) => result
-          }
-          .getOrElse(
-              throw new Exception(
-                  s"cannot coerce ${this} to any of types ${types.mkString(",")}"
-              )
-          )
-      case _ if coercibleTo(targetType) => coerceToOther(targetType)
-      case _ =>
-        throw new Exception(s"${this} is not coercible to ${targetType}")
-    }
-  }
-}
+sealed trait ContainerValue extends NonNullValue
 
 case class ArrayValue(items: Vector[CwlValue]) extends ContainerValue with IntIndexable {
+  override lazy val cwlType: CwlType = {
+    val itemTypes = items.map(_.cwlType)
+    CwlArray(CwlType.flatten(itemTypes))
+  }
+
   override def length: Int = {
     items.size
   }
@@ -1136,7 +1118,7 @@ case class ArrayValue(items: Vector[CwlValue]) extends ContainerValue with IntIn
   override def coerceToOther(targetType: CwlType): CwlValue = {
     targetType match {
       case arrayType: CwlArray if coercibleTo(arrayType) =>
-        ArrayValue(items.map(_.coerceTo(arrayType.itemType)))
+        ArrayValue(items.map(_.coerceTo(arrayType.itemType)._2))
       case _ =>
         throw new Exception(s"${this} is not coercible to ${targetType}")
     }
@@ -1196,6 +1178,12 @@ trait ObjectLike extends CwlValue with StringIndexable {
 }
 
 case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ContainerValue with ObjectLike {
+  override lazy val cwlType: CwlType = {
+    val fieldTypes = fields.map {
+      case (name, value) => name -> CwlGenericRecordField(name, value.cwlType)
+    }
+    CwlGenericRecord(fieldTypes)
+  }
 
   override def contains(key: String): Boolean = {
     fields.contains(key)
@@ -1234,7 +1222,7 @@ case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ContainerValue 
             schema.fields.values
               .map { field =>
                 val value = if (fields.contains(field.name)) {
-                  fields(field.name).coerceTo(field.cwlType)
+                  fields(field.name).coerceTo(field.cwlType)._2
                 } else if (field.optional) {
                   NullValue
                 } else {
@@ -1242,10 +1230,9 @@ case class ObjectValue(fields: SeqMap[String, CwlValue]) extends ContainerValue 
                 }
                 field.name -> value
               }
-              .to(TreeSeqMap)
+              .to(SeqMap)
         )
-      case _ =>
-        throw new Exception(s"${this} is not coercible to ${targetType}")
+      case _ => throw new Exception(s"${this} is not coercible to ${targetType}")
     }
   }
 }

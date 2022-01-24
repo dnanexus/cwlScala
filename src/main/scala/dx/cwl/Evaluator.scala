@@ -356,6 +356,19 @@ case class Runtime(outdir: String,
       "tmpdirSize"
   )
 
+  override val cwlType: CwlType = {
+    CwlGenericRecord(
+        SeqMap(
+            "outdir" -> CwlGenericRecordField("outdir", CwlString),
+            "tmpdir" -> CwlGenericRecordField("tmpdir", CwlString),
+            "cores" -> CwlGenericRecordField("cores", CwlInt),
+            "ram" -> CwlGenericRecordField("ram", CwlLong),
+            "outdirSize" -> CwlGenericRecordField("outdirSize", CwlLong),
+            "tmpdirSize" -> CwlGenericRecordField("tmpdirSize", CwlLong)
+        )
+    )
+  }
+
   override def contains(key: String): Boolean = {
     keys.contains(key)
   }
@@ -788,13 +801,15 @@ case class Evaluator(jsEnabled: Boolean = false,
         throw new Exception(s"null is not coercible to non-optional type ${cwlType}")
       case (CwlOptional(t), _) => checkCoercibleTo(value, t)
       case (CwlMulti(types), _) =>
-        types
-          .collectFirst {
-            case t if value.coercibleTo(t) => (t, value)
-          }
-          .getOrElse(
-              throw new Exception(s"${value} is not coercible to any of ${types}")
-          )
+        val t = types.collect {
+          case t if value.coercibleTo(t) => t
+        } match {
+          case Vector(t) => t
+          case Vector() =>
+            throw new Exception(s"${value} is not coercible to any of ${types}")
+          case v => CwlMulti(v)
+        }
+        (t, value)
       case _ if value.coercibleTo(cwlType) => (cwlType, value)
       case _ =>
         throw new Exception(s"${value} is not coercible to ${cwlType}")
@@ -973,12 +988,12 @@ case class Evaluator(jsEnabled: Boolean = false,
                   )
                 }
             )
-        case _ => (innerType, innerValue.coerceTo(innerType))
+        case _ => checkCoercibleTo(innerValue, innerType)
       }
     }
     if (coerce) {
       val (resultType, resultValue) = inner(value, cwlType)
-      (resultType, resultValue.coerceTo(resultType))
+      resultValue.coerceTo(resultType)
     } else {
       inner(value, cwlType)
     }

@@ -30,6 +30,6 @@ class CwlValueTest extends AnyFlatSpec with Matchers {
   it should "coerce null to optional" in {
     val t = CwlOptional(CwlString)
     NullValue.coercibleTo(t) shouldBe true
-    NullValue.coerceTo(t) shouldBe NullValue
+    NullValue.coerceTo(t) shouldBe (t, NullValue)
   }
 }

@@ -558,6 +558,50 @@ sealed trait CwlRecordField {
 
 sealed trait CwlRecord extends CwlSchema {
   val fields: SeqMap[String, CwlRecordField]
+
+  protected def fieldsCanBeCoercedTo(targetFields: SeqMap[String, CwlRecordField]): Boolean = {
+    targetFields.forall {
+      case (name, toField) if fields.contains(name) =>
+        fields(name).cwlType.coercibleTo(toField.cwlType)
+      case (_, toField) if CwlOptional.isOptional(toField.cwlType) => true
+      case _                                                       => false
+    }
+  }
+}
+
+case class CwlGenericRecordField(name: String,
+                                 cwlType: CwlType,
+                                 label: Option[String] = None,
+                                 doc: Option[String] = None,
+                                 secondaryFiles: Vector[SecondaryFile] = Vector.empty,
+                                 format: Vector[CwlValue] = Vector.empty,
+                                 streamable: Boolean = false)
+    extends CwlRecordField
+
+case class CwlGenericRecord(fields: SeqMap[String, CwlGenericRecordField],
+                            id: Option[Identifier] = None,
+                            label: Option[String] = None,
+                            doc: Option[String] = None)
+    extends CwlRecord {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlGenericRecord = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+  }
+
+  /**
+    * Returns true if this type can be coerced to targetType,
+    * which is a non-optional, non-equal, and non-Any type.
+    */
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case targetSchema: CwlGenericRecord => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlInputRecord   => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlOutputRecord  => fieldsCanBeCoercedTo(targetSchema.fields)
+      case _                              => false
+    }
+  }
 }
 
 case class CwlInputRecordField(name: String,
@@ -631,13 +675,9 @@ case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
     with CwlInputSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
-      case targetSchema: CwlInputRecord if fields.keySet == targetSchema.fields.keySet =>
-        fields.forall {
-          case (name, fromField) =>
-            val toField = targetSchema.fields(name)
-            fromField.cwlType.coercibleTo(toField.cwlType)
-        }
-      case _ => false
+      case targetSchema: CwlGenericRecord => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlInputRecord   => fieldsCanBeCoercedTo(targetSchema.fields)
+      case _                              => false
     }
   }
 
@@ -776,13 +816,9 @@ case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
     extends CwlRecord {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
-      case targetSchema: CwlOutputRecord if fields.keySet == targetSchema.fields.keySet =>
-        fields.forall {
-          case (name, fromField) =>
-            val toField = targetSchema.fields(name)
-            fromField.cwlType.coercibleTo(toField.cwlType)
-        }
-      case _ => false
+      case targetSchema: CwlGenericRecord => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlOutputRecord  => fieldsCanBeCoercedTo(targetSchema.fields)
+      case _                              => false
     }
   }
 

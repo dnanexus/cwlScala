@@ -38,8 +38,18 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       "bork" -> IntValue(1)
   )
 
-  private val ctx = EvaluatorContext(inputs = ObjectValue(SeqMap("bar" -> ObjectValue(bar))))
   private val trace = false
+
+  "static evaluator" in {
+    val evaluator = Evaluator(trace = trace)
+    val stringValue = StringValue("the default value")
+    val tMulti = CwlMulti(Vector(CwlOptional(CwlFile), CwlOptional(CwlString)))
+    val (actualType, staticValue) = evaluator.evaluate(stringValue, tMulti, EvaluatorContext.empty)
+    actualType shouldBe tMulti
+    staticValue shouldBe stringValue
+  }
+
+  private val ctx = EvaluatorContext(inputs = ObjectValue(SeqMap("bar" -> ObjectValue(bar))))
 
   "parameter reference evaluator" should {
     val testCases = loadYamlTestCases(s"/CommandLineTools/conformance/params_inc.yml")
