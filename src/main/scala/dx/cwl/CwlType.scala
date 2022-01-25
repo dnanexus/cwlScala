@@ -829,9 +829,9 @@ case class CwlEnum(symbols: Vector[String],
 
   val symbolRegex: Regex = "(.+/)?(.+)".r
   lazy val symbolNames: Vector[String] = {
-      this.symbols.map {
+    this.symbols.map {
       case this.symbolRegex(_, name) => name
-      case other                        => throw new Exception(s"invalid symbol ${other}")
+      case other                     => throw new Exception(s"invalid symbol ${other}")
     }
   }
 }
