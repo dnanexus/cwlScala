@@ -34,6 +34,7 @@ import org.w3id.cwl.cwl1_2.{
 import scala.annotation.tailrec
 import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
+import scala.util.matching.Regex
 
 /**
   * Marker trait for all CWL data types.
@@ -823,6 +824,14 @@ case class CwlEnum(symbols: Vector[String],
       case targetSchema: CwlEnum if this.symbols == targetSchema.symbols => true
       case CwlString                                                     => true
       case _                                                             => false
+    }
+  }
+
+  val symbolRegex: Regex = "(.+/)?(.+)".r
+  lazy val symbolNames: Vector[String] = {
+      this.symbols.map {
+      case this.symbolRegex(_, name) => name
+      case other                        => throw new Exception(s"invalid symbol ${other}")
     }
   }
 }
