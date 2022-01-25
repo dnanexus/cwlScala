@@ -1,0 +1,44 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "doc": "Must fail if entryname starts with ../\n",
+    "inputs": [
+        {
+            "type": "File",
+            "id": "filelist"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "head.txt"
+            },
+            "id": "head"
+        }
+    ],
+    "requirements": [
+        {
+            "listing": [
+                {
+                    "entryname": "../input/stuff.txt",
+                    "entry": "$(inputs.filelist)"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "arguments": [
+        {
+            "shellQuote": false,
+            "valueFrom": "head -n10 ../input/stuff.txt > head.txt"
+        }
+    ],
+    "id": "iwd-container-entryname4.cwl"
+}

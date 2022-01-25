@@ -1,0 +1,35 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "listing": [
+                {
+                    "entryname": "renamed-filelist.txt",
+                    "entry": "$(inputs.filelist)"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "filelist"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "renamed-filelist.txt"
+            },
+            "id": "filelist"
+        }
+    ],
+    "baseCommand": "true",
+    "id": "iwd-passthrough3.cwl"
+}

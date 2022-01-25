@@ -1,0 +1,27 @@
+{
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "DockerRequirement",
+            "dockerPull": "debian:stretch-slim"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "class": "CommandLineTool",
+    "inputs": [],
+    "outputs": [
+        {
+            "id": "OUTPUT",
+            "type": "File",
+            "outputBinding": {
+                "glob": "/etc/passwd"
+            }
+        }
+    ],
+    "baseCommand": [
+        "echo"
+    ],
+    "id": "glob-path-error.cwl"
+}

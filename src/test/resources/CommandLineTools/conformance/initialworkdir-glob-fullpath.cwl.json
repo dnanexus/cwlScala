@@ -1,0 +1,43 @@
+{
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InitialWorkDirRequirement",
+            "listing": [
+                "$(inputs.INPUT)"
+            ]
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "class": "CommandLineTool",
+    "inputs": [
+        {
+            "id": "INPUT",
+            "type": "File"
+        }
+    ],
+    "outputs": [
+        {
+            "id": "OUTPUT",
+            "type": "File",
+            "outputBinding": {
+                "glob": "$(runtime.outdir)/$(inputs.INPUT.basename)"
+            },
+            "secondaryFiles": [
+                ".fai"
+            ]
+        }
+    ],
+    "arguments": [
+        {
+            "valueFrom": "$(inputs.INPUT.basename).fai",
+            "position": 0
+        }
+    ],
+    "baseCommand": [
+        "touch"
+    ],
+    "id": "initialworkdir-glob-fullpath.cwl"
+}

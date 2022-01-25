@@ -1,0 +1,106 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "Workflow",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "id": "inp1"
+        },
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "id": "inp2"
+        }
+    ],
+    "outputs": [
+        {
+            "outputSource": "step1/echo_out",
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": "string"
+                }
+            },
+            "id": "out"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "inp1",
+                    "id": "echo_in1"
+                },
+                {
+                    "source": "inp2",
+                    "id": "echo_in2"
+                }
+            ],
+            "out": [
+                "echo_out"
+            ],
+            "scatter": [
+                "echo_in1",
+                "echo_in2"
+            ],
+            "scatterMethod": "nested_crossproduct",
+            "run": {
+                "class": "CommandLineTool",
+                "id": "step1command",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "inputBinding": {},
+                        "id": "echo_in1"
+                    },
+                    {
+                        "type": "string",
+                        "inputBinding": {},
+                        "id": "echo_in2"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "glob": "step1_out",
+                            "loadContents": true,
+                            "outputEval": "$(self[0].contents)"
+                        },
+                        "id": "echo_out"
+                    }
+                ],
+                "baseCommand": "echo",
+                "arguments": [
+                    "-n",
+                    "foo"
+                ],
+                "stdout": "step1_out",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "id": "step1"
+        }
+    ],
+    "id": "scatter-wf2.cwl"
+}

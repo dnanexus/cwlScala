@@ -1,0 +1,33 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "inputs": [],
+    "baseCommand": [
+        "touch",
+        "z",
+        "y",
+        "x",
+        "w",
+        "c",
+        "b",
+        "a"
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputBinding": {
+                "glob": "*"
+            },
+            "id": "letters"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "glob_test.cwl"
+}

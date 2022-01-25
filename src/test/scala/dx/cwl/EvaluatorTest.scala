@@ -38,11 +38,21 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       "bork" -> IntValue(1)
   )
 
-  private val ctx = EvaluatorContext(inputs = ObjectValue(SeqMap("bar" -> ObjectValue(bar))))
   private val trace = false
 
+  "static evaluator" in {
+    val evaluator = Evaluator(trace = trace)
+    val stringValue = StringValue("the default value")
+    val tMulti = CwlMulti(Vector(CwlOptional(CwlFile), CwlOptional(CwlString)))
+    val (actualType, staticValue) = evaluator.evaluate(stringValue, tMulti, EvaluatorContext.empty)
+    actualType shouldBe tMulti
+    staticValue shouldBe stringValue
+  }
+
+  private val ctx = EvaluatorContext(inputs = ObjectValue(SeqMap("bar" -> ObjectValue(bar))))
+
   "parameter reference evaluator" should {
-    val testCases = loadYamlTestCases(s"/tools/v1.2/params_inc.yml")
+    val testCases = loadYamlTestCases(s"/CommandLineTools/conformance/params_inc.yml")
     val evaluator = Evaluator(trace = trace)
     testCases.foreach { x =>
       val testCase = x.asInstanceOf[java.util.Map[String, Any]].asScala
@@ -68,7 +78,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       val ctx2 = EvaluatorContext(inputs = EvaluatorContext.inputsFromParameters(
           Map(
               CommandInputParameter(
-                  Some(Identifier(namespace = None, frag = Some("f"))),
+                  Some(Identifier(namespace = None, frag = "f")),
                   None,
                   None,
                   CwlFile,
@@ -81,7 +91,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                   loadListing = LoadListing.No
               ) -> FileValue(location = Some(f.toString)),
               CommandInputParameter(
-                  Some(Identifier(namespace = None, frag = Some("d"))),
+                  Some(Identifier(namespace = None, frag = "d")),
                   None,
                   None,
                   CwlDirectory,
@@ -112,6 +122,15 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       evaluator("filename$(inputs.f.nameext)", CwlString, ctx2)._2 shouldBe StringValue(
           "filename.txt"
       )
+    }
+
+    "coerce results" in {
+      val ctx = EvaluatorContext(StringValue("1"))
+      evaluator.evaluate(StringValue("$(self)"), CwlInt, ctx, coerce = true)._2 shouldBe IntValue(1)
+      evaluator.evaluate(StringValue("$(self)"),
+                         CwlMulti(Vector(CwlInt, CwlBoolean)),
+                         ctx,
+                         coerce = true) shouldBe (CwlInt, IntValue(1))
     }
   }
 
@@ -155,5 +174,4 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       }
     }
   }
-
 }

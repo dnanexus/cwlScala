@@ -1,0 +1,67 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "Workflow",
+    "requirements": [
+        {
+            "class": "StepInputExpressionRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "my_file"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "class": "ExpressionTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "my_number"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "id": "my_int"
+                    }
+                ],
+                "expression": "${ return { \"my_int\": inputs.my_number }; }\n",
+                "id": "wf-loadContents4.cwl@step_one@run"
+            },
+            "in": [
+                {
+                    "source": "my_file",
+                    "loadContents": true,
+                    "valueFrom": "$(parseInt(self.contents))",
+                    "id": "my_number"
+                }
+            ],
+            "out": [
+                "my_int"
+            ],
+            "id": "one"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "int",
+            "outputSource": "one/my_int",
+            "id": "my_int"
+        }
+    ],
+    "id": "wf-loadContents4.cwl"
+}

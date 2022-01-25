@@ -1,0 +1,35 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "listing": [
+                {
+                    "entry": "$(inputs.file1)",
+                    "entryname": "bob.txt"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "file1"
+        }
+    ],
+    "outputs": [],
+    "arguments": [
+        {
+            "shellQuote": false,
+            "valueFrom": "test \"$(inputs.file1.path)\" = \"$(runtime.outdir)/bob.txt\"\n"
+        }
+    ],
+    "id": "initialwork-path.cwl"
+}

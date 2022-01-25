@@ -1,5 +1,20 @@
 package dx.cwl
 
+import dx.yaml.{
+  YamlArray,
+  YamlBoolean,
+  YamlNaN,
+  YamlNegativeInf,
+  YamlNull,
+  YamlNumber,
+  YamlObject,
+  YamlPositiveInf,
+  YamlSet,
+  YamlString,
+  YamlValue
+}
+import spray.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsValue}
+
 import java.net.URI
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -87,15 +102,11 @@ object Utils {
 
   def splitUri(uri: String): (Option[String], Option[String]) = {
     uri match {
-      case identifierRegexp(frag, null) => (None, Some(frag))
-      case identifierRegexp(namespace, frag) if frag.isEmpty =>
-        (Some(namespace), None)
-      case identifierRegexp(namespace, frag) if namespace.isEmpty =>
-        (None, Some(frag))
-      case identifierRegexp(namespace, id) =>
-        (Some(namespace), Some(id))
-      case _ =>
-        throw new Exception(s"invalid URI ${uri}")
+      case identifierRegexp(frag, null)                           => (None, Some(frag))
+      case identifierRegexp(namespace, frag) if frag.isEmpty      => (Some(namespace), None)
+      case identifierRegexp(namespace, frag) if namespace.isEmpty => (None, Some(frag))
+      case identifierRegexp(namespace, id)                        => (Some(namespace), Some(id))
+      case _                                                      => throw new Exception(s"invalid URI ${uri}")
     }
   }
 
@@ -117,6 +128,27 @@ object Utils {
       case (Some(base), Some(frag)) => s"${base}#${frag}"
       case (Some(base), None)       => base
       case (None, _)                => throw new Exception(s"invalid uri ${uri}")
+    }
+  }
+
+  def yamlToJson(yamlValue: YamlValue): JsValue = {
+    yamlValue match {
+      case YamlNull        => JsNull
+      case YamlString(s)   => JsString(s)
+      case YamlBoolean(b)  => JsBoolean(b)
+      case YamlNumber(n)   => JsNumber(n)
+      case YamlNaN         => JsNumber(Double.NaN)
+      case YamlPositiveInf => JsNumber(Double.PositiveInfinity)
+      case YamlNegativeInf => JsNumber(Double.NegativeInfinity)
+      case YamlArray(a)    => JsArray(a.map(yamlToJson))
+      case YamlSet(s)      => JsArray(s.map(yamlToJson).toVector)
+      case YamlObject(obj) =>
+        JsObject(obj.map {
+          case (YamlString(key), value) => key -> yamlToJson(value)
+          case (key, value)             => key.toString -> yamlToJson(value)
+        })
+      case other =>
+        throw new Exception(s"unexpected value ${other}")
     }
   }
 }

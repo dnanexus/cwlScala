@@ -1,0 +1,314 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "hints": [
+        {
+            "class": "DockerRequirement",
+            "dockerPull": "python:2-slim"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "reads",
+            "type": "File"
+        },
+        {
+            "id": "stages",
+            "inputBinding": {
+                "position": 1
+            },
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "record",
+                    "name": "user_type_4",
+                    "fields": [
+                        {
+                            "inputBinding": {
+                                "position": 0,
+                                "prefix": "stage",
+                                "separate": false
+                            },
+                            "name": "stageId",
+                            "type": [
+                                "null",
+                                "int"
+                            ]
+                        },
+                        {
+                            "inputBinding": {
+                                "position": 1,
+                                "prefix": "-n"
+                            },
+                            "name": "stageOption1",
+                            "type": [
+                                "null",
+                                "boolean"
+                            ]
+                        },
+                        {
+                            "inputBinding": {
+                                "position": 2
+                            },
+                            "name": "algos",
+                            "type": {
+                                "type": "array",
+                                "items": [
+                                    {
+                                        "fields": [
+                                            {
+                                                "inputBinding": {
+                                                    "position": 0
+                                                },
+                                                "name": "algo",
+                                                "type": {
+                                                    "type": "enum",
+                                                    "name": "JustMap1",
+                                                    "symbols": [
+                                                        "map1"
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "name": "maxSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--max-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "name": "minSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--min-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "inputBinding": {
+                                                    "position": 2,
+                                                    "prefix": "--seed-length"
+                                                },
+                                                "name": "seedLength",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ]
+                                            }
+                                        ],
+                                        "name": "user_type_17",
+                                        "type": "record"
+                                    },
+                                    {
+                                        "fields": [
+                                            {
+                                                "inputBinding": {
+                                                    "position": 0
+                                                },
+                                                "name": "algo",
+                                                "type": {
+                                                    "type": "enum",
+                                                    "name": "JustMap2",
+                                                    "symbols": [
+                                                        "map2"
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "name": "maxSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--max-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "name": "minSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--min-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "inputBinding": {
+                                                    "position": 2,
+                                                    "prefix": "--max-seed-hits"
+                                                },
+                                                "name": "maxSeedHits",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ]
+                                            }
+                                        ],
+                                        "name": "user_type_33",
+                                        "type": "record"
+                                    },
+                                    {
+                                        "fields": [
+                                            {
+                                                "inputBinding": {
+                                                    "position": 0
+                                                },
+                                                "name": "algo",
+                                                "type": {
+                                                    "type": "enum",
+                                                    "name": "JustMap3",
+                                                    "symbols": [
+                                                        "map3"
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "name": "maxSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--max-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "name": "minSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--min-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "inputBinding": {
+                                                    "position": 2,
+                                                    "prefix": "--fwd-search"
+                                                },
+                                                "name": "fwdSearch",
+                                                "type": [
+                                                    "null",
+                                                    "boolean"
+                                                ]
+                                            }
+                                        ],
+                                        "name": "user_type_49",
+                                        "type": "record"
+                                    },
+                                    {
+                                        "fields": [
+                                            {
+                                                "inputBinding": {
+                                                    "position": 0
+                                                },
+                                                "name": "algo",
+                                                "type": {
+                                                    "type": "enum",
+                                                    "name": "JustMap4",
+                                                    "symbols": [
+                                                        "map4"
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "name": "maxSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--max-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "name": "minSeqLen",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ],
+                                                "inputBinding": {
+                                                    "prefix": "--min-seq-length",
+                                                    "position": 2
+                                                }
+                                            },
+                                            {
+                                                "inputBinding": {
+                                                    "position": 2,
+                                                    "prefix": "--seed-step"
+                                                },
+                                                "name": "seedStep",
+                                                "type": [
+                                                    "null",
+                                                    "int"
+                                                ]
+                                            }
+                                        ],
+                                        "name": "user_type_65",
+                                        "type": "record"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "#args.py",
+            "type": "File",
+            "default": {
+                "class": "File",
+                "location": "args.py"
+            },
+            "inputBinding": {
+                "position": -1
+            }
+        }
+    ],
+    "outputs": [
+        {
+            "id": "sam",
+            "outputBinding": {
+                "glob": "output.sam"
+            },
+            "type": [
+                "null",
+                "File"
+            ]
+        },
+        {
+            "id": "args",
+            "type": {
+                "type": "array",
+                "items": "string"
+            }
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "baseCommand": "python",
+    "arguments": [
+        "tmap",
+        "mapall"
+    ],
+    "id": "tmap-tool.cwl"
+}

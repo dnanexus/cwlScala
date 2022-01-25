@@ -1,0 +1,36 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "requirements": [
+        {
+            "listing": [
+                "$(inputs.src)"
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "inputBinding": {
+                "position": 1,
+                "valueFrom": "$(self.nameroot).class"
+            },
+            "id": "src"
+        }
+    ],
+    "baseCommand": "touch",
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "*.class"
+            },
+            "id": "classfile"
+        }
+    ],
+    "id": "linkfile.cwl"
+}

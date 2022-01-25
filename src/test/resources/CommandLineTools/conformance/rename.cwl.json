@@ -1,0 +1,39 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "baseCommand": "true",
+    "requirements": [
+        {
+            "listing": [
+                {
+                    "entryname": "$(inputs.newname)",
+                    "entry": "$(inputs.srcfile)"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "srcfile"
+        },
+        {
+            "type": "string",
+            "id": "newname"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "$(inputs.newname)"
+            },
+            "id": "outfile"
+        }
+    ],
+    "id": "rename.cwl"
+}

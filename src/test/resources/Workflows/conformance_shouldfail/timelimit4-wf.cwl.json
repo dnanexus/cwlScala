@@ -1,0 +1,88 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "timelimit": "$(1+2)",
+            "class": "ToolTimeLimit"
+        },
+        {
+            "enableReuse": false,
+            "class": "WorkReuse"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": [
+                "null",
+                "int"
+            ],
+            "id": "i"
+        }
+    ],
+    "outputs": [
+        {
+            "type": [
+                "null",
+                "string"
+            ],
+            "outputSource": "step1/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "i",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "baseCommand": [
+                    "sleep",
+                    "10"
+                ],
+                "inputs": [
+                    {
+                        "type": [
+                            "null",
+                            "int"
+                        ],
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "outputBinding": {
+                            "outputEval": "time passed"
+                        },
+                        "id": "o"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "timelimit4-wf.cwl@step_step1@run"
+            },
+            "id": "step1"
+        }
+    ],
+    "id": "timelimit4-wf.cwl"
+}

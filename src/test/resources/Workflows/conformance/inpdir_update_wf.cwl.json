@@ -1,0 +1,183 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputSource": "step3/d1out",
+            "id": "a"
+        },
+        {
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputSource": "step3/d2out",
+            "id": "b"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "default": "step1dir",
+                    "id": "dirname"
+                }
+            ],
+            "out": [
+                "out"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "id": "dirname"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "Directory",
+                        "outputBinding": {
+                            "glob": "$(inputs.dirname)"
+                        },
+                        "id": "out"
+                    }
+                ],
+                "arguments": [
+                    "mkdir",
+                    "$(inputs.dirname)"
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "inpdir_update_wf.cwl@step_step1@mkdir.cwl"
+            },
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/out",
+                    "id": "r"
+                }
+            ],
+            "out": [
+                "out"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "requirements": [
+                    {
+                        "listing": [
+                            {
+                                "entry": "$(inputs.r)",
+                                "entryname": "inp",
+                                "writable": true
+                            }
+                        ],
+                        "class": "InitialWorkDirRequirement"
+                    },
+                    {
+                        "inplaceUpdate": true,
+                        "class": "InplaceUpdateRequirement"
+                    },
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [
+                    {
+                        "type": "Directory",
+                        "id": "r"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "Directory",
+                        "outputBinding": {
+                            "glob": "inp"
+                        },
+                        "id": "out"
+                    }
+                ],
+                "arguments": [
+                    "touch",
+                    "inp/blurb"
+                ],
+                "id": "inpdir_update_wf.cwl@step_step2@updatedir_inplace.cwl"
+            },
+            "id": "step2"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/out",
+                    "id": "d1"
+                },
+                {
+                    "source": "step2/out",
+                    "id": "d2"
+                }
+            ],
+            "out": [
+                "d1out",
+                "d2out"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "inputs": [
+                    {
+                        "type": "Directory",
+                        "loadListing": "shallow_listing",
+                        "id": "d1"
+                    },
+                    {
+                        "type": "Directory",
+                        "loadListing": "shallow_listing",
+                        "id": "d2"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "id": "d1out"
+                    },
+                    {
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "id": "d2out"
+                    }
+                ],
+                "expression": "$({d1out: inputs.d1.listing, d2out: inputs.d2.listing})",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "inpdir_update_wf.cwl@step_step3@run"
+            },
+            "id": "step3"
+        }
+    ],
+    "id": "inpdir_update_wf.cwl"
+}

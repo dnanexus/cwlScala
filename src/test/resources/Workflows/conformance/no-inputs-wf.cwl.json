@@ -1,0 +1,61 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "doc": "Workflow without inputs.",
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "File",
+            "outputSource": "step0/output",
+            "id": "output"
+        }
+    ],
+    "steps": [
+        {
+            "in": [],
+            "out": [
+                "output"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "doc": "CommandLineTool without inputs.",
+                "hints": {
+                    "DockerRequirement": {
+                        "dockerPull": "debian:stretch-slim"
+                    }
+                },
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "output"
+                        },
+                        "id": "output"
+                    }
+                ],
+                "baseCommand": [
+                    "echo",
+                    "cwl"
+                ],
+                "stdout": "output",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "no-inputs-wf.cwl@step_step0@run"
+            },
+            "id": "step0"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "no-inputs-wf.cwl"
+}

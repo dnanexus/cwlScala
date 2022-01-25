@@ -1,0 +1,77 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "int",
+            "id": "val"
+        },
+        {
+            "type": "boolean",
+            "default": false,
+            "id": "test"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "val",
+                    "id": "in1"
+                },
+                {
+                    "source": "test",
+                    "id": "a_new_var"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "foo $(inputs.in1)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "cond-wf-002_nojs.cwl@step_step1@foo.cwl"
+            },
+            "when": "$(inputs.a_new_var)",
+            "out": [
+                "out1"
+            ],
+            "id": "step1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "string",
+            "outputSource": "step1/out1",
+            "id": "out1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "cond-wf-002_nojs.cwl"
+}

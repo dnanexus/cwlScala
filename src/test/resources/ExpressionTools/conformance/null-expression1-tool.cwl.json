@@ -1,0 +1,24 @@
+{
+    "class": "ExpressionTool",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "Any",
+            "default": "the-default",
+            "id": "i1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "int",
+            "id": "output"
+        }
+    ],
+    "expression": "$({'output': (inputs.i1 == 'the-default' ? 1 : 2)})",
+    "id": "null-expression1-tool.cwl"
+}

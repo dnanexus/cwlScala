@@ -1,0 +1,71 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": [
+                "File",
+                "null",
+                "string"
+            ],
+            "default": "the default value",
+            "id": "bar"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "string",
+            "outputSource": "step1/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "bar",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "inputs": [
+                    {
+                        "type": [
+                            "File",
+                            "null",
+                            "string"
+                        ],
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "id": "o"
+                    }
+                ],
+                "expression": "${return {'o': (inputs.i.class || inputs.i)};}\n",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "io-union-input-default-wf.cwl@step_step1@run"
+            },
+            "id": "step1"
+        }
+    ],
+    "id": "io-union-input-default-wf.cwl"
+}

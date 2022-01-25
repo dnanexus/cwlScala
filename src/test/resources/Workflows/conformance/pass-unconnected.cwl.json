@@ -1,0 +1,79 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "string",
+            "default": "hello inp1",
+            "id": "inp1"
+        },
+        {
+            "type": "string",
+            "default": "hello inp2",
+            "id": "inp2"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "string",
+            "outputSource": "step1/out",
+            "id": "out"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "inp1",
+                    "id": "in"
+                },
+                {
+                    "source": "inp2",
+                    "id": "in2"
+                }
+            ],
+            "out": [
+                "out"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "Any",
+                        "inputBinding": {},
+                        "id": "in"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "glob": "out.txt",
+                            "loadContents": true,
+                            "outputEval": "$(self[0].contents)"
+                        },
+                        "id": "out"
+                    }
+                ],
+                "baseCommand": "echo",
+                "stdout": "out.txt",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "pass-unconnected.cwl@step_step1@echo-tool.cwl"
+            },
+            "id": "step1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "pass-unconnected.cwl"
+}

@@ -1,0 +1,32 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "coresMin": "$(inputs.special_file.size)",
+            "coresMax": "$(inputs.special_file.size)",
+            "class": "ResourceRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "special_file"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "output"
+        }
+    ],
+    "baseCommand": "echo",
+    "stdout": "cores.txt",
+    "arguments": [
+        "$(runtime.cores)"
+    ],
+    "id": "dynresreq.cwl"
+}

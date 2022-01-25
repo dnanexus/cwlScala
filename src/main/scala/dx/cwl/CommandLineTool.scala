@@ -30,7 +30,7 @@ case class CommandInputBinding(position: CwlValue,
                                valueFrom: Option[CwlValue])
 
 object CommandInputBinding {
-  def apply(binding: CommandLineBindingImpl,
+  def parse(binding: CommandLineBindingImpl,
             schemaDefs: Map[String, CwlSchema]): CommandInputBinding = {
     CommandInputBinding(
         translateOptionalObject(binding.getPosition)
@@ -58,24 +58,40 @@ case class CommandInputParameter(id: Option[Identifier],
                                  loadContents: Boolean,
                                  loadListing: LoadListing.LoadListing)
     extends InputParameter
-    with Loadable
+    with Loadable {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CommandInputParameter = {
+    copy(
+        id = id.map(
+            _.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object CommandInputParameter {
-  def apply(
+  def parse(
       param: CommandInputParameterImpl,
       schemaDefs: Map[String, CwlSchema],
-      stripFragPrefix: Option[String] = None,
       defaultNamespace: Option[String] = None
   ): (CommandInputParameter, Boolean) = {
     val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
     val inparam = CommandInputParameter(
-        translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
+        translateOptional(param.getId)
+          .map(Identifier.parse(_, defaultNamespace)),
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
         translateOptional(param.getDefault).map(CwlValue(_, schemaDefs)),
         translateOptional(param.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         },
@@ -97,7 +113,7 @@ case class CommandOutputBinding(glob: Vector[CwlValue],
     extends Loadable
 
 object CommandOutputBinding {
-  def apply(binding: CommandOutputBindingImpl,
+  def parse(binding: CommandOutputBindingImpl,
             schemaDefs: Map[String, CwlSchema]): CommandOutputBinding = {
     CommandOutputBinding(
         translateOptionalArray(binding.getGlob).map(CwlValue(_, schemaDefs)),
@@ -117,13 +133,28 @@ case class CommandOutputParameter(id: Option[Identifier],
                                   secondaryFiles: Vector[SecondaryFile],
                                   format: Option[CwlValue],
                                   streamable: Boolean)
-    extends OutputParameter
+    extends OutputParameter {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CommandOutputParameter = {
+    copy(
+        id = id.map(
+            _.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+        ),
+        cwlType = CwlType.copySimplifyIds(cwlType,
+                                          dropNamespace,
+                                          replacePrefix,
+                                          simplifyAutoNames,
+                                          dropCwlExtension)
+    )
+  }
+}
 
 object CommandOutputParameter {
-  def apply(
+  def parse(
       param: CommandOutputParameterImpl,
       schemaDefs: Map[String, CwlSchema],
-      stripFragPrefix: Option[String] = None,
       defaultNamespace: Option[String] = None
   ): (CommandOutputParameter, Option[StdFile.StdFile]) = {
     val (types, stdfile) = CwlType.translate(param.getType, schemaDefs)
@@ -131,7 +162,7 @@ object CommandOutputParameter {
       case Some(_) if stdfile.nonEmpty =>
         throw new RuntimeException(s"outputBinding not allowed for type ${stdfile.get}")
       case Some(binding: CommandOutputBindingImpl) =>
-        Some(CommandOutputBinding(binding, schemaDefs))
+        Some(CommandOutputBinding.parse(binding, schemaDefs))
       case None if stdfile.nonEmpty =>
         Some(
             CommandOutputBinding(glob = Vector(RandomFile(stdfile.get)),
@@ -149,7 +180,8 @@ object CommandOutputParameter {
       translateOptional(param.getStreamable).exists(_.booleanValue())
     }
     val outparam = CommandOutputParameter(
-        translateOptional(param.getId).map(Identifier.parse(_, stripFragPrefix, defaultNamespace)),
+        translateOptional(param.getId)
+          .map(Identifier.parse(_, defaultNamespace)),
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
@@ -189,42 +221,60 @@ case class CommandLineTool(source: Option[String],
                            successCodes: Set[Int],
                            temporaryFailCodes: Set[Int],
                            permanentFailCodes: Set[Int])
-    extends Process
+    extends Process {
+  override def copySimplifyIds(
+      dropNamespace: Boolean,
+      replacePrefix: (Either[Boolean, String], Option[String]),
+      simplifyAutoNames: Boolean,
+      dropCwlExtension: Boolean
+  ): CommandLineTool = {
+    val (simplifiedId, childReplacePrefix) =
+      getIdAndChildReplacePrefix(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
+    copy(
+        id = simplifiedId,
+        inputs = inputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        ),
+        outputs = outputs.map(
+            _.copySimplifyIds(dropNamespace,
+                              childReplacePrefix,
+                              simplifyAutoNames,
+                              dropCwlExtension)
+        )
+    )
+  }
+}
 
 object CommandLineTool {
 
   /**
     * Creates a [[CommandLineTool]] from the [[CommandLineToolImpl]] created by the Java parser.
-    * @param tool the Java object
-    * @param ctx the Parser
-    * @param source the CWL original source code
-    * @param defaultFrag an optional tool name, to use if it is not specified in the document
+    * @param tool the Java object.
+    * @param ctx the Parser.
+    * @param source the CWL original source code.
+    * @param defaultNamespace the namespace to use when creating Identifiers when one is not present.
+    * @param defaultMainFrag an optional tool name, to use if it is not specified in the document.
     * @return a [[CommandLineTool]]
     */
-  def apply(tool: CommandLineToolImpl,
+  def parse(tool: CommandLineToolImpl,
             ctx: Parser,
             source: Option[Path] = None,
             defaultNamespace: Option[String],
-            defaultFrag: Option[String] = None,
-            isGraph: Boolean = false): CommandLineTool = {
+            defaultMainFrag: Option[String] = None): CommandLineTool = {
+    val rawId = Identifier.get(tool.getId, defaultNamespace, defaultMainFrag, source)
+    val toolId = rawId.orElse {
+      val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
+      defaultMainFrag
+        .map(frag => Identifier(namespace, frag))
+        .orElse(
+            Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
+        )
+    }
     val (requirements, allSchemaDefs) =
       Requirement.applyRequirements(tool.getRequirements, ctx.schemaDefs)
-
-    val rawId = Identifier.get(tool.getId, defaultNamespace, defaultFrag, source)
-    val stripFragPrefix = if (isGraph) rawId.flatMap(_.frag.map(p => s"${p}/")) else None
-
-    val toolId = Option
-      .when(isGraph && rawId.flatMap(_.frag).contains(Identifier.Main)) {
-        val namespace = rawId.map(_.namespace).getOrElse(defaultNamespace)
-        Option
-          .when(defaultFrag.isDefined)(Identifier(namespace, defaultFrag))
-          .orElse(
-              Option.when(source.isDefined)(Identifier.fromSource(source.get, namespace))
-          )
-      }
-      .flatten
-      .orElse(rawId)
-
     // An input may have type `stdin`, which is a file that is created from the
     // standard input piped to the CommandLineTool. A maximum of one input parameter
     // can have the `stdin` type, and if there is one then the tool's `stdin`
@@ -233,7 +283,7 @@ object CommandLineTool {
     val (inputParams, isStdin) = tool.getInputs.asScala
       .map {
         case param: CommandInputParameterImpl =>
-          CommandInputParameter(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
+          CommandInputParameter.parse(param, allSchemaDefs, defaultNamespace)
         case other =>
           throw new RuntimeException(s"unexpected CommandInputParameter value ${other}")
       }
@@ -256,14 +306,13 @@ object CommandLineTool {
     val stdin = paramStdin
       .map { param =>
         val paramId = param.id
-          .flatMap(_.frag)
           .getOrElse(
               throw new Exception(s"missing input parameter ${paramStdin}")
           )
+          .frag
         CwlValue(s"$${inputs.${paramId}.path}", allSchemaDefs)
       }
       .orElse(toolStdin)
-
     // An output parameter may have type `stdout` or `stderr`. There can be a maximum of
     // one output parameter with each type, and if there is one then the corresponding
     // CommandLineTool attribute cannot also be set.
@@ -271,7 +320,7 @@ object CommandLineTool {
     val (outputParams, stdfile) = tool.getOutputs.asScala
       .map {
         case param: CommandOutputParameterImpl =>
-          CommandOutputParameter(param, allSchemaDefs, stripFragPrefix, defaultNamespace)
+          CommandOutputParameter.parse(param, allSchemaDefs, defaultNamespace)
         case other =>
           throw new RuntimeException(s"unexpected CommandOutputParameter value ${other}")
       }
@@ -289,14 +338,12 @@ object CommandLineTool {
           Some(RandomFile(StdFile.Stderr))
         case other => other
       }
-
     val arguments = translateOptionalArray(tool.getArguments).map {
       case binding: CommandLineBindingImpl =>
-        BindingArgument(CommandInputBinding(binding, allSchemaDefs))
+        BindingArgument(CommandInputBinding.parse(binding, allSchemaDefs))
       case expr =>
         ExprArgument(CwlValue(expr, allSchemaDefs))
     }
-
     CommandLineTool(
         source.map(_.toString),
         translateOptional(tool.getCwlVersion),

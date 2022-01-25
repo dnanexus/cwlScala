@@ -1,0 +1,31 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "string",
+            "id": "in"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "out"
+            },
+            "id": "out"
+        }
+    ],
+    "baseCommand": [
+        "/bin/bash",
+        "-c",
+        "echo $TEST_ENV"
+    ],
+    "stdout": "out",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "env-tool3.cwl"
+}

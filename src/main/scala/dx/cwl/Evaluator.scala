@@ -356,6 +356,19 @@ case class Runtime(outdir: String,
       "tmpdirSize"
   )
 
+  override val cwlType: CwlType = {
+    CwlGenericRecord(
+        SeqMap(
+            "outdir" -> CwlGenericRecordField("outdir", CwlString),
+            "tmpdir" -> CwlGenericRecordField("tmpdir", CwlString),
+            "cores" -> CwlGenericRecordField("cores", CwlInt),
+            "ram" -> CwlGenericRecordField("ram", CwlLong),
+            "outdirSize" -> CwlGenericRecordField("outdirSize", CwlLong),
+            "tmpdirSize" -> CwlGenericRecordField("tmpdirSize", CwlLong)
+        )
+    )
+  }
+
   override def contains(key: String): Boolean = {
     keys.contains(key)
   }
@@ -493,7 +506,7 @@ object EvaluatorContext {
   def finalizeInputValue(value: CwlValue,
                          cwlType: CwlType,
                          param: Identifiable with Loadable,
-                         inputDir: Path,
+                         inputDir: Path = Paths.get("."),
                          fileResolver: FileSourceResolver = FileSourceResolver.get,
                          ignoreMissingRequired: Boolean = false): CwlValue = {
     def finalizeFileSources(fileSources: Vector[FileSource],
@@ -569,6 +582,7 @@ object EvaluatorContext {
           }
           val dirname = Option(newPath.getParent).getOrElse(inputDir)
           val newChecksum = f.checksum // TODO
+          val newSecondaryFiles = f.secondaryFiles.map(finalizePath)
           val fileExists = newPath.toFile.exists()
           val newSize = (f.size, newFileSource) match {
             case (Some(size), _)         => Some(size)
@@ -581,11 +595,17 @@ object EvaluatorContext {
               }
             case _ => None
           }
-          val newSecondaryFiles = f.secondaryFiles.map(finalizePath)
-          val newContents = if (param.loadContents && f.contents.isEmpty && fileExists) {
-            Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
-          } else {
-            f.contents
+          val newContents = (f.contents, newFileSource) match {
+            case (Some(contents), _) => Some(contents)
+            case (None, _) if param.loadContents && fileExists =>
+              Some(FileUtils.readFileContent(newPath, maxSize = Some(MaxContentsSize)))
+            case (None, f: FileNode) if param.loadContents =>
+              try {
+                Some(f.readString)
+              } catch {
+                case _: Throwable => None
+              }
+            case _ => None
           }
           FileValue(
               Some(newLocation.toString),
@@ -630,13 +650,50 @@ object EvaluatorContext {
     }
 
     (cwlType, value) match {
-      case (t, NullValue) if CwlOptional.isOptional(t) || ignoreMissingRequired =>
+      case (_, NullValue) if CwlOptional.isOptional(cwlType) || ignoreMissingRequired =>
         NullValue
       case (_, NullValue) =>
-        throw new Exception(s"missing required input ${param.frag}")
-      case (CwlFile, f: FileValue)           => finalizePath(f)
-      case (CwlDirectory, d: DirectoryValue) => finalizePath(d)
-      case _                                 => value
+        throw new Exception(s"missing required input ${param.id}")
+      case (CwlOptional(t), _) =>
+        finalizeInputValue(value, t, param, inputDir, fileResolver, ignoreMissingRequired)
+      case (_, f: FileValue)      => finalizePath(f)
+      case (_, d: DirectoryValue) => finalizePath(d)
+      case (array: CwlArray, ArrayValue(items)) =>
+        ArrayValue(
+            items.map(
+                finalizeInputValue(_,
+                                   array.itemType,
+                                   param,
+                                   inputDir,
+                                   fileResolver,
+                                   ignoreMissingRequired)
+            )
+        )
+      case (rec: CwlRecord, ObjectValue(items)) =>
+        ObjectValue(
+            items.map {
+              case (k, v) =>
+                k -> finalizeInputValue(v,
+                                        rec.fields(k).cwlType,
+                                        param,
+                                        inputDir,
+                                        fileResolver,
+                                        ignoreMissingRequired)
+            }
+        )
+      case (_, ObjectValue(items)) =>
+        ObjectValue(
+            items.map {
+              case (k, v) =>
+                k -> finalizeInputValue(v,
+                                        CwlOptional(CwlAny),
+                                        param,
+                                        inputDir,
+                                        fileResolver,
+                                        ignoreMissingRequired)
+            }
+        )
+      case _ => value
     }
   }
 
@@ -691,10 +748,10 @@ object EvaluatorContext {
         inputs
           .collect {
             case param if param.id.isDefined && param.default.isDefined =>
-              param.id.get.frag.get -> finalizeInputValue(param.default.get,
-                                                          param.cwlType,
-                                                          param,
-                                                          inputDir)
+              param.id.get.frag -> finalizeInputValue(param.default.get,
+                                                      param.cwlType,
+                                                      param,
+                                                      inputDir)
           }
           .to(TreeSeqMap)
     )
@@ -744,13 +801,15 @@ case class Evaluator(jsEnabled: Boolean = false,
         throw new Exception(s"null is not coercible to non-optional type ${cwlType}")
       case (CwlOptional(t), _) => checkCoercibleTo(value, t)
       case (CwlMulti(types), _) =>
-        types
-          .collectFirst {
-            case t if value.coercibleTo(t) => (t, value)
-          }
-          .getOrElse(
-              throw new Exception(s"${value} is not coercible to any of ${types}")
-          )
+        val t = types.collect {
+          case t if value.coercibleTo(t) => t
+        } match {
+          case Vector(t) => t
+          case Vector() =>
+            throw new Exception(s"${value} is not coercible to any of ${types}")
+          case v => CwlMulti(v)
+        }
+        (t, value)
       case _ if value.coercibleTo(cwlType) => (cwlType, value)
       case _ =>
         throw new Exception(s"${value} is not coercible to ${cwlType}")
@@ -861,7 +920,20 @@ case class Evaluator(jsEnabled: Boolean = false,
     }
   }
 
-  def evaluate(value: CwlValue, cwlType: CwlType, ctx: EvaluatorContext): (CwlType, CwlValue) = {
+  /**
+    * Evaluates a CwlValue, which may be a parameter reference or javascript expression.
+    * @param value the value to evaluate
+    * @param cwlType the type to which the result must be coercible
+    * @param ctx the evaluation context
+    * @param coerce whether to actually coerce the result to `cwlType`; if false, it is only checked whether the type
+    *               of the result can be coerced to `cwlType`, not whether the result value is actually coercible.
+    * @return (CwlType, CwlValue), where CwlValue is the result value and CwlType is the actual type to which the result
+    *         is coercible (either `cwlType` or a more specific subtype thereof).
+    */
+  def evaluate(value: CwlValue,
+               cwlType: CwlType,
+               ctx: EvaluatorContext,
+               coerce: Boolean = false): (CwlType, CwlValue) = {
     def evaluateObject(obj: ObjectValue,
                        fields: Map[String, CwlRecordField]): (Map[String, CwlType], ObjectValue) = {
       val (types, values) = obj.fields.map {
@@ -916,10 +988,15 @@ case class Evaluator(jsEnabled: Boolean = false,
                   )
                 }
             )
-        case _ => (innerType, innerValue.coerceTo(innerType))
+        case _ => checkCoercibleTo(innerValue, innerType)
       }
     }
-    inner(value, cwlType)
+    if (coerce) {
+      val (resultType, resultValue) = inner(value, cwlType)
+      resultValue.coerceTo(resultType)
+    } else {
+      inner(value, cwlType)
+    }
   }
 
   def evaluateMap(

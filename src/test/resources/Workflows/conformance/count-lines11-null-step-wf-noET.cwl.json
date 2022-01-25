@@ -1,0 +1,93 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "File",
+            "outputSource": "step1/output",
+            "id": "wc_output"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "class": "ExpressionTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "Any",
+                        "id": "output"
+                    }
+                ],
+                "expression": "$({'output': null })",
+                "id": "count-lines11-null-step-wf-noET.cwl@step_step0@null-expression3-tool.cwl"
+            },
+            "in": [],
+            "out": [
+                "output"
+            ],
+            "id": "step0"
+        },
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "File",
+                        "id": "file1"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "output"
+                        },
+                        "id": "output"
+                    }
+                ],
+                "baseCommand": [
+                    "wc",
+                    "-l"
+                ],
+                "stdin": "$(inputs.file1.path)",
+                "stdout": "output",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "count-lines11-null-step-wf-noET.cwl@step_step1@wc-tool.cwl"
+            },
+            "in": [
+                {
+                    "source": "step0/output",
+                    "default": {
+                        "class": "File",
+                        "location": "whale.txt"
+                    },
+                    "id": "file1"
+                }
+            ],
+            "out": [
+                "output"
+            ],
+            "id": "step1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "count-lines11-null-step-wf-noET.cwl"
+}

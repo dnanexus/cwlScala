@@ -1,0 +1,40 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "listing": [
+                {
+                    "entryname": "script.sh",
+                    "entry": "echo \\\n  \"My country, 'tis of thee,\" \\\n  \"Sweet land of $(inputs.liberty)\"\n"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "baseCommand": [
+        "bash",
+        "script.sh"
+    ],
+    "inputs": [
+        {
+            "type": [
+                "null",
+                "string"
+            ],
+            "default": "liberty",
+            "id": "liberty"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "out"
+        }
+    ],
+    "stdout": "out.txt",
+    "id": "bash-line-continuation-with-expression.cwl"
+}

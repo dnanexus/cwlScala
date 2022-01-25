@@ -1,0 +1,132 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": "int",
+            "default": 23,
+            "id": "val"
+        },
+        {
+            "type": "boolean",
+            "id": "test1"
+        },
+        {
+            "type": "boolean",
+            "id": "test2"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "val",
+                    "id": "in1"
+                },
+                {
+                    "source": "test1",
+                    "id": "a_new_var"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "foo $(inputs.in1)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "cond-wf-003.1_nojs.cwl@step_step1@foo.cwl"
+            },
+            "when": "$(inputs.a_new_var)",
+            "out": [
+                "out1"
+            ],
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "val",
+                    "id": "in1"
+                },
+                {
+                    "source": "test2",
+                    "id": "a_new_var"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "foo $(inputs.in1)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "cond-wf-003.1_nojs.cwl@step_step2@foo.cwl"
+            },
+            "when": "$(inputs.a_new_var)",
+            "out": [
+                "out1"
+            ],
+            "id": "step2"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "string",
+            "outputSource": [
+                "step1/out1",
+                "step2/out1"
+            ],
+            "pickValue": "first_non_null",
+            "id": "out1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "MultipleInputFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "cond-wf-003.1_nojs.cwl"
+}

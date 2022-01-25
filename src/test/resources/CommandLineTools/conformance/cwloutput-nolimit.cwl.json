@@ -1,0 +1,37 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "dockerPull": "python:3-slim",
+            "class": "DockerRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "default": {
+                "class": "File",
+                "location": "mkfilelist.py"
+            },
+            "id": "script"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "string"
+            },
+            "id": "filelist"
+        }
+    ],
+    "arguments": [
+        "python",
+        "$(inputs.script)"
+    ],
+    "id": "cwloutput-nolimit.cwl"
+}

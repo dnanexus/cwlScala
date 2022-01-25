@@ -34,6 +34,7 @@ import org.w3id.cwl.cwl1_2.{
 import scala.annotation.tailrec
 import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
+import scala.util.matching.Regex
 
 /**
   * Marker trait for all CWL data types.
@@ -103,18 +104,16 @@ object CwlType {
         case schemaName: String if schemaName.contains("#") =>
           // a schema reference
           val id = Identifier.parse(schemaName)
-          val fqn = id.fullyQualifiedName.getOrElse(
-              throw new Exception(s"invalid schema name ${schemaName}")
-          )
+          val fqn = id.fullyQualifiedName
           val schemaDef = schemaDefs
             .get(fqn)
-            .orElse(id.frag.flatMap(schemaDefs.get))
+            .orElse(schemaDefs.get(id.frag))
             .orElse(innerSchemaDefs.get(fqn))
-            .orElse(id.frag.flatMap(innerSchemaDefs.get))
+            .orElse(innerSchemaDefs.get(id.frag))
           schemaDef match {
             case Some(schemaDef) => (Vector(schemaDef), None, innerSchemaDefs)
-            case None if rawSchemaDefs.contains(fqn) || id.frag.exists(rawSchemaDefs.contains) =>
-              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.frag.get))
+            case None if rawSchemaDefs.contains(fqn) || rawSchemaDefs.contains(id.frag) =>
+              val rawSchemaDef = rawSchemaDefs.getOrElse(fqn, rawSchemaDefs(id.frag))
               val (types, stdfile, updatedSchemaDefs) = inner(rawSchemaDef, innerSchemaDefs)
               val newSchemaDef = types match {
                 case Vector(s: CwlSchema) => s
@@ -182,6 +181,21 @@ object CwlType {
   ): (CwlType, Option[StdFile.StdFile]) = {
     val (cwlType, stdfile, _) = translateRaw(t, schemaDefs, Map.empty)
     (cwlType, stdfile)
+  }
+
+  def copySimplifyIds(cwlType: CwlType,
+                      dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlType = {
+    cwlType match {
+      case i: Identifiable =>
+        i.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension) match {
+          case t: CwlType => t
+          case other      => throw new Exception(s"expected CwlType, not ${other}")
+        }
+      case _ => cwlType
+    }
   }
 }
 
@@ -403,14 +417,13 @@ object CwlSchema {
       case (accu, (name, _)) if accu.contains(name) || schemaDefs.contains(name) => accu
       case (accu, (name, schema)) =>
         val id = Identifier.parse(name)
-        if (id.fullyQualifiedName
-              .exists(fqn => accu.contains(fqn) || schemaDefs.contains(fqn))) {
+        val fqn = id.fullyQualifiedName
+        if (accu.contains(fqn) || schemaDefs.contains(fqn)) {
           accu
         } else {
           val (newSchema, newSchemaDefs) = translateSchema(schema, schemaDefs ++ accu, schemas)
           val newSchemaEntry = newSchema.id
-            .flatMap(_.fullyQualifiedName)
-            .map(fqn => fqn -> newSchema)
+            .map(_.fullyQualifiedName -> newSchema)
             .getOrElse(name -> newSchema)
           accu ++ newSchemaDefs + newSchemaEntry
         }
@@ -474,6 +487,13 @@ case class CwlArray(itemType: CwlType,
       case _                      => false
     }
   }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlArray = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+  }
 }
 
 object CwlArray {
@@ -488,7 +508,7 @@ object CwlArray {
     val inputBinding = schema match {
       case c: CommandInputArraySchema =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
@@ -538,6 +558,50 @@ sealed trait CwlRecordField {
 
 sealed trait CwlRecord extends CwlSchema {
   val fields: SeqMap[String, CwlRecordField]
+
+  protected def fieldsCanBeCoercedTo(targetFields: SeqMap[String, CwlRecordField]): Boolean = {
+    targetFields.forall {
+      case (name, toField) if fields.contains(name) =>
+        fields(name).cwlType.coercibleTo(toField.cwlType)
+      case (_, toField) if CwlOptional.isOptional(toField.cwlType) => true
+      case _                                                       => false
+    }
+  }
+}
+
+case class CwlGenericRecordField(name: String,
+                                 cwlType: CwlType,
+                                 label: Option[String] = None,
+                                 doc: Option[String] = None,
+                                 secondaryFiles: Vector[SecondaryFile] = Vector.empty,
+                                 format: Vector[CwlValue] = Vector.empty,
+                                 streamable: Boolean = false)
+    extends CwlRecordField
+
+case class CwlGenericRecord(fields: SeqMap[String, CwlGenericRecordField],
+                            id: Option[Identifier] = None,
+                            label: Option[String] = None,
+                            doc: Option[String] = None)
+    extends CwlRecord {
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlGenericRecord = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+  }
+
+  /**
+    * Returns true if this type can be coerced to targetType,
+    * which is a non-optional, non-equal, and non-Any type.
+    */
+  override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
+    targetType match {
+      case targetSchema: CwlGenericRecord => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlInputRecord   => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlOutputRecord  => fieldsCanBeCoercedTo(targetSchema.fields)
+      case _                              => false
+    }
+  }
 }
 
 case class CwlInputRecordField(name: String,
@@ -560,14 +624,14 @@ object CwlInputRecordField {
     val inputBinding = field match {
       case c: CommandInputRecordField =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
       case _ => None
     }
     CwlInputRecordField(
-        id.name.get,
+        id.name,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
@@ -611,14 +675,17 @@ case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
     with CwlInputSchema {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
-      case targetSchema: CwlInputRecord if fields.keySet == targetSchema.fields.keySet =>
-        fields.forall {
-          case (name, fromField) =>
-            val toField = targetSchema.fields(name)
-            fromField.cwlType.coercibleTo(toField.cwlType)
-        }
-      case _ => false
+      case targetSchema: CwlGenericRecord => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlInputRecord   => fieldsCanBeCoercedTo(targetSchema.fields)
+      case _                              => false
     }
+  }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlInputRecord = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
   }
 }
 
@@ -629,7 +696,7 @@ object CwlInputRecord {
     val inputBinding = schema match {
       case c: CommandInputRecordSchema =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
@@ -702,14 +769,14 @@ object CwlOutputRecordField {
     val outputBinding = field match {
       case c: CommandOutputRecordField =>
         translateOptional(c.getOutputBinding).map {
-          case binding: CommandOutputBindingImpl => CommandOutputBinding(binding, schemaDefs)
+          case binding: CommandOutputBindingImpl => CommandOutputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }
       case _ => None
     }
     CwlOutputRecordField(
-        id.name.get,
+        id.name,
         cwlType,
         translateOptional(field.getLabel),
         translateDoc(field.getDoc),
@@ -749,14 +816,17 @@ case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
     extends CwlRecord {
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
-      case targetSchema: CwlOutputRecord if fields.keySet == targetSchema.fields.keySet =>
-        fields.forall {
-          case (name, fromField) =>
-            val toField = targetSchema.fields(name)
-            fromField.cwlType.coercibleTo(toField.cwlType)
-        }
-      case _ => false
+      case targetSchema: CwlGenericRecord => fieldsCanBeCoercedTo(targetSchema.fields)
+      case targetSchema: CwlOutputRecord  => fieldsCanBeCoercedTo(targetSchema.fields)
+      case _                              => false
     }
+  }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlOutputRecord = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
   }
 }
 
@@ -818,6 +888,17 @@ case class CwlEnum(symbols: Vector[String],
                    doc: Option[String] = None,
                    inputBinding: Option[CommandInputBinding] = None)
     extends CwlInputSchema {
+
+  /**
+    * symbols may be fully namespaced - this method returns just name part (after the last '/').
+    */
+  lazy val symbolNames: Vector[String] = {
+    symbols.map {
+      case CwlEnum.symbolRegex(_, name) => name
+      case other                        => throw new Exception(s"invalid symbol ${other}")
+    }
+  }
+
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
     targetType match {
       case targetSchema: CwlEnum if this.symbols == targetSchema.symbols => true
@@ -825,9 +906,18 @@ case class CwlEnum(symbols: Vector[String],
       case _                                                             => false
     }
   }
+
+  override def copySimplifyIds(dropNamespace: Boolean,
+                               replacePrefix: (Either[Boolean, String], Option[String]),
+                               simplifyAutoNames: Boolean,
+                               dropCwlExtension: Boolean): CwlEnum = {
+    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+  }
 }
 
 object CwlEnum {
+  val symbolRegex: Regex = "(.+/)?(.+)".r
+
   def apply(schema: EnumSchema, schemaDefs: Map[String, CwlSchema]): CwlEnum = {
     val (name, label, doc) = schema match {
       case schema: InputEnumSchema  => (schema.getName, schema.getLabel, schema.getDoc)
@@ -837,7 +927,7 @@ object CwlEnum {
     val inputBinding = schema match {
       case c: CommandInputEnumSchema =>
         translateOptional(c.getInputBinding).map {
-          case binding: CommandLineBindingImpl => CommandInputBinding(binding, schemaDefs)
+          case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
             throw new RuntimeException(s"unexpected CommandLineBinding value ${other}")
         }

@@ -1,0 +1,120 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": "int"
+            },
+            "id": "in1"
+        },
+        {
+            "type": {
+                "type": "array",
+                "items": "int"
+            },
+            "id": "in2"
+        },
+        {
+            "type": {
+                "type": "array",
+                "items": "int"
+            },
+            "id": "in3"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "in1",
+                    "id": "in1"
+                },
+                {
+                    "source": "in2",
+                    "id": "in2"
+                },
+                {
+                    "source": "in3",
+                    "id": "in3"
+                }
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "in1"
+                    },
+                    {
+                        "type": "int",
+                        "id": "in2"
+                    },
+                    {
+                        "type": "int",
+                        "id": "in3"
+                    }
+                ],
+                "baseCommand": [
+                    "echo"
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "outputEval": "$(inputs.in1)$(inputs.in2)$(inputs.in3)"
+                        },
+                        "id": "out1"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "cond-wf-011.cwl@step_step1@cat.cwl"
+            },
+            "when": "$(inputs.in3 % 2 == 0)",
+            "out": [
+                "out1"
+            ],
+            "scatter": [
+                "in1",
+                "in2",
+                "in3"
+            ],
+            "scatterMethod": "nested_crossproduct",
+            "id": "step1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": "string"
+                    }
+                }
+            },
+            "outputSource": "step1/out1",
+            "pickValue": "all_non_null",
+            "id": "out1"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "ScatterFeatureRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "id": "cond-wf-011.cwl"
+}

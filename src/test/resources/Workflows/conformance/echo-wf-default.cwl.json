@@ -1,0 +1,70 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "inputs": [],
+    "steps": [
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "default": "tool_default",
+                        "inputBinding": {
+                            "position": 1
+                        },
+                        "id": "in"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "glob": "out.txt",
+                            "loadContents": true,
+                            "outputEval": "$(self[0].contents)"
+                        },
+                        "id": "out"
+                    }
+                ],
+                "baseCommand": [
+                    "echo",
+                    "-n"
+                ],
+                "stdout": "out.txt",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "echo-wf-default.cwl@step_step1@echo-tool-default.cwl"
+            },
+            "in": [
+                {
+                    "default": "workflow_default",
+                    "id": "in"
+                }
+            ],
+            "out": [
+                "out"
+            ],
+            "id": "step1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "string",
+            "outputSource": "step1/out",
+            "id": "default_output"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "echo-wf-default.cwl"
+}

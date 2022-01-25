@@ -1,6 +1,7 @@
 package dx.cwl
 
 import dx.cwl.Document.{Document, DocumentAdder}
+import dx.cwl.Utils.yamlToJson
 import dx.util.{FileUtils, JsUtils}
 import dx.yaml._
 
@@ -27,7 +28,7 @@ object Parser {
   }
 }
 
-case class ParserResult(process: Process,
+case class ParserResult(mainProcess: Option[Process],
                         document: Document,
                         namespaces: Option[JsValue] = None,
                         schemas: Option[JsValue] = None)
@@ -39,51 +40,100 @@ case class Parser(baseUri: Option[URI] = None,
   private var cache: Map[Path, ParserResult] = Map.empty
   private lazy val normalizedBaseUri = baseUri.map(Utils.normalizeUri).orNull
 
-  def versionAndClassFromYaml(value: YamlValue): Option[(String, String)] = {
+  def versionAndClassFromYaml(value: YamlValue,
+                              mainId: Identifier = Identifier.MainId): (String, Option[String]) = {
+    def yamlToString(yamlValue: YamlValue): String = {
+      yamlValue match {
+        case YamlString(s) => s
+        case other         => throw new Exception(s"expected string not ${other}")
+      }
+    }
     val versionKey = YamlString("cwlVersion")
     val classKey = YamlString("class")
-    try {
-      value match {
-        case YamlObject(fields) if fields.contains(versionKey) && fields.contains(classKey) =>
-          val YamlString(version) = fields(versionKey)
-          val YamlString(cls) = fields(classKey)
-          Some((version, cls))
-        case _ => None
-      }
-    } catch {
-      case _: Throwable => None
-    }
-  }
-
-  def versionAndClassFromJson(value: JsValue): Option[(String, String)] = {
+    val graphKey = YamlString("$graph")
     value match {
-      case JsObject(fields) if fields.contains("cwlVersion") =>
-        val JsString(version) = fields("cwlVersion")
-        if (fields.contains("class")) {
-          val JsString(cls) = fields("class")
-          Some(version, cls)
-        } else if (fields.contains("$graph")) {
-          val JsArray(graph) = fields("$graph")
-          graph.collectFirst {
-            case JsObject(fields) if fields.get("id").contains(JsString(Identifier.MainFrag)) =>
-              val JsString(cls) = fields("class")
-              (version, cls)
+      case YamlObject(fields) if fields.contains(versionKey) =>
+        val version = yamlToString(fields(versionKey))
+        if (fields.contains(classKey)) {
+          (version, Some(yamlToString(fields(classKey))))
+        } else if (fields.contains(graphKey)) {
+          val YamlArray(graph) = fields(graphKey)
+          if (graph.size == 1) {
+            val YamlObject(procFields) = graph.head
+            (version, procFields.get(classKey).map(cls => yamlToString(cls)))
+          } else {
+            val cls = graph
+              .collectFirst {
+                case YamlObject(fields)
+                    if fields.contains(classKey) && fields
+                      .get(YamlString("id"))
+                      .exists(id => Identifier.parse(yamlToString(id)).equals(mainId)) =>
+                  yamlToString(fields(classKey))
+              }
+              .orElse {
+                Option.when(graph.count {
+                  case YamlObject(fields)
+                      if fields
+                        .contains(YamlString("id")) && fields
+                        .get(YamlString("class"))
+                        .contains(YamlString("Workflow")) =>
+                    true
+                  case _ => false
+                } == 1)("Workflow")
+              }
+            (version, cls)
           }
         } else {
-          None
+          (version, None)
         }
-      case _ => None
+      case _ => throw new Exception("invalid CWL document: missing 'cwlVersion'")
     }
   }
 
-  /**
-    * Can a file be parsed as CWL?
-    */
-  def detectVersionAndClass(path: Path): Option[(String, String)] = {
-    if (path.toString.endsWith(".cwl")) {
-      versionAndClassFromYaml(FileUtils.readFileContent(path).parseYaml)
-    } else {
-      versionAndClassFromJson(JsUtils.jsFromFile(path))
+  def versionAndClassFromJson(value: JsValue,
+                              mainId: Identifier = Identifier.MainId): (String, Option[String]) = {
+    def jsvToString(jsv: JsValue): String = {
+      jsv match {
+        case JsString(s) => s
+        case other       => throw new Exception(s"expected string not ${other}")
+      }
+    }
+    value match {
+      case JsObject(fields) if fields.contains("cwlVersion") =>
+        val version = jsvToString(fields("cwlVersion"))
+        if (fields.contains("class")) {
+          (version, Some(jsvToString(fields("class"))))
+        } else if (fields.contains("$graph")) {
+          val JsArray(graph) = fields("$graph")
+          if (graph.size == 1) {
+            val JsObject(procFields) = graph.head
+            (version, procFields.get("class").map(cls => jsvToString(cls)))
+          } else {
+            val cls = graph
+              .collectFirst {
+                // first try to find a process with id 'main'
+                case JsObject(fields)
+                    if fields.contains("class") && fields
+                      .get("id")
+                      .exists(id => Identifier.parse(jsvToString(id)).equals(mainId)) =>
+                  jsvToString(fields("class"))
+              }
+              .orElse {
+                // fall back to looking for a single workflow
+                Option.when(graph.count {
+                  case JsObject(fields)
+                      if fields
+                        .contains("id") && fields.get("class").contains(JsString("Workflow")) =>
+                    true
+                  case _ => false
+                } == 1)("Workflow")
+              }
+            (version, cls)
+          }
+        } else {
+          (version, None)
+        }
+      case _ => throw new Exception("invalid CWL document: missing 'cwlVersion'")
     }
   }
 
@@ -91,129 +141,182 @@ case class Parser(baseUri: Option[URI] = None,
     * Can a string be parsed as CWL?
     */
   def detectVersionAndClass(sourceCode: String,
-                            format: Option[String] = None): Option[(String, String)] = {
+                            format: Option[String] = None,
+                            mainId: Identifier = Identifier.MainId): (String, Option[String]) = {
     format match {
-      case Some("yaml") => versionAndClassFromYaml(sourceCode.parseYaml)
-      case Some("json") => versionAndClassFromJson(sourceCode.parseJson)
+      case Some("yaml") => versionAndClassFromYaml(sourceCode.parseYaml, mainId)
+      case Some("json") => versionAndClassFromJson(sourceCode.parseJson, mainId)
       case Some(other)  => throw new Exception(s"unsupported format ${other}")
       case None =>
         try {
-          versionAndClassFromJson(sourceCode.parseJson)
+          versionAndClassFromJson(sourceCode.parseJson, mainId)
         } catch {
           case _: Throwable =>
-            versionAndClassFromYaml(sourceCode.parseYaml)
+            versionAndClassFromYaml(sourceCode.parseYaml, mainId)
         }
     }
   }
 
-  def parse(doc: Object,
-            source: Option[Path] = None,
-            defaultNamespace: Option[String] = None,
-            defaultFrag: Option[String] = None,
-            dependencies: Document = Document.empty,
-            rawProcesses: Map[Identifier, Object] = Map.empty,
-            isGraph: Boolean = false): ParserResult = {
+  /**
+    * Can a file be parsed as CWL?
+    */
+  def detectVersionAndClassFromFile(
+      path: Path,
+      mainId: Identifier = Identifier.MainId
+  ): (String, Option[String]) = {
+    if (path.toString.endsWith(".cwl")) {
+      versionAndClassFromYaml(FileUtils.readFileContent(path).parseYaml, mainId)
+    } else {
+      versionAndClassFromJson(JsUtils.jsFromFile(path), mainId)
+    }
+  }
+
+  private[cwl] def parse(doc: Object,
+                         source: Option[Path] = None,
+                         mainId: Option[Identifier] = None,
+                         defaultNamespace: Option[String] = None,
+                         defaultMainFrag: Option[String] = None,
+                         isGraph: Boolean = false,
+                         dependencies: Document = Document.empty,
+                         rawProcesses: Map[Identifier, Object] = Map.empty): ParserResult = {
     doc match {
-      case tool: CommandLineToolImpl =>
-        val proc = CommandLineTool(tool, this, source, defaultNamespace, defaultFrag, isGraph)
-        ParserResult(proc, dependencies.addProcess(proc))
+      case commandLineTool: CommandLineToolImpl =>
+        val proc =
+          CommandLineTool.parse(commandLineTool, this, source, defaultNamespace, defaultMainFrag)
+        ParserResult(Some(proc), dependencies.addProcess(proc))
       case expressionTool: ExpressionToolImpl =>
         val proc =
-          ExpressionTool(expressionTool, this, source, defaultNamespace, defaultFrag, isGraph)
-        ParserResult(proc, dependencies.addProcess(proc))
+          ExpressionTool.parse(expressionTool, this, source, defaultNamespace, defaultMainFrag)
+        ParserResult(Some(proc), dependencies.addProcess(proc))
       case operation: OperationImpl =>
-        val proc = Operation(operation, this, source, defaultNamespace, defaultFrag, isGraph)
-        ParserResult(proc, dependencies.addProcess(proc))
+        val proc =
+          Operation.parse(operation, this, source, defaultNamespace, defaultMainFrag)
+        ParserResult(Some(proc), dependencies.addProcess(proc))
       case workflow: WorkflowImpl =>
         val (wf, doc) = Workflow.parse(workflow,
                                        this,
                                        source,
                                        defaultNamespace,
-                                       defaultFrag,
+                                       defaultMainFrag,
+                                       isGraph,
                                        dependencies,
-                                       rawProcesses,
-                                       isGraph)
-        ParserResult(wf, doc)
+                                       rawProcesses)
+        ParserResult(Some(wf), doc)
       case graph: java.util.List[_] =>
-        // this is the result of parsing a packed workflow - the
-        // top-level process will be called "main".
-        val rawProcesses = graph.asScala.toVector.map {
-          case tool: CommandLineToolImpl =>
-            Identifier.parse(tool.getId.get()) -> tool
-          case workflow: WorkflowImpl =>
-            Identifier.parse(workflow.getId.get()) -> workflow
-          case expressionTool: ExpressionToolImpl =>
-            Identifier.parse(expressionTool.getId.get()) -> expressionTool
-          case operation: OperationImpl =>
-            Identifier.parse(operation.getId.get()) -> operation
-          case other =>
-            throw new RuntimeException(s"unexpected top-level element ${other.getClass}")
-        }.toMap
-        val (primaryProc, newDependencies) =
+        // this is the result of parsing a workflow packed as a $graph - if there is a process with ID "#main" then
+        // use that as the main process
+        val rawProcesses = graph.asScala.toVector
+          .map {
+            case tool: CommandLineToolImpl          => tool.getId.get() -> tool
+            case workflow: WorkflowImpl             => workflow.getId.get() -> workflow
+            case expressionTool: ExpressionToolImpl => expressionTool.getId.get() -> expressionTool
+            case operation: OperationImpl           => operation.getId.get() -> operation
+            case other =>
+              throw new RuntimeException(s"unexpected top-level element ${other.getClass}")
+          }
+          .map {
+            case (id, process) =>
+              Identifier.parse(id) -> process
+          }
+          .toMap
+        val graphMainId = mainId.getOrElse {
+          if (rawProcesses.size == 1) {
+            rawProcesses.head._1
+          } else if (rawProcesses.keySet.contains(Identifier.MainId)) {
+            Identifier.MainId
+          } else {
+            val wfs = rawProcesses.collect {
+              case (id, _: WorkflowImpl) => id
+            }
+            if (wfs.size == 1) {
+              wfs.head
+            } else {
+              throw new Exception("cannot determine main process in graph")
+            }
+          }
+        }
+        val (mainProcess, newDependencies) =
           rawProcesses.foldLeft(Option.empty[Process], dependencies) {
-            case ((primaryProc, accu), (id, _)) if accu.contains(id) => (primaryProc, accu)
-            case ((primaryProc, accu), (id, rawProc)) =>
-              (id, primaryProc) match {
-                case (id, Some(_)) if id.frag.contains(Identifier.Main) =>
-                  throw new Exception("more than one process has ID frag='main'")
-                case (id, None) if id.frag.contains(Identifier.Main) =>
-                  val ParserResult(proc, newAccu, _, _) =
-                    parse(rawProc,
-                          source,
-                          defaultNamespace,
-                          defaultFrag,
-                          accu,
-                          rawProcesses,
-                          isGraph = true)
-                  (Some(proc), newAccu)
+            case ((main, accu), (id, _)) if accu.contains(id) => (main, accu)
+            case ((main, accu), (id, rawProc)) =>
+              (id, main) match {
+                case (id, Some(_)) if id == graphMainId =>
+                  throw new Exception(s"more than one process has ID ${graphMainId}")
+                case (id, None) if id == graphMainId =>
+                  val ParserResult(proc, newAccu, _, _) = parse(
+                      rawProc,
+                      source = source,
+                      mainId = Some(graphMainId),
+                      defaultNamespace = defaultNamespace,
+                      defaultMainFrag = defaultMainFrag,
+                      isGraph = true,
+                      dependencies = accu,
+                      rawProcesses = rawProcesses
+                  )
+                  (proc, newAccu)
                 case _ =>
-                  val ParserResult(_, newAccu, _, _) =
-                    parse(rawProc,
-                          defaultNamespace = defaultNamespace,
-                          dependencies = accu,
-                          rawProcesses = rawProcesses,
-                          isGraph = true)
-                  (primaryProc, newAccu)
+                  val ParserResult(_, newAccu, _, _) = parse(
+                      rawProc,
+                      mainId = Some(graphMainId),
+                      defaultNamespace = defaultNamespace,
+                      isGraph = true,
+                      dependencies = accu,
+                      rawProcesses = rawProcesses
+                  )
+                  (main, newAccu)
               }
           }
-        ParserResult(
-            primaryProc.getOrElse(throw new Exception("no process found with ID frag='main'")),
-            newDependencies
-        )
+        ParserResult(mainProcess, newDependencies)
       case other =>
         throw new RuntimeException(s"unexpected top-level element ${other.getClass}")
     }
   }
 
-  /**
-    * Parses a CWL document from a file.
-    * @note currently, only CommandLineTool documents are supported.
-    * @param path path to the document
-    * @param defaultFrag tool/workflow name, in case it is not specified in the document.
-    *                    If not specified, the name of the file without .cwl is used.
-    * @param isPacked whether the input is in packed form; ignored if the input is a JSON
-    *                 file with a top-level "\$graph" element.
-    * @return a [[Process]]
-    */
-  def parseFile(path: Path,
-                defaultFrag: Option[String] = None,
-                isPacked: Boolean = false): ParserResult = {
+  private[cwl] def parseImport(relPath: String,
+                               dependencies: Document = Document.empty): ParserResult = {
+    val path = baseUri.map(uri => Paths.get(uri.resolve(relPath))).getOrElse(Paths.get(relPath))
     if (cache.contains(path)) {
       cache(path)
     } else {
       val result = parse(
           RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
-          Some(path),
+          source = Some(path),
           defaultNamespace = Some(normalizedBaseUri),
-          defaultFrag,
-          isGraph = isPacked
+          dependencies = dependencies
+      )
+      cache = cache + (path -> result)
+      result
+    }
+  }
+
+  /**
+    * Parses a CWL document from a file.
+    * @param path path to the document
+    * @param mainId the identifier of the main process.
+    * @param defaultMainFrag main process name, in case it is not specified in the document.
+    * @return a [[ParserResult]]
+    */
+  def parseFile(path: Path,
+                mainId: Option[Identifier] = None,
+                defaultMainFrag: Option[String] = None): ParserResult = {
+    if (cache.contains(path)) {
+      cache(path)
+    } else {
+      val result = parse(
+          RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
+          source = Some(path),
+          mainId = mainId,
+          defaultNamespace = Some(normalizedBaseUri),
+          defaultMainFrag = defaultMainFrag
       )
       // get the $namespaces and $schemas from a packed workflow
-      val finalResult = if (isPacked) {
+      val finalResult = if (path.toString.endsWith(".cwl")) {
+        val yamlDoc = FileUtils.readFileContent(path).parseYaml.asYamlObject.fields
+        result.copy(namespaces = yamlDoc.get(YamlString("$namespaces")).map(yamlToJson),
+                    schemas = yamlDoc.get(YamlString("$schemas")).map(yamlToJson))
+      } else {
         val jsDoc = JsUtils.jsFromFile(path).asJsObject.fields
         result.copy(namespaces = jsDoc.get("$namespaces"), schemas = jsDoc.get("$schemas"))
-      } else {
-        result
       }
       cache = cache + (path -> finalResult)
       finalResult
@@ -223,45 +326,30 @@ case class Parser(baseUri: Option[URI] = None,
   /**
     * Parses a CWL document from a string.
     * @note currently, only CommandLineTool documents are supported.
-    * @param sourceCode path to the document
-    * @param defaultFrag tool/workflow name, in case it is not specified in the document
-    * @param isPacked whether the input is in packed form; ignored if the input is a JSON
-    *                 file with a top-level "\$graph" element.
+    * @param sourceCode path to the document.
+    * @param mainId the identifier of the main process.
+    * @param defaultMainFrag main process name, in case it is not specified in the document.
     * @return a [[Process]]
     */
   def parseString(sourceCode: String,
-                  defaultFrag: Option[String] = None,
-                  isPacked: Boolean = false): ParserResult = {
+                  mainId: Option[Identifier] = None,
+                  defaultMainFrag: Option[String] = None): ParserResult = {
     val result = parse(
         RootLoader.loadDocument(sourceCode, normalizedBaseUri, loadingOptions.orNull),
-        None,
         defaultNamespace = Some(normalizedBaseUri),
-        defaultFrag,
-        isGraph = isPacked
+        mainId = mainId,
+        defaultMainFrag = defaultMainFrag
     )
-    // get the $namespaces and $schemas from a packed workflow
-    if (isPacked) {
+    // get the $namespaces and $schemas - we can't guess the format from the file extension so
+    // we try both json and yaml
+    try {
       val jsDoc = sourceCode.parseJson.asJsObject.fields
       result.copy(namespaces = jsDoc.get("$namespaces"), schemas = jsDoc.get("$schemas"))
-    } else {
-      result
-    }
-  }
-
-  def parseImport(relPath: String, dependencies: Document = Document.empty): ParserResult = {
-    val path = baseUri.map(uri => Paths.get(uri.resolve(relPath))).getOrElse(Paths.get(relPath))
-    if (cache.contains(path)) {
-      cache(path)
-    } else {
-      val result = parse(
-          RootLoader.loadDocument(path, normalizedBaseUri, loadingOptions.orNull),
-          Some(path),
-          defaultNamespace = Some(normalizedBaseUri),
-          None,
-          dependencies
-      )
-      cache = cache + (path -> result)
-      result
+    } catch {
+      case _: Throwable =>
+        val yamlDoc = sourceCode.parseYaml.asYamlObject.fields
+        result.copy(namespaces = yamlDoc.get(YamlString("$namespaces")).map(yamlToJson),
+                    schemas = yamlDoc.get(YamlString("$schemas")).map(yamlToJson))
     }
   }
 }

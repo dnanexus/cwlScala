@@ -1,0 +1,47 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InitialWorkDirRequirement",
+            "listing": "$(inputs.indir.listing)"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "Directory",
+            "loadListing": "shallow_listing",
+            "id": "indir"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "output.txt"
+            },
+            "id": "outlist"
+        }
+    ],
+    "arguments": [
+        "find",
+        "-L",
+        ".",
+        "!",
+        "-path",
+        "*.txt",
+        {
+            "shellQuote": false,
+            "valueFrom": "|"
+        },
+        "sort"
+    ],
+    "stdout": "output.txt",
+    "id": "dir5.cwl"
+}

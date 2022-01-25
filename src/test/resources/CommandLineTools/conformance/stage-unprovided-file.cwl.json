@@ -1,0 +1,50 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "hints": [
+        {
+            "class": "DockerRequirement",
+            "dockerPull": "python:2-slim"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "infile",
+            "type": [
+                "null",
+                "File"
+            ],
+            "inputBinding": {
+                "prefix": "-cfg",
+                "valueFrom": "$(self.basename)"
+            }
+        },
+        {
+            "id": "args.py",
+            "type": "File",
+            "default": {
+                "class": "File",
+                "location": "args.py"
+            },
+            "inputBinding": {
+                "position": -1
+            }
+        }
+    ],
+    "baseCommand": "python",
+    "outputs": [
+        {
+            "id": "args",
+            "type": {
+                "type": "array",
+                "items": "string"
+            }
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "stage-unprovided-file.cwl"
+}

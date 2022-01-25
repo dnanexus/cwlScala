@@ -1,0 +1,84 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "StepInputExpressionRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "int",
+            "id": "a"
+        },
+        {
+            "type": "int",
+            "id": "b"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "string",
+            "outputSource": "step1/echo_out",
+            "id": "val"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "id": "echo",
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "inputBinding": {},
+                        "id": "c"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "glob": "step1_out",
+                            "loadContents": true,
+                            "outputEval": "$(self[0].contents)"
+                        },
+                        "id": "echo_out"
+                    }
+                ],
+                "baseCommand": "echo",
+                "stdout": "step1_out",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ]
+            },
+            "in": [
+                {
+                    "source": "a",
+                    "id": "a"
+                },
+                {
+                    "source": "b",
+                    "id": "b"
+                },
+                {
+                    "valueFrom": "$(inputs.a + inputs.b)",
+                    "id": "c"
+                }
+            ],
+            "out": [
+                "echo_out"
+            ],
+            "id": "step1"
+        }
+    ],
+    "id": "step-valuefrom3-wf.cwl"
+}

@@ -1,0 +1,44 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "doc": "Must fail if entryname is an absolute path and DockerRequirement is\nnot in the 'requirements' section.\n",
+    "inputs": [
+        {
+            "type": "File",
+            "id": "filelist"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "File",
+            "outputBinding": {
+                "glob": "head.txt"
+            },
+            "id": "head"
+        }
+    ],
+    "requirements": [
+        {
+            "listing": [
+                {
+                    "entryname": "/tmp2j3y7rpb/input/stuff.txt",
+                    "entry": "$(inputs.filelist)"
+                }
+            ],
+            "class": "InitialWorkDirRequirement"
+        },
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "arguments": [
+        {
+            "shellQuote": false,
+            "valueFrom": "head -n10 /tmp2j3y7rpb/input/stuff.txt > /output/head.txt"
+        }
+    ],
+    "id": "iwd-container-entryname2.cwl"
+}

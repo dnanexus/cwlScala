@@ -1,0 +1,102 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "int",
+            "default": 4,
+            "id": "i"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "int",
+            "outputSource": "step2/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "i",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "id": "o"
+                    }
+                ],
+                "expression": "${return {'o': (inputs.i || 2)};}\n",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "io-int-default-tool-and-wf.cwl@step_step1@run"
+            },
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/o",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "ExpressionTool",
+                "inputs": [
+                    {
+                        "type": "int",
+                        "id": "i"
+                    },
+                    {
+                        "type": "int",
+                        "default": 5,
+                        "id": "i2"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "int",
+                        "id": "o"
+                    }
+                ],
+                "expression": "${return {'o': inputs.i * 2 + inputs.i2};}\n",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "io-int-default-tool-and-wf.cwl@step_step2@run"
+            },
+            "id": "step2"
+        }
+    ],
+    "id": "io-int-default-tool-and-wf.cwl"
+}

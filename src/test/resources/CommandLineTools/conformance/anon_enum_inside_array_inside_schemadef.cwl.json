@@ -1,0 +1,65 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": {
+                "name": "user_type_2",
+                "type": "record",
+                "fields": [
+                    {
+                        "type": [
+                            "null",
+                            {
+                                "type": "enum",
+                                "symbols": [
+                                    "homo_sapiens",
+                                    "mus_musculus"
+                                ]
+                            }
+                        ],
+                        "name": "species"
+                    },
+                    {
+                        "type": [
+                            "null",
+                            {
+                                "type": "enum",
+                                "symbols": [
+                                    "GRCh37",
+                                    "GRCh38",
+                                    "GRCm38"
+                                ]
+                            }
+                        ],
+                        "name": "ncbi_build"
+                    }
+                ]
+            },
+            "id": "first"
+        }
+    ],
+    "baseCommand": "echo",
+    "arguments": [
+        {
+            "prefix": "species",
+            "valueFrom": "$(inputs.first.species)"
+        },
+        {
+            "prefix": "ncbi_build",
+            "valueFrom": "$(inputs.first.ncbi_build)"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "result"
+        }
+    ],
+    "id": "anon_enum_inside_array_inside_schemadef.cwl"
+}

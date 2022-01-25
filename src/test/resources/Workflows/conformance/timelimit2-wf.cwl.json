@@ -1,0 +1,130 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "timelimit": 5,
+            "class": "ToolTimeLimit"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": [
+                "null",
+                "string"
+            ],
+            "id": "i"
+        }
+    ],
+    "outputs": [
+        {
+            "type": [
+                "null",
+                "string"
+            ],
+            "outputSource": "step2/o",
+            "id": "o"
+        }
+    ],
+    "steps": [
+        {
+            "in": [
+                {
+                    "source": "i",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "baseCommand": [
+                    "sleep",
+                    "3"
+                ],
+                "inputs": [
+                    {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "outputBinding": {
+                            "outputEval": "$(\"time passed\")"
+                        },
+                        "id": "o"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "timelimit2-wf.cwl@step_step1@run"
+            },
+            "id": "step1"
+        },
+        {
+            "in": [
+                {
+                    "source": "step1/o",
+                    "id": "i"
+                }
+            ],
+            "out": [
+                "o"
+            ],
+            "run": {
+                "class": "CommandLineTool",
+                "baseCommand": [
+                    "sleep",
+                    "3"
+                ],
+                "inputs": [
+                    {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "id": "i"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": [
+                            "null",
+                            "string"
+                        ],
+                        "outputBinding": {
+                            "outputEval": "$(\"time passed\")"
+                        },
+                        "id": "o"
+                    }
+                ],
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "timelimit2-wf.cwl@step_step2@run"
+            },
+            "id": "step2"
+        }
+    ],
+    "id": "timelimit2-wf.cwl"
+}

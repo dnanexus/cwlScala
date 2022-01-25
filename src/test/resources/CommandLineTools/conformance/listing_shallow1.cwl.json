@@ -1,0 +1,30 @@
+{
+    "class": "CommandLineTool",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "loadListing": "shallow_listing",
+            "class": "LoadListingRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "Directory",
+            "id": "d"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "boolean",
+            "outputBinding": {
+                "outputEval": "$(inputs.d.listing.length === 1 && inputs.d.listing[0].listing === undefined)"
+            },
+            "id": "out"
+        }
+    ],
+    "baseCommand": "true",
+    "id": "listing_shallow1.cwl"
+}

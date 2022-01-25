@@ -1,0 +1,128 @@
+{
+    "class": "Workflow",
+    "cwlVersion": "v1.2",
+    "requirements": [
+        {
+            "class": "StepInputExpressionRequirement"
+        },
+        {
+            "class": "SubworkflowFeatureRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [
+        {
+            "type": "File",
+            "id": "file1"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "string",
+            "outputSource": "step1/echo_out",
+            "id": "val1"
+        },
+        {
+            "type": "string",
+            "outputSource": "step2/echo_out",
+            "id": "val2"
+        }
+    ],
+    "steps": [
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "inputBinding": {},
+                        "id": "name"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "glob": "step1_out",
+                            "loadContents": true,
+                            "outputEval": "$(self[0].contents)"
+                        },
+                        "id": "echo_out"
+                    },
+                    {
+                        "type": "File",
+                        "outputBinding": {
+                            "glob": "step1_out"
+                        },
+                        "id": "echo_out_file"
+                    }
+                ],
+                "baseCommand": "echo",
+                "stdout": "step1_out",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "step-valuefrom5-wf.cwl@step_step1@run"
+            },
+            "in": [
+                {
+                    "source": "file1",
+                    "valueFrom": "$(self.basename)",
+                    "id": "name"
+                }
+            ],
+            "out": [
+                "echo_out",
+                "echo_out_file"
+            ],
+            "id": "step1"
+        },
+        {
+            "run": {
+                "class": "CommandLineTool",
+                "inputs": [
+                    {
+                        "type": "string",
+                        "inputBinding": {},
+                        "id": "name"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "string",
+                        "outputBinding": {
+                            "glob": "step1_out",
+                            "loadContents": true,
+                            "outputEval": "$(self[0].contents)"
+                        },
+                        "id": "echo_out"
+                    }
+                ],
+                "baseCommand": "echo",
+                "stdout": "step1_out",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    }
+                ],
+                "id": "step-valuefrom5-wf.cwl@step_step2@run"
+            },
+            "in": [
+                {
+                    "source": "step1/echo_out_file",
+                    "valueFrom": "$(self.basename)",
+                    "id": "name"
+                }
+            ],
+            "out": [
+                "echo_out"
+            ],
+            "id": "step2"
+        }
+    ],
+    "id": "step-valuefrom5-wf.cwl"
+}

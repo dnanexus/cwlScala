@@ -1,0 +1,30 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "requirements": [
+        {
+            "class": "ShellCommandRequirement"
+        },
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "inputs": [],
+    "outputs": [
+        {
+            "type": "int",
+            "outputBinding": {
+                "outputEval": "$(runtime.exitCode)"
+            },
+            "id": "code"
+        }
+    ],
+    "successCodes": [
+        7
+    ],
+    "arguments": [
+        "exit",
+        "7"
+    ],
+    "id": "exitcode.cwl"
+}

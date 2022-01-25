@@ -40,30 +40,22 @@ lazy val root = project
       version := getVersion,
       settings,
       assemblySettings,
-      libraryDependencies ++= Seq(
-          dependencies.dxCommon,
-          dependencies.dxYaml,
-          dependencies.typesafe,
-          dependencies.spray,
-          dependencies.rhino,
-          dependencies.antlr,
-          dependencies.scalatest,
-          dependencies.snakeyaml,
-          dependencies.junit
-      ),
+      libraryDependencies ++= dependencies,
       assembly / assemblyJarName := "cwlScala.jar"
   )
 
-lazy val dependencies = new {
+lazy val dependencies = {
   val dxCommonVersion = "0.11.0"
   val dxYamlVersion = "0.1.1"
   val typesafeVersion = "1.4.1"
   val sprayVersion = "1.3.6"
   val scalatestVersion = "3.2.9"
   val yamlVersion = "2.3"
+  val jacksonDatabindVersion = "2.13.1"
+  val jacksonDataformatYamlVersion = "2.13.1"
   val rhinoVersion = "1.7.13"
   val antlr4Version = "4.9.3"
-  val junitVersion = "4.13.2"
+  //val junitVersion = "4.13.2"
 
   val dxCommon = "com.dnanexus" % "dxcommon" % dxCommonVersion
   val dxYaml = "com.dnanexus" % "dxyaml" % dxYamlVersion
@@ -71,13 +63,28 @@ lazy val dependencies = new {
   val spray = "io.spray" %% "spray-json" % sprayVersion
   // cwljava dependencies
   val snakeyaml = "org.snakeyaml" % "snakeyaml-engine" % yamlVersion
+  val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % jacksonDatabindVersion
+  val jacksonDataformatYaml = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonDataformatYamlVersion
   // rhino dependencies
   val rhino = "org.mozilla" % "rhino" % rhinoVersion
   // antlr4 dependencies
   val antlr = "org.antlr" % "antlr4" % antlr4Version
   //---------- Test libraries -------------------//
-  val junit = "junit" % "junit" % junitVersion % Test
+  //val junit = "junit" % "junit" % junitVersion % Test
   val scalatest = "org.scalatest" % "scalatest_2.13" % scalatestVersion % Test
+
+  Seq(
+      dxCommon,
+      dxYaml,
+      typesafe,
+      spray,
+      rhino,
+      antlr,
+      scalatest,
+      snakeyaml,
+      jacksonDatabind,
+      jacksonDataformatYaml
+  )
 }
 
 val githubDxScalaResolver = Resolver.githubPackages("dnanexus", "dxScala")

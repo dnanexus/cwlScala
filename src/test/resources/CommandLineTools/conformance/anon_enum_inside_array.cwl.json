@@ -1,0 +1,63 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "CommandLineTool",
+    "inputs": [
+        {
+            "type": {
+                "type": "record",
+                "fields": [
+                    {
+                        "type": [
+                            {
+                                "type": "enum",
+                                "symbols": [
+                                    "homo_sapiens",
+                                    "mus_musculus"
+                                ]
+                            },
+                            "null"
+                        ],
+                        "name": "species"
+                    }
+                ]
+            },
+            "id": "first"
+        },
+        {
+            "type": [
+                "null",
+                {
+                    "type": "enum",
+                    "symbols": [
+                        "homo_sapiens",
+                        "mus_musculus"
+                    ]
+                }
+            ],
+            "id": "second"
+        }
+    ],
+    "baseCommand": "echo",
+    "arguments": [
+        {
+            "prefix": "first",
+            "valueFrom": "$(inputs.first.species)"
+        },
+        {
+            "prefix": "second",
+            "valueFrom": "$(inputs.second)"
+        }
+    ],
+    "outputs": [
+        {
+            "type": "stdout",
+            "id": "result"
+        }
+    ],
+    "requirements": [
+        {
+            "class": "InlineJavascriptRequirement"
+        }
+    ],
+    "id": "anon_enum_inside_array.cwl"
+}
