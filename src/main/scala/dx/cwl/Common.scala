@@ -24,10 +24,31 @@ case class Identifier(namespace: Option[String], frag: Option[String]) {
     }
   }
 
+  def parentIdentifier: Option[Identifier] = {
+    parent.map(p => Identifier(namespace, Some(p)))
+  }
+
   def name: Option[String] = {
     frag.map {
       case n if n.contains('/') => n.substring(n.lastIndexOf('/') + 1)
       case n                    => n
+    }
+  }
+
+  override def hashCode(): Int = frag.hashCode
+
+  override def equals(obj: Any): Boolean = {
+    (this, obj) match {
+      case (Identifier(_, Some(frag1)), Identifier(_, Some(frag2))) => frag1 == frag2
+      case _                                                        => false
+    }
+  }
+
+  def equalsWithNamespace(that: Identifier): Boolean = {
+    (this, that) match {
+      case (Identifier(Some(ns1), frag1), Identifier(Some(ns2), frag2)) =>
+        ns1 == ns2 && frag1 == frag2
+      case _ => this.frag == that.frag
     }
   }
 }
