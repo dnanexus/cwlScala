@@ -16,6 +16,7 @@
 * `Evaluator.finalizeInputValue` loads file contents from remote file source if file does not exist locally
 * `CwlType.coerceTo` now returns both the coerced-to type and value
 * Added `CwlType.CwlGenericRecord`, which is coercible to either `CwlInputRecord` or `CwlOutputRecord`
+* Fixes evaluation of values with multiple possible types
 
 ## 0.7.4 (2021-01-05)
 
