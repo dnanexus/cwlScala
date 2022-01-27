@@ -966,28 +966,37 @@ case class Evaluator(jsEnabled: Boolean = false,
             .to(TreeSeqMap)
           (CwlOutputRecord(fields), value)
         case (CwlMulti(types), _) =>
-          types.iterator
-            .map {
-              case CwlAny => None
-              case t =>
-                try {
-                  Some(inner(innerValue, t))
-                } catch {
-                  case _: Throwable => None
+          types.flatMap {
+            case CwlAny => None
+            case t =>
+              try {
+                Some(inner(innerValue, t))
+              } catch {
+                case _: Throwable => None
+              }
+          } match {
+            case Vector(result)                     => result
+            case Vector() if types.contains(CwlAny) => (CwlAny, innerValue)
+            case Vector() =>
+              throw new Exception(
+                  s"${innerValue} does not evaluate to any of ${types}"
+              )
+            case v =>
+              // we have multiple evaluation results - for the type, create a CwlMulti from all the types, and for
+              // the value, if there are multiple we first prefer string (because it is coercible to the most other
+              // types and then just pick the first one
+              val (types, values) = v.unzip
+              val distinctValues = values.toSet
+              val value = Option
+                .when(distinctValues.size > 1) {
+                  distinctValues.collectFirst {
+                    case s: StringValue => s
+                  }
                 }
-            }
-            .collectFirst {
-              case Some(value) => value
-            }
-            .getOrElse(
-                if (types.contains(CwlAny)) {
-                  (CwlAny, innerValue)
-                } else {
-                  throw new Exception(
-                      s"${innerValue} does not evaluate to any of ${types}"
-                  )
-                }
-            )
+                .flatten
+                .getOrElse(distinctValues.head)
+              (CwlType.flatten(types), value)
+          }
         case _ => checkCoercibleTo(innerValue, innerType)
       }
     }
