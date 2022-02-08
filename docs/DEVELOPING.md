@@ -152,25 +152,14 @@ When a PR is merged into `develop`, SNAPSHOT packages are automatically publishe
 2. Run the release action.
 3. Go to the "Releases" page on GitHub and publish the draft release.
 
-### Releasing to Maven
-
-Note: this process is currently coordinated by John Didion - please request from him a release of the updated library(ies).
-
-1. From the release branch, run `sbt publishSigned -DreleaseTarget=sonatype`. You will need to have the SonaType PGP private key on your machine, and you will need the password.
-2. Go to [nexus repository manager](https://oss.sonatype.org/#stagingRepositories), log in, and go to "Staging Repositories".
-3. Check the repository to release; there should only be one, but if there are more check the contents to find yours.
-4. Click the "Close" button. After a few minutes, hit "Refresh". The "Release" button should become un-grayed. If not, wait a few more minutes and referesh again.
-5. Click the "Release" button.
-
 ### Completing the release
 
 If you encounter any additional issues while creating the release, you will need to make the fixes in `develop` and then merge them into the release branch.
 
-To complete the release, open a PR to merge the release branch into main. You can then delete the release branch.
+### Post-release PR to develop branch
+   
+* Create branch post-release-X.Y.Z based on branch release-X.Y.Z
+* Update the application.conf file to X.Y.(Z+1)-SNAPSHOT to increment the working version from e.g. 1.2.3-SNAPSHOT to 1.2.4-SNAPSHOT
+* Open pull request from branch post-release-X.Y.Z to develop. Fix release notes and resolve conflicts as needed.
+* Delete the post-release branch.
 
-Unfortunately, the tags that are created on the release branch are not merged into `main` when merging the PR. Thus, after merging the PR, you must manually tag the `main` branch with the release, e.g.
-
-```
-$ git tag cwlScala-0.5.0 -am "release cwlScala 0.5.0"
-$ git push origin cwlScala-0.5.0
-```
