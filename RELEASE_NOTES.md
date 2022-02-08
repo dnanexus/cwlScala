@@ -1,6 +1,6 @@
 # Change log
 
-## in develop
+## 0.8.0 (2022-02-08)
 
 * **Breaking**
   * Parser API has changed substantially, with parameters added, removed, and rearranged
