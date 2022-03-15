@@ -435,25 +435,25 @@ object Runtime {
              maxTmpdirSize: Option[Long] = None): Runtime = {
     val actualCores = JavaRuntime.getRuntime.availableProcessors()
     if (minCores.exists(_ > actualCores)) {
-      throw new Exception(s"avaiable cores ${actualCores} is less than min cores ${minCores}")
+      throw new Exception(s"available cores ${actualCores} is less than min cores ${minCores}")
     }
     val cores = maxCores.map(Math.min(_, actualCores)).getOrElse(actualCores)
     val actualRam = totalMemorySize
     if (minRam.exists(_ > actualRam)) {
-      throw new Exception(s"avaiable ram ${actualRam} is less than min ram ${minRam}")
+      throw new Exception(s"available ram ${actualRam} is less than min ram ${minRam}")
     }
     val ram = maxRam.map(Math.min(_, actualRam)).getOrElse(actualRam)
     val actualOutdirSize = outdir.getRoot.toFile.getFreeSpace
     if (minOutdirSize.exists(_ > actualOutdirSize)) {
       throw new Exception(
-          s"avaiable outdir size ${actualOutdirSize} is less than min outdir size ${minOutdirSize}"
+          s"available outdir size ${actualOutdirSize} is less than min outdir size ${minOutdirSize}"
       )
     }
     val outdirSize = maxOutdirSize.map(Math.min(_, actualOutdirSize)).getOrElse(actualOutdirSize)
     val actualTmpdirSize = tmpdir.getRoot.toFile.getFreeSpace
     if (minTmpdirSize.exists(_ > actualTmpdirSize)) {
       throw new Exception(
-          s"avaiable tmpdir size ${actualTmpdirSize} is less than min tmpdir size ${minTmpdirSize}"
+          s"available tmpdir size ${actualTmpdirSize} is less than min tmpdir size ${minTmpdirSize}"
       )
     }
     val tmpdirSize = maxTmpdirSize.map(Math.min(_, actualTmpdirSize)).getOrElse(actualTmpdirSize)
