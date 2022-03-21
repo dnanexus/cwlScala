@@ -51,6 +51,7 @@ case class GenericHint(attributes: Map[String, Any]) extends Hint
 /**
   * One of the requirements defined in the CWL spec.
   * https://www.commonwl.org/v1.2/CommandLineTool.html#InlineJavascriptRequirement
+  * https://www.commonwl.org/v1.2/Workflow.html#InlineJavascriptRequirement
   */
 sealed trait Requirement extends Hint
 
