@@ -51,6 +51,7 @@ case class GenericHint(attributes: Map[String, Any]) extends Hint
 /**
   * One of the requirements defined in the CWL spec.
   * https://www.commonwl.org/v1.2/CommandLineTool.html#InlineJavascriptRequirement
+  * https://www.commonwl.org/v1.2/Workflow.html#InlineJavascriptRequirement
   */
 sealed trait Requirement extends Hint
 
@@ -66,10 +67,10 @@ object Requirement {
       case req: EnvVarRequirementImpl             => EnvVarRequirement(req, schemaDefs)
       case _: ShellCommandRequirementImpl         => ShellCommandRequirement
       case req: ResourceRequirementImpl           => ResourceRequirement(req, schemaDefs)
-      case req: WorkReuseImpl                     => WorkReuseRequirement(req, schemaDefs)
-      case req: NetworkAccessImpl                 => NetworkAccessRequirement(req, schemaDefs)
+      case req: WorkReuseImpl                     => WorkReuse(req, schemaDefs)
+      case req: NetworkAccessImpl                 => NetworkAccess(req, schemaDefs)
       case req: InplaceUpdateRequirementImpl      => InplaceUpdateRequirement(req)
-      case req: ToolTimeLimitImpl                 => ToolTimeLimitRequirement(req, schemaDefs)
+      case req: ToolTimeLimitImpl                 => ToolTimeLimit(req, schemaDefs)
       case _: SubworkflowFeatureRequirementImpl   => SubworkflowFeatureRequirement
       case _: ScatterFeatureRequirementImpl       => ScatterFeatureRequirement
       case _: MultipleInputFeatureRequirementImpl => MultipleInputFeatureRequirement
@@ -115,10 +116,10 @@ object Requirement {
       EnvVarRequirement,
       ShellCommandRequirement,
       ResourceRequirement,
-      WorkReuseRequirement,
-      NetworkAccessRequirement,
+      WorkReuse,
+      NetworkAccess,
       InplaceUpdateRequirement,
-      ToolTimeLimitRequirement
+      ToolTimeLimit
   ).map(schema => schema.className -> schema).toMap
 
   def apply(hint: Map[String, Any],
@@ -550,28 +551,27 @@ object ResourceRequirement extends HintSchema {
   )
 }
 
-case class WorkReuseRequirement(enable: CwlValue) extends Requirement
+case class WorkReuse(enable: CwlValue) extends Requirement
 
-object WorkReuseRequirement extends HintSchema {
-  def apply(req: WorkReuseImpl, schemaDefs: Map[String, CwlSchema]): WorkReuseRequirement = {
-    WorkReuseRequirement(CwlValue(req.getEnableReuse, schemaDefs))
+object WorkReuse extends HintSchema {
+  def apply(req: WorkReuseImpl, schemaDefs: Map[String, CwlSchema]): WorkReuse = {
+    WorkReuse(CwlValue(req.getEnableReuse, schemaDefs))
   }
 
   override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
-    WorkReuseRequirement(enable = CwlValue(hint("enableReuse"), schemaDefs))
+    WorkReuse(enable = CwlValue(hint("enableReuse"), schemaDefs))
   }
 }
 
-case class NetworkAccessRequirement(allow: CwlValue) extends Requirement
+case class NetworkAccess(allow: CwlValue) extends Requirement
 
-object NetworkAccessRequirement extends HintSchema {
-  def apply(req: NetworkAccessImpl,
-            schemaDefs: Map[String, CwlSchema]): NetworkAccessRequirement = {
-    NetworkAccessRequirement(CwlValue(req.getNetworkAccess, schemaDefs))
+object NetworkAccess extends HintSchema {
+  def apply(req: NetworkAccessImpl, schemaDefs: Map[String, CwlSchema]): NetworkAccess = {
+    NetworkAccess(CwlValue(req.getNetworkAccess, schemaDefs))
   }
 
   override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
-    NetworkAccessRequirement(allow = CwlValue(hint("networkAccess"), schemaDefs))
+    NetworkAccess(allow = CwlValue(hint("networkAccess"), schemaDefs))
   }
 }
 
@@ -590,16 +590,15 @@ object InplaceUpdateRequirement extends HintSchema {
   }
 }
 
-case class ToolTimeLimitRequirement(timeLimit: CwlValue) extends Requirement
+case class ToolTimeLimit(timeLimit: CwlValue) extends Requirement
 
-object ToolTimeLimitRequirement extends HintSchema {
-  def apply(req: ToolTimeLimitImpl,
-            schemaDefs: Map[String, CwlSchema]): ToolTimeLimitRequirement = {
-    ToolTimeLimitRequirement(CwlValue(req.getTimelimit, schemaDefs))
+object ToolTimeLimit extends HintSchema {
+  def apply(req: ToolTimeLimitImpl, schemaDefs: Map[String, CwlSchema]): ToolTimeLimit = {
+    ToolTimeLimit(CwlValue(req.getTimelimit, schemaDefs))
   }
 
   override def apply(hint: Map[String, Any], schemaDefs: Map[String, CwlSchema]): Hint = {
-    ToolTimeLimitRequirement(timeLimit = CwlValue(hint("timelimit"), schemaDefs))
+    ToolTimeLimit(timeLimit = CwlValue(hint("timelimit"), schemaDefs))
   }
 }
 
