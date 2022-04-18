@@ -2,7 +2,8 @@
 
 ## in develop
 
-* Fixes CWL default requirement classnames `NetworkAccess`, `WorkReuse` and `ToolTimeLimit` so the corresponding hints can be recognized by dxCompiler (instead of being defined as GenericHints which are not interpreted during compilation).  
+* Fixes CWL default requirement classnames `NetworkAccess`, `WorkReuse` and `ToolTimeLimit` so the corresponding hints can be recognized by dxCompiler (instead of being defined as GenericHints which are not interpreted during compilation).
+* Updated cwljava with fixes `secondaryFiles` with `pattern` field when parsing workflow-level parameters
 
 ## 0.8.0 (2022-02-08)
 
