@@ -1,8 +1,8 @@
 # Change log
 
-## in develop
+## 0.8.2 (2022-05-16)
 
-* Updated cwljava with fixes to `secondaryFiles` with `pattern` field when parsing workflow-level parameters and the helper function `utils.Uris.shortname` to generate enum symbols without namespaces
+* Updated `cwljava` with fixes to `secondaryFiles` with `pattern` field when parsing workflow-level parameters and the helper function `utils.Uris.shortname` to generate enum symbols without namespaces
 
 ## 0.8.1 (2022-04-18)
 
