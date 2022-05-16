@@ -1,7 +1,8 @@
 # Change log
 
-## in develop
-..
+## 0.8.3 (2022-05-16)
+
+* Update dxCommon to 0.11.3
 
 ## 0.8.2 (2022-05-16)
 
