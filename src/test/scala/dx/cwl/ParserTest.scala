@@ -189,12 +189,12 @@ class ParserTest extends AnyWordSpec with Matchers {
       recType.fields.size shouldBe 2
       recType.fields("species").cwlType match {
         case CwlOptional(e: CwlEnum) =>
-          e.symbols shouldBe Vector("homo_sapiens", "mus_musculus")
+          e.symbolNames shouldBe Vector("homo_sapiens", "mus_musculus")
         case other => throw new Exception(s"expected CwlOptional(CwlEnum) not ${other}")
       }
       recType.fields("ncbi_build").cwlType match {
         case CwlOptional(e: CwlEnum) =>
-          e.symbols shouldBe Vector("GRCh37", "GRCh38", "GRCm38")
+          e.symbolNames shouldBe Vector("GRCh37", "GRCh38", "GRCm38")
         case other => throw new Exception(s"expected CwlOptional(CwlEnum) not ${other}")
       }
     }

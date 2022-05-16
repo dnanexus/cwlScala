@@ -45,14 +45,14 @@ lazy val root = project
   )
 
 lazy val dependencies = {
-  val dxCommonVersion = "0.11.0"
+  val dxCommonVersion = "0.11.2"
   val dxYamlVersion = "0.1.1"
   val typesafeVersion = "1.4.1"
   val sprayVersion = "1.3.6"
   val scalatestVersion = "3.2.9"
   val yamlVersion = "2.3"
-  val jacksonDatabindVersion = "2.13.1"
-  val jacksonDataformatYamlVersion = "2.13.1"
+  val jacksonDatabindVersion = "2.13.2.2"
+  val jacksonDataformatYamlVersion = "2.13.2"
   val rhinoVersion = "1.7.13"
   val antlr4Version = "4.9.3"
   //val junitVersion = "4.13.2"
