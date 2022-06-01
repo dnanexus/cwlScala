@@ -50,7 +50,9 @@ case class Identifier(namespace: Option[String], frag: String) {
     (this, that) match {
       case (Identifier(Some(ns1), frag1), Identifier(Some(ns2), frag2)) =>
         ns1 == ns2 && frag1 == frag2
-      case _ => this.frag == that.frag
+      case (Identifier(None, frag1), Identifier(None, frag2)) =>
+        this.frag == that.frag
+      case _ => false
     }
   }
 
