@@ -551,6 +551,33 @@ case class CwlArray(itemType: CwlType,
                                            dropCwlExtension)
     )
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlArray]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case a: CwlArray =>
+        a match {
+          case a if this eq a => true
+          case a
+              if a.canEqual(this)
+                && (hashCode == a.hashCode)
+                && (itemType == a.itemType)
+                && (id == a.id || hasRandomName() && a.hasRandomName()) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (itemType.toString.##) + {
+      if (!hasRandomName()) {
+        name.##
+      } else 0
+    }
 }
 
 object CwlArray {
