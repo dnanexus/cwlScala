@@ -40,7 +40,7 @@ import scala.util.matching.Regex
 /**
   * Marker trait for all CWL data types.
   */
-sealed trait CwlType {
+sealed trait CwlType extends Equals {
 
   /**
     * Returns true if this type is coercible to the specified type
