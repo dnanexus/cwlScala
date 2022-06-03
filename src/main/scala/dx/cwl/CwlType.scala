@@ -1007,6 +1007,33 @@ case class CwlEnum(symbols: Vector[String],
         })
     )
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlEnum]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case e: CwlEnum =>
+        e match {
+          case e if this eq e => true
+          case e
+              if e.canEqual(this)
+                && (hashCode == e.hashCode)
+                && (symbolNames == e.symbolNames)
+                && (id == e.id || hasRandomName() && e.hasRandomName()) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (symbolNames.map(_.##).sum) + {
+      if (!hasRandomName()) {
+        name.##
+      } else 0
+    }
 }
 
 object CwlEnum {
