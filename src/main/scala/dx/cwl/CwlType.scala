@@ -195,6 +195,24 @@ object CwlType {
           case t: CwlType => t
           case other      => throw new Exception(s"expected CwlType, not ${other}")
         }
+      case CwlOptional(innerType) =>
+        CwlOptional(
+            copySimplifyIds(innerType,
+                            dropNamespace,
+                            replacePrefix,
+                            simplifyAutoNames,
+                            dropCwlExtension)
+        )
+      case CwlMulti(types) =>
+        CwlMulti(
+            types.map(
+                copySimplifyIds(_,
+                                dropNamespace,
+                                replacePrefix,
+                                simplifyAutoNames,
+                                dropCwlExtension)
+            )
+        )
       case _ => cwlType
     }
   }
