@@ -706,6 +706,33 @@ sealed trait CwlRecord extends CwlSchema {
       case _                                                       => false
     }
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlRecord]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case r: CwlRecord =>
+        r match {
+          case r if this eq r => true
+          case r
+              if r.canEqual(this)
+                && (hashCode == r.hashCode)
+                && (fields == r.fields)
+                && (id == r.id || (hasRandomName() && r.hasRandomName())) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (fields.map(_.hashCode()).sum) + {
+      if (!hasRandomName()) {
+        name.##
+      } else 0
+    }
 }
 
 case class CwlGenericRecordField(name: String,
