@@ -992,7 +992,20 @@ case class CwlEnum(symbols: Vector[String],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlEnum = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        symbols = symbols.map(s => {
+          val frag = Identifier.parseUri(s)._2
+          try {
+            frag
+              .map(Identifier.simplifyFrag(_, replacePrefix, simplifyAutoNames, dropCwlExtension))
+              .get
+          } catch {
+            case ex: Throwable =>
+              throw new Exception(s"error simplifying enum symbol ${s}", ex)
+          }
+        })
+    )
   }
 }
 
