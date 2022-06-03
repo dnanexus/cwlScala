@@ -742,7 +742,19 @@ case class CwlGenericRecordField(name: String,
                                  secondaryFiles: Vector[SecondaryFile] = Vector.empty,
                                  format: Vector[CwlValue] = Vector.empty,
                                  streamable: Boolean = false)
-    extends CwlRecordField
+    extends CwlRecordField {
+  def copySimplifyIds(dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlGenericRecordField = {
+    copy(cwlType = CwlType.copySimplifyIds(cwlType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
+  }
+}
 
 case class CwlGenericRecord(fields: SeqMap[String, CwlGenericRecordField],
                             id: Option[Identifier] = None,
@@ -753,7 +765,13 @@ case class CwlGenericRecord(fields: SeqMap[String, CwlGenericRecordField],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlGenericRecord = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        fields = fields.map(f =>
+          (f._1,
+           f._2.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+        )
+    )
   }
 
   /**
@@ -780,7 +798,19 @@ case class CwlInputRecordField(name: String,
                                streamable: Boolean = false,
                                loadContents: Boolean = false,
                                loadListing: LoadListing.LoadListing = LoadListing.No)
-    extends CwlRecordField
+    extends CwlRecordField {
+  def copySimplifyIds(dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlInputRecordField = {
+    copy(cwlType = CwlType.copySimplifyIds(cwlType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
+  }
+}
 
 object CwlInputRecordField {
   private def create(field: InputRecordField,
@@ -851,7 +881,13 @@ case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlInputRecord = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        fields = fields.map(f =>
+          (f._1,
+           f._2.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+        )
+    )
   }
 }
 
@@ -925,7 +961,19 @@ case class CwlOutputRecordField(name: String,
                                 secondaryFiles: Vector[SecondaryFile] = Vector.empty,
                                 format: Vector[CwlValue] = Vector.empty,
                                 streamable: Boolean = false)
-    extends CwlRecordField
+    extends CwlRecordField {
+  def copySimplifyIds(dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlOutputRecordField = {
+    copy(cwlType = CwlType.copySimplifyIds(cwlType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
+  }
+}
 
 object CwlOutputRecordField {
   private def create(field: OutputRecordField,
@@ -992,7 +1040,13 @@ case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlOutputRecord = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        fields = fields.map(f =>
+          (f._1,
+           f._2.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+        )
+    )
   }
 }
 
