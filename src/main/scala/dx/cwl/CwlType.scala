@@ -248,6 +248,28 @@ case class CwlOptional(t: CwlType) extends CwlType {
       case _                                       => false
     }
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlOptional]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case obj: CwlOptional =>
+        obj match {
+          case obj if this eq obj => true
+          case obj
+              if obj.canEqual(this)
+                && (hashCode == obj.hashCode)
+                && (CwlOptional.unwrapOptional(this) == CwlOptional.unwrapOptional(obj)) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * CwlOptional.unwrapOptional(this).hashCode()
 }
 
 object CwlOptional {
