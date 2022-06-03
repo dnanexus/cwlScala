@@ -542,7 +542,14 @@ case class CwlArray(itemType: CwlType,
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlArray = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        itemType = CwlType.copySimplifyIds(itemType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
   }
 }
 
