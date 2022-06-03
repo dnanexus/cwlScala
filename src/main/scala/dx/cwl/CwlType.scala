@@ -401,6 +401,15 @@ sealed trait CwlSchema extends CwlType with Identifiable {
     * which is a non-optional, non-equal, and non-Any type.
     */
   protected def canBeCoercedTo(targetType: CwlType): Boolean = false
+
+  def hasRandomName(): Boolean = {
+    val randomNameRegex: Regex = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})".r
+    id.map(_.name) match {
+      case Some(randomNameRegex(_)) => true
+      case Some(name)               => false
+      case None                     => true
+    }
+  }
 }
 
 sealed trait CwlInputSchema extends CwlSchema {
