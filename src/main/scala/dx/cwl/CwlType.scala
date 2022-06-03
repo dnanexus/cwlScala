@@ -310,6 +310,38 @@ case class CwlMulti(types: Vector[CwlType]) extends CwlType {
   }
 
   lazy val isOptional: Boolean = types.exists(CwlOptional.isOptional)
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlMulti]
+
+  override def equals(that: Any): Boolean = {
+    def multiEqual(v1: Vector[CwlType], v2: Vector[CwlType]): Boolean = {
+      if (v1.size != v2.size)
+        false
+      else {
+        v1.sortBy(_.toString()).zip(v2.sortBy(_.toString())).forall(p => p._1 == p._2)
+      }
+    }
+
+    that match {
+      case m: CwlMulti =>
+        m match {
+          case m if this eq m => true
+          case m
+              if m.canEqual(this)
+                && (hashCode == m.hashCode)
+                && multiEqual(types, m.types) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+  }
+
+  override def hashCode(): Int =
+    31 * types.map(_.hashCode()).sum
+
 }
 
 /**
