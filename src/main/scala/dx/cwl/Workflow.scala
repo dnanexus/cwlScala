@@ -331,15 +331,24 @@ case class WorkflowStep(id: Option[Identifier],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): WorkflowStep = {
+    val simplifiedStepId =
+      id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+    val runPrefix = replacePrefix._1 match {
+      case Left(removeAllPrefix)  => Left(removeAllPrefix)
+      case Right(prefixToDrop) => Right(s"${prefixToDrop}${simplifiedStepId.get.name}/")
+    }
     copy(
-        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        id = simplifiedStepId,
         inputs = inputs.map(
             _.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
         ),
         outputs = outputs.map(
             _.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)
         ),
-        run = run.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension),
+        run = run.copySimplifyIds(dropNamespace,
+                                  replacePrefix = (runPrefix, None),
+                                  simplifyAutoNames = simplifyAutoNames,
+                                  dropCwlExtension = dropCwlExtension),
         scatter =
           scatter.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
     )
