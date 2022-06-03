@@ -37,6 +37,10 @@ case class Identifier(namespace: Option[String], frag: String) {
     }
   }
 
+  def finalizeFrag: Identifier = {
+    copy(frag = frag.replace("/", "_"))
+  }
+
   override def hashCode(): Int = frag.hashCode
 
   override def equals(obj: Any): Boolean = {
@@ -305,12 +309,15 @@ trait Process extends Meta {
         (Some(toDrop), toAdd)
       case _ => (None, None)
     }
-    val simplifiedId = id.map(
-        _.simplify(dropNamespace,
-                   (prefixToDrop.toRight(false), prefixToAdd),
-                   simplifyAutoNames,
-                   dropCwlExtension)
-    )
+    val simplifiedId = id
+      .map(
+          _.simplify(dropNamespace,
+                     (prefixToDrop.toRight(false), prefixToAdd),
+                     simplifyAutoNames,
+                     dropCwlExtension)
+      )
+      .map(_.finalizeFrag)
+
     (simplifiedId,
      (id.map(i => s"${i.frag}/").toRight(false), simplifiedId.map(i => s"${i.frag}/")))
   }
