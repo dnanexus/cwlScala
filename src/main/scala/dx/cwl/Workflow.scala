@@ -334,8 +334,8 @@ case class WorkflowStep(id: Option[Identifier],
     val simplifiedStepId =
       id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
     val runPrefix = replacePrefix._1 match {
-      case Left(removeAllPrefix)  => Left(removeAllPrefix)
-      case Right(prefixToDrop) => Right(s"${prefixToDrop}${simplifiedStepId.get.name}/")
+      case Left(removeAllPrefix) => Left(removeAllPrefix)
+      case Right(prefixToDrop)   => Right(s"${prefixToDrop}${simplifiedStepId.get.name}/")
     }
     copy(
         id = simplifiedStepId,
