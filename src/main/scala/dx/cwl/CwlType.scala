@@ -657,7 +657,7 @@ object CwlArray {
   }
 }
 
-sealed trait CwlRecordField {
+sealed trait CwlRecordField extends Equals {
   val name: String
   val cwlType: CwlType
   val label: Option[String]
@@ -670,6 +670,29 @@ sealed trait CwlRecordField {
     * the field is optional if any of the allowed types are optional
     */
   lazy val optional: Boolean = CwlOptional.isOptional(cwlType)
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlRecordField]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case f: CwlRecordField =>
+        f match {
+          case f if this eq f => true
+          case f
+              if f.canEqual(this)
+                && (hashCode == f.hashCode)
+                && (cwlType == f.cwlType)
+                && (name == f.name) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (cwlType.hashCode()) + name.##
 }
 
 sealed trait CwlRecord extends CwlSchema {
