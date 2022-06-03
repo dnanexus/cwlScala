@@ -596,7 +596,7 @@ case class CwlArray(itemType: CwlType,
               if a.canEqual(this)
                 && (hashCode == a.hashCode)
                 && (itemType == a.itemType)
-                && (id == a.id || hasRandomName() && a.hasRandomName()) =>
+                && (id == a.id || (hasRandomName() && a.hasRandomName())) =>
             true
           case _ => false
         }
@@ -1052,7 +1052,7 @@ case class CwlEnum(symbols: Vector[String],
               if e.canEqual(this)
                 && (hashCode == e.hashCode)
                 && (symbolNames == e.symbolNames)
-                && (id == e.id || hasRandomName() && e.hasRandomName()) =>
+                && (id == e.id || (hasRandomName() && e.hasRandomName())) =>
             true
           case _ => false
         }
