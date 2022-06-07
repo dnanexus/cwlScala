@@ -156,6 +156,8 @@ When a PR is merged into `develop`, SNAPSHOT packages are automatically publishe
 
 If you encounter any additional issues while creating the release, you will need to make the fixes in `develop` and then merge them into the release branch.
 
+### Post-release PR to develop branch
+   
 To complete the release:
 1. Create branch `post-release-X.Y.Z` based on branch `release-X.Y.Z`
 2. Increment the working version from e.g. 1.2.3-SNAPSHOT to 1.2.4-SNAPSHOT in the `src/main/resources/application.conf`.
