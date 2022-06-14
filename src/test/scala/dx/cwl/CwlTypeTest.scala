@@ -27,7 +27,7 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
                                            dropCwlExtension = true)
     simple_arr1.hashCode() shouldEqual (simple_arr2.hashCode())
     simple_arr1.equals(simple_arr2)
-    
+
     val arr3 = CwlArray(CwlString, Some(id3), Some("array 3"), Some("array 3 doc"))
     val arr4 = CwlArray(CwlString, Some(id4), Some("array 4"), Some("array 4 doc"))
     val simple_arr3 = arr3.copySimplifyIds(dropNamespace = true,
@@ -40,13 +40,13 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
                                            dropCwlExtension = true)
     simple_arr3.hashCode() should not equal simple_arr4.hashCode()
     simple_arr3 should not equal simple_arr4
-    
+
     val arr3_2 = CwlArray(CwlString, Some(id3_2), Some("array 3 copy"), Some("array 3 copy doc"))
     val simple_arr3_2 = arr3_2.copySimplifyIds(dropNamespace = true,
-                                           replacePrefix = (Left(true), None),
-                                           simplifyAutoNames = true,
-                                           dropCwlExtension = true)
-    simple_arr3.id.get shouldBe(simple_arr3_2.id.get)
+                                               replacePrefix = (Left(true), None),
+                                               simplifyAutoNames = true,
+                                               dropCwlExtension = true)
+    simple_arr3.id.get shouldBe (simple_arr3_2.id.get)
     simple_arr3.hashCode() shouldBe (simple_arr3_2.hashCode())
     simple_arr3.equals(simple_arr3_2)
   }
@@ -105,13 +105,13 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
     val r2 = CwlInputRecord(SeqMap("f" -> f2), Some(id2))
 
     val simple_r1 = r1.copySimplifyIds(dropNamespace = true,
-                                            replacePrefix = (Left(true), None),
-                                            simplifyAutoNames = true,
-                                            dropCwlExtension = true)
+                                       replacePrefix = (Left(true), None),
+                                       simplifyAutoNames = true,
+                                       dropCwlExtension = true)
     val simple_r2 = r2.copySimplifyIds(dropNamespace = true,
-                                            replacePrefix = (Left(true), None),
-                                            simplifyAutoNames = true,
-                                            dropCwlExtension = true)
+                                       replacePrefix = (Left(true), None),
+                                       simplifyAutoNames = true,
+                                       dropCwlExtension = true)
     simple_r1.hashCode() shouldEqual (simple_r2.hashCode())
     simple_r1.equals(simple_r2)
   }
