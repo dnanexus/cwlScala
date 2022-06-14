@@ -283,7 +283,9 @@ class ParserTest extends AnyWordSpec with Matchers {
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "any-type-compat.cwl"
-      wf.inputs.flatMap(_.id.map(_.frag)).toSet shouldBe Set("any-type-compat.cwl/input1", "any-type-compat.cwl/input2", "any-type-compat.cwl/input3")
+      wf.inputs.flatMap(_.id.map(_.frag)).toSet shouldBe Set("any-type-compat.cwl/input1",
+                                                             "any-type-compat.cwl/input2",
+                                                             "any-type-compat.cwl/input3")
     }
 
     "parse packed workflow with auto-generated process ID" in {
@@ -301,7 +303,9 @@ class ParserTest extends AnyWordSpec with Matchers {
         case tool: CommandLineTool => tool
         case _                     => throw new Exception("expected CommandLineTool")
       }
-      proc.id.map(_.frag) shouldBe Some("count-lines19-wf.cwl/step1/count-lines19-wf.cwl@step_step1@wc3-tool.cwl")
+      proc.id.map(_.frag) shouldBe Some(
+          "count-lines19-wf.cwl/step1/count-lines19-wf.cwl@step_step1@wc3-tool.cwl"
+      )
     }
 
     "parse packed workflow with auto-generated anonymous process ID" in {
