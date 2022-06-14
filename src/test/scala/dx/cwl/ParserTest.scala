@@ -413,6 +413,31 @@ class ParserTest extends AnyWordSpec with Matchers {
       )
     }
 
+    "parse workflow with identical steps" in {
+      val wfPathPacked = workflowsConformancePath.resolve("tool_called_twice.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+          "Workflow"
+      ))
+      val (wf, _) =
+        workflowConformanceParser.parseFile(wfPathPacked) match {
+          case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+          case other                                       => throw new Exception(s"expected Workflow, not ${other}")
+        }
+      wf.steps.size shouldBe 2
+
+      val simplifiedWf = wf.copySimplifyIds(
+          dropNamespace = true,
+          replacePrefix = (Left(true), None),
+          simplifyAutoNames = true,
+          dropCwlExtension = true
+      )
+      simplifiedWf.steps.size shouldBe 2
+
+      val step1 = simplifiedWf.steps(0)
+      val step2 = simplifiedWf.steps(1)
+      step1.run shouldBe step2.run
+    }
+
     "parse a packed workflow in graph format and determine the correct main process" in {
       val wfPathPacked = workflowsConformancePath.resolve("conflict-wf.cwl.json")
       workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
