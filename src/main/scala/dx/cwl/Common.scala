@@ -159,14 +159,7 @@ object Identifier {
           (None, Some(uri.drop(2)))
         case _: Throwable => Utils.splitUri(uri)
       }
-    val (importNamespace, strippedFrag) = frag match {
-      case Some(importNamespaceRegex(importNamespace, f)) =>
-        // The frag may start with a different prefix, indicating the element was imported from another document -
-        // try to parse out that prefix. If the uri is absolute, then prepend the existing namespace.
-        (namespace.map(ns => s"${ns}#${importNamespace}").orElse(Some(importNamespace)), Some(f))
-      case _ => (None, frag)
-    }
-    (importNamespace.orElse(namespace).orElse(defaultNamespace), strippedFrag)
+    (namespace, frag)
   }
 
   def parse(uri: String, defaultNamespace: Option[String] = None): Identifier = {
