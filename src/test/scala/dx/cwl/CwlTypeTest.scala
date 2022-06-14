@@ -3,7 +3,6 @@ package dx.cwl
 import org.scalatest.flatspec.AnyFlatSpec
 import scala.collection.immutable.SeqMap
 import org.scalatest.matchers.should.Matchers
-//import spray.json._
 
 class CwlTypeTest extends AnyFlatSpec with Matchers {
   val p1 = "bar/baz1/"
