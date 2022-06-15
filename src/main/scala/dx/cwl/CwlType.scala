@@ -605,7 +605,7 @@ case class CwlArray(itemType: CwlType,
     }
 
   override def hashCode(): Int =
-    31 * (itemType.toString.##) + {
+    31 * (itemType.hashCode()) + {
       if (!hasRandomName()) {
         name.##
       } else 0

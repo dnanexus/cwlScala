@@ -13,7 +13,7 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
   val id3_2 = Identifier(Some("foo"), p2 + "id3")
   val id4 = Identifier(Some("foo"), p1 + "id4")
 
-  it should "simplify arrays with random ids as identical" in {
+  it should "simplify array types with random ids as identical" in {
     val arr1 = CwlArray(CwlString, Some(id1), Some("array 1"), Some("array 1 doc"))
     val arr2 = CwlArray(CwlString, Some(id2), Some("array 2"), Some("array 2 doc"))
     val simple_arr1 = arr1.copySimplifyIds(dropNamespace = true,
@@ -48,9 +48,22 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
     simple_arr3.id.get shouldBe (simple_arr3_2.id.get)
     simple_arr3.hashCode() shouldBe (simple_arr3_2.hashCode())
     simple_arr3.equals(simple_arr3_2)
+
+    val arr5 = CwlArray(arr1, Some(id1), Some("array 5"), Some("array 1 wrapped"))
+    val arr6 = CwlArray(arr2, Some(id2), Some("array 6"), Some("array 2 wrapped"))
+    val simple_arr5 = arr5.copySimplifyIds(dropNamespace = true,
+                                           replacePrefix = (Left(true), None),
+                                           simplifyAutoNames = true,
+                                           dropCwlExtension = true)
+    val simple_arr6 = arr6.copySimplifyIds(dropNamespace = true,
+                                           replacePrefix = (Left(true), None),
+                                           simplifyAutoNames = true,
+                                           dropCwlExtension = true)
+    simple_arr5.hashCode() shouldEqual (simple_arr6.hashCode())
+    simple_arr5.equals(simple_arr6)
   }
 
-  it should "simplify enums with random ids as identical" in {
+  it should "simplify enum types with random ids as identical" in {
     val symbols = Vector[String]("a", "b", "c")
     val symbols1 = symbols.map(p1 + _)
     val symbols2 = symbols.map(p2 + _)
@@ -69,7 +82,7 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
     simple_enum1.equals(simple_enum2)
   }
 
-  it should "simplify multi/optional whose inner types have random ids as identical" in {
+  it should "simplify multi/optional types whose inner types have random ids as identical" in {
     val arr1 = CwlArray(CwlString, Some(id1), Some("array 1"), Some("array 1 doc"))
     val arr2 = CwlArray(CwlString, Some(id2), Some("array 2"), Some("array 2 doc"))
     val symbols = Vector[String]("a", "b", "c")
@@ -95,7 +108,7 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
     simple_t1.equals(simple_t2)
   }
 
-  it should "simplify records with random ids as identical" in {
+  it should "simplify record types with random ids but same fields as identical" in {
     val arr1 = CwlArray(CwlString, Some(id1), Some("array 1"), Some("array 1 doc"))
     val arr2 = CwlArray(CwlString, Some(id2), Some("array 2"), Some("array 2 doc"))
     val f1 = CwlInputRecordField("input_field", arr1, Some("field label1"), Some("field 1 doc"))
