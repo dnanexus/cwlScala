@@ -771,7 +771,9 @@ sealed trait PathValue extends PrimitiveValue with StringIndexable {
   override lazy val toJson: JsValue = {
     val fields = productElementNames.flatMap { key =>
       get(key) match {
-        case None        => None
+        case None => None
+        case Some(metadata: StringValue) if key == "metadata" =>
+          Some(key -> metadata.toString.parseJson)
         case Some(value) => Some(key -> value.toJson)
       }
     }.toMap
@@ -858,7 +860,8 @@ case class FileValue(location: Option[String] = None,
                      size: Option[Long] = None,
                      secondaryFiles: Vector[PathValue] = Vector.empty,
                      format: Option[String] = None,
-                     contents: Option[String] = None)
+                     contents: Option[String] = None,
+                     metadata: Option[String] = None)
     extends PathValue {
   override val cwlType: CwlPath = CwlFile
   private val keys: Set[String] = Set("location",
@@ -871,7 +874,8 @@ case class FileValue(location: Option[String] = None,
                                       "size",
                                       "secondaryFiles",
                                       "format",
-                                      "contents")
+                                      "contents",
+                                      "metadata")
 
   override def contains(key: String): Boolean = {
     keys.contains(key)
@@ -890,6 +894,7 @@ case class FileValue(location: Option[String] = None,
       case "secondaryFiles" => Some(ArrayValue(secondaryFiles))
       case "format"         => format.map(StringValue(_))
       case "contents"       => contents.map(StringValue(_))
+      case "metadata"       => metadata.map(StringValue(_))
       case _ =>
         throw new Exception(s"invalid File property ${key}")
     }
@@ -915,7 +920,8 @@ object FileValue {
         },
         translateOptionalArray(file.getSecondaryFiles).map(PathValue.apply),
         translateOptional(file.getFormat),
-        translateOptional(file.getContents)
+        translateOptional(file.getContents),
+        None
     )
   }
 
@@ -941,7 +947,8 @@ object FileValue {
             throw new Exception(s"unexpected secondaryFiles value ${other}")
         },
         translateOptionalString(map.get("format")),
-        translateOptionalString(map.get("contents"))
+        translateOptionalString(map.get("contents")),
+        translateOptionalString(map.get("metadata"))
     )
   }
 
@@ -975,7 +982,8 @@ object FileValue {
                 throw new Exception(s"invalid secondaryFiles value ${other}")
             },
             fields.get("format").map(PathValue.unwrapString),
-            fields.get("contents").map(PathValue.unwrapString)
+            fields.get("contents").map(PathValue.unwrapString),
+            fields.get("metadata").map(_.prettyPrint)
         )
       case _ =>
         throw new Exception(s"invalid file value ${jsValue}")

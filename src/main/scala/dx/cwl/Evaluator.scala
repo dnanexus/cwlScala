@@ -618,7 +618,8 @@ object EvaluatorContext {
               newSize,
               newSecondaryFiles,
               f.format,
-              newContents
+              newContents,
+              f.metadata
           )
         case d: DirectoryValue =>
           val newListing = if (d.listing.isEmpty && recurseListings) {
