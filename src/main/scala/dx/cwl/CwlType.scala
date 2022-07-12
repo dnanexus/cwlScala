@@ -34,6 +34,7 @@ import org.w3id.cwl.cwl1_2.{
 import scala.annotation.tailrec
 import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
+import scala.util.matching.Regex
 
 /**
   * Marker trait for all CWL data types.
