@@ -132,6 +132,20 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                          ctx,
                          coerce = true) shouldBe (CwlInt, IntValue(1))
     }
+
+    "coerce string to enum symbol" in {
+      val ctx = EvaluatorContext(StringValue("TranscriptomeSAM GeneCounts"))
+      val targetType = CwlOptional(
+          CwlEnum(
+              Vector("STAR-1/quantMode/quantMode/TranscriptomeSAM",
+                     "STAR-1/quantMode/quantMode/GeneCounts",
+                     "STAR-1/quantMode/quantMode/TranscriptomeSAM GeneCounts")
+          )
+      )
+      evaluator
+        .evaluate(StringValue("$(self)"), targetType, ctx, coerce = true)
+        ._2 shouldBe StringValue("TranscriptomeSAM GeneCounts")
+    }
   }
 
   private case class SplitTest(s: String, expected: EcmaString)
