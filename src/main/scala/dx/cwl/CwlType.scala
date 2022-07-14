@@ -28,13 +28,13 @@ import org.w3id.cwl.cwl1_2.{
   SecondaryFileSchemaImpl,
   stderr => CWLStderr,
   stdin => CWLStdin,
-  stdout => CWLStdout,
-  utils
+  stdout => CWLStdout
 }
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{SeqMap, TreeSeqMap}
 import scala.jdk.CollectionConverters._
+import scala.util.matching.Regex
 
 /**
   * Marker trait for all CWL data types.
@@ -893,7 +893,10 @@ case class CwlEnum(symbols: Vector[String],
     * symbols may be fully namespaced - this method returns just name part (after the last '/').
     */
   lazy val symbolNames: Vector[String] = {
-    symbols.map(utils.Uris.shortname(_))
+    symbols.map {
+      case CwlEnum.symbolRegex(_, name) => name
+      case other                        => throw new Exception(s"invalid symbol ${other}")
+    }
   }
 
   override protected def canBeCoercedTo(targetType: CwlType): Boolean = {
@@ -913,6 +916,8 @@ case class CwlEnum(symbols: Vector[String],
 }
 
 object CwlEnum {
+  val symbolRegex: Regex = "(.+/)?(.+)".r
+
   def apply(schema: EnumSchema, schemaDefs: Map[String, CwlSchema]): CwlEnum = {
     val (name, label, doc) = schema match {
       case schema: InputEnumSchema  => (schema.getName, schema.getLabel, schema.getDoc)
