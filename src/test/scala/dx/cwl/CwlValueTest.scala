@@ -27,6 +27,29 @@ class CwlValueTest extends AnyFlatSpec with Matchers {
     v shouldBe IntValue(5)
   }
 
+  it should "deserialize the input JSON to File " in {
+    val inputJson = JsObject(
+        fields = Map(
+            "contents" -> JsString("test"),
+            "metadata" -> JsObject(
+                fields = Map(
+                    "int_meta" -> JsNumber("1"),
+                    "str_meta" -> JsString("test"),
+                    "bool_meta" -> JsBoolean(true),
+                    "arr_meta" -> JsArray(
+                        Vector(JsString("elem1"), JsString("elem2"), JsString("elem3"))
+                    )
+                )
+            )
+        )
+    )
+
+    val (t, v) = CwlValue.deserialize(inputJson, CwlFile, Map.empty)
+    t shouldBe CwlFile
+    v shouldBe FileValue(contents = Some("test"),
+                         metadata = inputJson.fields.get("metadata").map(_.prettyPrint))
+  }
+
   it should "coerce null to optional" in {
     val t = CwlOptional(CwlString)
     NullValue.coercibleTo(t) shouldBe true

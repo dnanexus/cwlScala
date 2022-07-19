@@ -8,6 +8,7 @@ import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
 
 import scala.collection.immutable.SeqMap
 import scala.jdk.CollectionConverters._
+import spray.json.{JsObject, JsNumber, JsString, JsBoolean, JsArray}
 
 class EvaluatorTest extends AnyWordSpec with Matchers {
   private def getPath(resource: String): Path = {
@@ -69,6 +70,21 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
     "evaluate input details" in {
       val tmpdir = Files.createTempDirectory("test").toRealPath()
       val f = tmpdir.resolve("test.txt")
+      val fileMeta =
+        JsObject(
+            fields = Map(
+                "metadata" -> JsObject(
+                    fields = Map(
+                        "int_meta" -> JsNumber("1"),
+                        "str_meta" -> JsString("test"),
+                        "bool_meta" -> JsBoolean(true),
+                        "arr_meta" -> JsArray(
+                            Vector(JsString("elem1"), JsString("elem2"), JsString("elem3"))
+                        )
+                    )
+                )
+            )
+        )
       Files.write(f, "test".getBytes())
       val d = tmpdir.resolve("dir")
       Files.createDirectories(d)
@@ -89,7 +105,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                   streamable = false,
                   loadContents = true,
                   loadListing = LoadListing.No
-              ) -> FileValue(location = Some(f.toString)),
+              ) -> FileValue(location = Some(f.toString), metadata = Some(fileMeta.prettyPrint)),
               CommandInputParameter(
                   Some(Identifier(namespace = None, frag = "d")),
                   None,
@@ -113,6 +129,9 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       evaluator("$(inputs.f.nameext)", CwlString, ctx2)._2 shouldBe StringValue(".txt")
       evaluator("$(inputs.f.size)", CwlLong, ctx2)._2 shouldBe LongValue(4)
       evaluator("$(inputs.f.contents)", CwlString, ctx2)._2 shouldBe StringValue("test")
+      evaluator("$(inputs.f.metadata)", CwlString, ctx2)._2 shouldBe StringValue(
+          fileMeta.prettyPrint
+      )
 
       evaluator("$(inputs.d.path)", CwlString, ctx2)._2 shouldBe StringValue(d.toString)
       evaluator("$(inputs.d.basename)", CwlString, ctx2)._2 shouldBe StringValue("dir")
