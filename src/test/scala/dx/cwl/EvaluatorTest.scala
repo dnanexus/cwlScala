@@ -94,7 +94,7 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
       val ctx2 = EvaluatorContext(inputs = EvaluatorContext.inputsFromParameters(
           Map(
               CommandInputParameter(
-                  Some(Identifier(namespace = None, frag = "f")),
+                  Some(Identifier(namespace = None, frag = "f1")),
                   None,
                   None,
                   CwlFile,
@@ -105,7 +105,20 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
                   streamable = false,
                   loadContents = true,
                   loadListing = LoadListing.No
-              ) -> FileValue(location = Some(f.toString), metadata = Some(fileMeta.prettyPrint)),
+              ) -> FileValue(location = Some(f.toString), metadata = Some(fileMeta.toString())),
+              CommandInputParameter(
+                  Some(Identifier(namespace = None, frag = "f2")),
+                  None,
+                  None,
+                  CwlFile,
+                  None,
+                  None,
+                  Vector.empty,
+                  Vector.empty,
+                  streamable = false,
+                  loadContents = true,
+                  loadListing = LoadListing.No
+              ) -> FileValue(location = Some(f.toString), metadata = None),
               CommandInputParameter(
                   Some(Identifier(namespace = None, frag = "d")),
                   None,
@@ -122,25 +135,29 @@ class EvaluatorTest extends AnyWordSpec with Matchers {
           )
       )
       )
-      evaluator("$(inputs.f.path)", CwlString, ctx2)._2 shouldBe StringValue(f.toString)
-      evaluator("$(inputs.f.basename)", CwlString, ctx2)._2 shouldBe StringValue("test.txt")
-      evaluator("$(inputs.f.dirname)", CwlString, ctx2)._2 shouldBe StringValue(tmpdir.toString)
-      evaluator("$(inputs.f.nameroot)", CwlString, ctx2)._2 shouldBe StringValue("test")
-      evaluator("$(inputs.f.nameext)", CwlString, ctx2)._2 shouldBe StringValue(".txt")
-      evaluator("$(inputs.f.size)", CwlLong, ctx2)._2 shouldBe LongValue(4)
-      evaluator("$(inputs.f.contents)", CwlString, ctx2)._2 shouldBe StringValue("test")
-      evaluator("$(inputs.f.metadata)", CwlString, ctx2)._2 shouldBe StringValue(
-          fileMeta.prettyPrint
+      evaluator("$(inputs.f1.path)", CwlString, ctx2)._2 shouldBe StringValue(f.toString)
+      evaluator("$(inputs.f1.basename)", CwlString, ctx2)._2 shouldBe StringValue("test.txt")
+      evaluator("$(inputs.f1.dirname)", CwlString, ctx2)._2 shouldBe StringValue(tmpdir.toString)
+      evaluator("$(inputs.f1.nameroot)", CwlString, ctx2)._2 shouldBe StringValue("test")
+      evaluator("$(inputs.f1.nameext)", CwlString, ctx2)._2 shouldBe StringValue(".txt")
+      evaluator("$(inputs.f1.size)", CwlLong, ctx2)._2 shouldBe LongValue(4)
+      evaluator("$(inputs.f1.contents)", CwlString, ctx2)._2 shouldBe StringValue("test")
+      evaluator("$(inputs.f1.metadata)", CwlString, ctx2)._2 shouldBe StringValue(
+          fileMeta.toString()
       )
+      // f2 does not have the optional metadata attribute, so try to coerce it to optional string
+      evaluator("$(inputs.f2.metadata)", CwlOptional(CwlString), ctx2)._2 shouldBe NullValue
+      // f2 does not have the optional metadata attribute, so evaluating it as an non optional var would fail
+      val caught =
+        intercept[Exception] {
+          evaluator("$(inputs.f2.metadata)", CwlString, ctx2)._2
+        }
+      caught.getMessage shouldBe s"null is not coercible to non-optional type CwlString"
 
       evaluator("$(inputs.d.path)", CwlString, ctx2)._2 shouldBe StringValue(d.toString)
       evaluator("$(inputs.d.basename)", CwlString, ctx2)._2 shouldBe StringValue("dir")
       evaluator("$(inputs.d.listing[0].path)", CwlString, ctx2)._2 shouldBe StringValue(f2.toString)
       evaluator("$(inputs.d.listing[0].contents)", CwlString, ctx2)._2 shouldBe StringValue("test2")
-
-      evaluator("filename$(inputs.f.nameext)", CwlString, ctx2)._2 shouldBe StringValue(
-          "filename.txt"
-      )
     }
 
     "coerce results" in {

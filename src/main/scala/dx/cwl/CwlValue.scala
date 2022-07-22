@@ -833,12 +833,20 @@ object PathValue {
     }
   }
 
+  def unwrapMap(jsValue: JsValue): String = {
+    jsValue match {
+      case v: JsObject => v.toString()
+      case _ =>
+        throw new Exception(s"expected map, not ${jsValue}")
+    }
+  }
+
   def unwrapLong(jsValue: JsValue): Long = {
     jsValue match {
       case JsNumber(n) => n.toLongExact
       case JsString(s) => s.toLong
       case _ =>
-        throw new Exception(s"expected string, not ${jsValue}")
+        throw new Exception(s"expected number or string number, not ${jsValue}")
     }
   }
 
@@ -983,7 +991,7 @@ object FileValue {
             },
             fields.get("format").map(PathValue.unwrapString),
             fields.get("contents").map(PathValue.unwrapString),
-            fields.get("metadata").map(_.prettyPrint)
+            fields.get("metadata").map(PathValue.unwrapMap)
         )
       case _ =>
         throw new Exception(s"invalid file value ${jsValue}")
