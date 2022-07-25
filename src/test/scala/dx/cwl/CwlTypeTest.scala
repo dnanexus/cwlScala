@@ -7,11 +7,11 @@ import org.scalatest.matchers.should.Matchers
 class CwlTypeTest extends AnyFlatSpec with Matchers {
   val p1 = "bar/baz1/"
   val p2 = "bar/baz2/"
-  val id1 = Identifier(Some("foo1"), p1 + java.util.UUID.randomUUID().toString())
-  val id2 = Identifier(Some("foo2"), p2 + java.util.UUID.randomUUID().toString())
-  val id3 = Identifier(Some("foo"), p1 + "id3")
-  val id3_2 = Identifier(Some("foo"), p2 + "id3")
-  val id4 = Identifier(Some("foo"), p1 + "id4")
+  val id1: Identifier = Identifier(Some("foo1"), p1 + java.util.UUID.randomUUID().toString)
+  val id2: Identifier = Identifier(Some("foo2"), p2 + java.util.UUID.randomUUID().toString)
+  val id3: Identifier = Identifier(Some("foo"), p1 + "id3")
+  val id3_2: Identifier = Identifier(Some("foo"), p2 + "id3")
+  val id4: Identifier = Identifier(Some("foo"), p1 + "id4")
 
   it should "simplify array types with random ids as identical" in {
     val arr1 = CwlArray(CwlString, Some(id1), Some("array 1"), Some("array 1 doc"))
@@ -27,6 +27,7 @@ class CwlTypeTest extends AnyFlatSpec with Matchers {
     simple_arr1.hashCode() shouldEqual (simple_arr2.hashCode())
     simple_arr1.equals(simple_arr2)
 
+    // non-random strings are equal
     val arr3 = CwlArray(CwlString, Some(id3), Some("array 3"), Some("array 3 doc"))
     val arr4 = CwlArray(CwlString, Some(id4), Some("array 4"), Some("array 4 doc"))
     val simple_arr3 = arr3.copySimplifyIds(dropNamespace = true,
