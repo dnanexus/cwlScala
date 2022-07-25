@@ -81,7 +81,7 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
       tool.outputs.size shouldBe 28
       tool.outputs.head.id.flatMap(_.namespace) shouldBe Some(
-          s"${Utils.normalizeUri(toolsBaseUri)}#params_inc.yml"
+          s"${Utils.normalizeUri(toolsBaseUri)}"
       )
     }
 
@@ -283,7 +283,9 @@ class ParserTest extends AnyWordSpec with Matchers {
         case other                                       => throw new Exception(s"expected Workflow, not ${other}")
       }
       wf.name shouldBe "any-type-compat.cwl"
-      wf.inputs.flatMap(_.id.map(_.frag)).toSet shouldBe Set("input1", "input2", "input3")
+      wf.inputs.flatMap(_.id.map(_.frag)).toSet shouldBe Set("any-type-compat.cwl/input1",
+                                                             "any-type-compat.cwl/input2",
+                                                             "any-type-compat.cwl/input3")
     }
 
     "parse packed workflow with auto-generated process ID" in {
@@ -301,7 +303,9 @@ class ParserTest extends AnyWordSpec with Matchers {
         case tool: CommandLineTool => tool
         case _                     => throw new Exception("expected CommandLineTool")
       }
-      proc.id.map(_.frag) shouldBe Some("step1/count-lines19-wf.cwl@step_step1@wc3-tool.cwl")
+      proc.id.map(_.frag) shouldBe Some(
+          "count-lines19-wf.cwl/step1/count-lines19-wf.cwl@step_step1@wc3-tool.cwl"
+      )
     }
 
     "parse packed workflow with auto-generated anonymous process ID" in {
@@ -320,7 +324,7 @@ class ParserTest extends AnyWordSpec with Matchers {
           step.run match {
             case tool: CommandLineTool =>
               tool.id.map(_.frag) shouldBe Some(
-                  s"step${idx + 1}/timelimit2-wf.cwl@step_step${idx + 1}@run"
+                  s"timelimit2-wf.cwl/step${idx + 1}/timelimit2-wf.cwl@step_step${idx + 1}@run"
               )
             case _ => throw new Exception("expected CommandLineTool")
           }
@@ -380,11 +384,11 @@ class ParserTest extends AnyWordSpec with Matchers {
       }
       simplifiedTool.inputs.size shouldBe 1
       simplifiedTool.inputs.head.id shouldBe Some(
-          Identifier(None, "step1_run/step1/step1_run_step1_run/file1")
+          Identifier(None, "step1_run_step1_run/file1")
       )
       simplifiedTool.outputs.size shouldBe 1
       simplifiedTool.outputs.head.id shouldBe Some(
-          Identifier(None, "step1_run/step1/step1_run_step1_run/output")
+          Identifier(None, "step1_run_step1_run/output")
       )
 
       val step2 = simplifiedWf.steps(1)
@@ -401,12 +405,37 @@ class ParserTest extends AnyWordSpec with Matchers {
         case other                => throw new Exception(s"expected ExpressionTool, not ${other}")
       }
       simplifiedExpr.inputs.head.id shouldBe Some(
-          Identifier(None, "step1_run/step2/step1_run_step2_run/file1")
+          Identifier(None, "step1_run_step2_run/file1")
       )
       simplifiedExpr.outputs.size shouldBe 1
       simplifiedExpr.outputs.head.id shouldBe Some(
-          Identifier(None, "step1_run/step2/step1_run_step2_run/output")
+          Identifier(None, "step1_run_step2_run/output")
       )
+    }
+
+    "parse workflow with identical steps" in {
+      val wfPathPacked = workflowsConformancePath.resolve("tool_called_twice.cwl.json")
+      workflowConformanceParser.detectVersionAndClassFromFile(wfPathPacked) shouldBe ("v1.2", Some(
+          "Workflow"
+      ))
+      val (wf, _) =
+        workflowConformanceParser.parseFile(wfPathPacked) match {
+          case ParserResult(Some(wf: Workflow), doc, _, _) => (wf, doc)
+          case other                                       => throw new Exception(s"expected Workflow, not ${other}")
+        }
+      wf.steps.size shouldBe 2
+
+      val simplifiedWf = wf.copySimplifyIds(
+          dropNamespace = true,
+          replacePrefix = (Left(true), None),
+          simplifyAutoNames = true,
+          dropCwlExtension = true
+      )
+      simplifiedWf.steps.size shouldBe 2
+
+      val step1 = simplifiedWf.steps(0)
+      val step2 = simplifiedWf.steps(1)
+      step1.run shouldBe step2.run
     }
 
     "parse a packed workflow in graph format and determine the correct main process" in {
