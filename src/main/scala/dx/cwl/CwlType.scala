@@ -39,7 +39,7 @@ import scala.util.matching.Regex
 /**
   * Marker trait for all CWL data types.
   */
-sealed trait CwlType {
+sealed trait CwlType extends Equals {
 
   /**
     * Returns true if this type is coercible to the specified type
@@ -194,6 +194,24 @@ object CwlType {
           case t: CwlType => t
           case other      => throw new Exception(s"expected CwlType, not ${other}")
         }
+      case CwlOptional(innerType) =>
+        CwlOptional(
+            copySimplifyIds(innerType,
+                            dropNamespace,
+                            replacePrefix,
+                            simplifyAutoNames,
+                            dropCwlExtension)
+        )
+      case CwlMulti(types) =>
+        CwlMulti(
+            types.map(
+                copySimplifyIds(_,
+                                dropNamespace,
+                                replacePrefix,
+                                simplifyAutoNames,
+                                dropCwlExtension)
+            )
+        )
       case _ => cwlType
     }
   }
@@ -229,6 +247,28 @@ case class CwlOptional(t: CwlType) extends CwlType {
       case _                                       => false
     }
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlOptional]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case obj: CwlOptional =>
+        obj match {
+          case obj if this eq obj => true
+          case obj
+              if obj.canEqual(this)
+                && (hashCode == obj.hashCode)
+                && (CwlOptional.unwrapOptional(this) == CwlOptional.unwrapOptional(obj)) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * CwlOptional.unwrapOptional(this).hashCode()
 }
 
 object CwlOptional {
@@ -269,6 +309,38 @@ case class CwlMulti(types: Vector[CwlType]) extends CwlType {
   }
 
   lazy val isOptional: Boolean = types.exists(CwlOptional.isOptional)
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlMulti]
+
+  override def equals(that: Any): Boolean = {
+    def multiEqual(v1: Vector[CwlType], v2: Vector[CwlType]): Boolean = {
+      if (v1.size != v2.size)
+        false
+      else {
+        v1.sortBy(_.toString()).zip(v2.sortBy(_.toString())).forall(p => p._1 == p._2)
+      }
+    }
+
+    that match {
+      case m: CwlMulti =>
+        m match {
+          case m if this eq m => true
+          case m
+              if m.canEqual(this)
+                && (hashCode == m.hashCode)
+                && multiEqual(types, m.types) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+  }
+
+  override def hashCode(): Int =
+    31 * types.map(_.hashCode()).sum
+
 }
 
 /**
@@ -360,6 +432,15 @@ sealed trait CwlSchema extends CwlType with Identifiable {
     * which is a non-optional, non-equal, and non-Any type.
     */
   protected def canBeCoercedTo(targetType: CwlType): Boolean = false
+
+  def hasRandomName(): Boolean = {
+    val randomNameRegex: Regex = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})".r
+    id.map(_.name) match {
+      case Some(randomNameRegex(_)) => true
+      case Some(name)               => false
+      case None                     => true
+    }
+  }
 }
 
 sealed trait CwlInputSchema extends CwlSchema {
@@ -492,8 +573,42 @@ case class CwlArray(itemType: CwlType,
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlArray = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        itemType = CwlType.copySimplifyIds(itemType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlArray]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case a: CwlArray =>
+        a match {
+          case a if this eq a => true
+          case a
+              if a.canEqual(this)
+                && (hashCode == a.hashCode)
+                && (itemType == a.itemType)
+                && (id == a.id || (hasRandomName() && a.hasRandomName())) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (itemType.hashCode()) + {
+      if (!hasRandomName()) {
+        name.##
+      } else 0
+    }
 }
 
 object CwlArray {
@@ -541,7 +656,7 @@ object CwlArray {
   }
 }
 
-sealed trait CwlRecordField {
+sealed trait CwlRecordField extends Equals {
   val name: String
   val cwlType: CwlType
   val label: Option[String]
@@ -554,6 +669,29 @@ sealed trait CwlRecordField {
     * the field is optional if any of the allowed types are optional
     */
   lazy val optional: Boolean = CwlOptional.isOptional(cwlType)
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlRecordField]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case f: CwlRecordField =>
+        f match {
+          case f if this eq f => true
+          case f
+              if f.canEqual(this)
+                && (hashCode == f.hashCode)
+                && (cwlType == f.cwlType)
+                && (name == f.name) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (cwlType.hashCode()) + name.##
 }
 
 sealed trait CwlRecord extends CwlSchema {
@@ -567,6 +705,33 @@ sealed trait CwlRecord extends CwlSchema {
       case _                                                       => false
     }
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlRecord]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case r: CwlRecord =>
+        r match {
+          case r if this eq r => true
+          case r
+              if r.canEqual(this)
+                && (hashCode == r.hashCode)
+                && (fields == r.fields)
+                && (id == r.id || (hasRandomName() && r.hasRandomName())) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (fields.map(_.hashCode()).sum) + {
+      if (!hasRandomName()) {
+        name.##
+      } else 0
+    }
 }
 
 case class CwlGenericRecordField(name: String,
@@ -576,7 +741,19 @@ case class CwlGenericRecordField(name: String,
                                  secondaryFiles: Vector[SecondaryFile] = Vector.empty,
                                  format: Vector[CwlValue] = Vector.empty,
                                  streamable: Boolean = false)
-    extends CwlRecordField
+    extends CwlRecordField {
+  def copySimplifyIds(dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlGenericRecordField = {
+    copy(cwlType = CwlType.copySimplifyIds(cwlType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
+  }
+}
 
 case class CwlGenericRecord(fields: SeqMap[String, CwlGenericRecordField],
                             id: Option[Identifier] = None,
@@ -587,7 +764,13 @@ case class CwlGenericRecord(fields: SeqMap[String, CwlGenericRecordField],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlGenericRecord = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        fields = fields.map(f =>
+          (f._1,
+           f._2.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+        )
+    )
   }
 
   /**
@@ -614,7 +797,19 @@ case class CwlInputRecordField(name: String,
                                streamable: Boolean = false,
                                loadContents: Boolean = false,
                                loadListing: LoadListing.LoadListing = LoadListing.No)
-    extends CwlRecordField
+    extends CwlRecordField {
+  def copySimplifyIds(dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlInputRecordField = {
+    copy(cwlType = CwlType.copySimplifyIds(cwlType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
+  }
+}
 
 object CwlInputRecordField {
   private def create(field: InputRecordField,
@@ -685,7 +880,13 @@ case class CwlInputRecord(fields: SeqMap[String, CwlInputRecordField],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlInputRecord = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        fields = fields.map(f =>
+          (f._1,
+           f._2.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+        )
+    )
   }
 }
 
@@ -759,7 +960,19 @@ case class CwlOutputRecordField(name: String,
                                 secondaryFiles: Vector[SecondaryFile] = Vector.empty,
                                 format: Vector[CwlValue] = Vector.empty,
                                 streamable: Boolean = false)
-    extends CwlRecordField
+    extends CwlRecordField {
+  def copySimplifyIds(dropNamespace: Boolean,
+                      replacePrefix: (Either[Boolean, String], Option[String]),
+                      simplifyAutoNames: Boolean,
+                      dropCwlExtension: Boolean): CwlOutputRecordField = {
+    copy(cwlType = CwlType.copySimplifyIds(cwlType,
+                                           dropNamespace,
+                                           replacePrefix,
+                                           simplifyAutoNames,
+                                           dropCwlExtension)
+    )
+  }
+}
 
 object CwlOutputRecordField {
   private def create(field: OutputRecordField,
@@ -826,7 +1039,13 @@ case class CwlOutputRecord(fields: SeqMap[String, CwlOutputRecordField],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlOutputRecord = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        fields = fields.map(f =>
+          (f._1,
+           f._2.copySimplifyIds(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension))
+        )
+    )
   }
 }
 
@@ -911,8 +1130,48 @@ case class CwlEnum(symbols: Vector[String],
                                replacePrefix: (Either[Boolean, String], Option[String]),
                                simplifyAutoNames: Boolean,
                                dropCwlExtension: Boolean): CwlEnum = {
-    copy(id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)))
+    copy(
+        id = id.map(_.simplify(dropNamespace, replacePrefix, simplifyAutoNames, dropCwlExtension)),
+        symbols = symbols.map(s => {
+          val frag = Identifier.parseUri(s)._2
+          try {
+            frag
+              .map(Identifier.simplifyFrag(_, replacePrefix, simplifyAutoNames, dropCwlExtension))
+              .get
+          } catch {
+            case ex: Throwable =>
+              throw new Exception(s"error simplifying enum symbol ${s}", ex)
+          }
+        })
+    )
   }
+
+  override def canEqual(that: Any): Boolean =
+    that.isInstanceOf[CwlEnum]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case e: CwlEnum =>
+        e match {
+          case e if this eq e => true
+          case e
+              if e.canEqual(this)
+                && (hashCode == e.hashCode)
+                && (symbolNames == e.symbolNames)
+                && (id == e.id || (hasRandomName() && e.hasRandomName())) =>
+            true
+          case _ => false
+        }
+      case _ =>
+        false
+    }
+
+  override def hashCode(): Int =
+    31 * (symbolNames.map(_.##).sum) + {
+      if (!hasRandomName()) {
+        name.##
+      } else 0
+    }
 }
 
 object CwlEnum {

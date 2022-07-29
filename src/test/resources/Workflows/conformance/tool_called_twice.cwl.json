@@ -1,0 +1,131 @@
+{
+    "cwlVersion": "v1.2",
+    "class": "Workflow",
+    "id": "wf",
+    "inputs": [],
+    "outputs": [
+        {
+            "id": "wf_file_out",
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputSource": "ta1/file_out"
+        },
+        {
+            "id": "wf_file_out2",
+            "type": {
+                "type": "array",
+                "items": "File"
+            },
+            "outputSource": "ta2/file_out"
+        }
+    ],
+    "steps": [
+        {
+            "id": "ta1",
+            "run": {
+                "cwlVersion": "v1.2",
+                "id": "ta",
+                "class": "CommandLineTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    },
+                    {
+                        "class": "ShellCommandRequirement"
+                    },
+                    {
+                        "class": "InitialWorkDirRequirement",
+                        "listing": [
+                            {
+                                "entryname": "ta.sh",
+                                "entry": "echo hi > file.out"
+                            }
+                        ]
+                    }
+                ],
+                "inputs": [],
+                "hints": [
+                    {
+                        "class": "LoadListingRequirement",
+                        "loadListing": "deep_listing"
+                    }
+                ],
+                "baseCommand": [
+                    "sh",
+                    "ta.sh"
+                ],
+                "outputs": [
+                    {
+                        "id": "file_out",
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "outputBinding": {
+                            "glob": "*.out"
+                        }
+                    }
+                ]
+            },
+            "in": [],
+            "out": [
+                "file_out"
+            ]
+        },
+        {
+            "id": "ta2",
+            "run": {
+                "cwlVersion": "v1.2",
+                "id": "ta",
+                "class": "CommandLineTool",
+                "requirements": [
+                    {
+                        "class": "InlineJavascriptRequirement"
+                    },
+                    {
+                        "class": "ShellCommandRequirement"
+                    },
+                    {
+                        "class": "InitialWorkDirRequirement",
+                        "listing": [
+                            {
+                                "entryname": "ta.sh",
+                                "entry": "echo hi > file.out"
+                            }
+                        ]
+                    }
+                ],
+                "inputs": [],
+                "hints": [
+                    {
+                        "class": "LoadListingRequirement",
+                        "loadListing": "deep_listing"
+                    }
+                ],
+                "baseCommand": [
+                    "sh",
+                    "ta.sh"
+                ],
+                "outputs": [
+                    {
+                        "id": "file_out",
+                        "type": {
+                            "type": "array",
+                            "items": "File"
+                        },
+                        "outputBinding": {
+                            "glob": "*.out"
+                        }
+                    }
+                ]
+            },
+            "in": [],
+            "out": [
+                "file_out"
+            ]
+        }
+    ],
+    "requirements": []
+}
