@@ -2,7 +2,8 @@
 
 ## in develop
 
-* For duplicated calls - prepends a process name to make the name unique, avoiding exception "two different processes with the same name" 
+* For duplicated calls - prepends a process name to make the name unique, avoiding exception "two different processes with the same name"
+* Added support for "metadata" field for input files in CWL under development (pending inclusion in CWL standard).
 
 ## 0.8.3 (2022-05-16)
 
