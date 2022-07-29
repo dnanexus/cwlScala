@@ -41,7 +41,7 @@ object EvalutatorExample {
 
 ## Requirements
 
-* JDK 8
+* JDK 11
 * Scala 2.13
 * sbt
 

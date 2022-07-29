@@ -1,7 +1,8 @@
 # Change log
 
 ## in develop
-..
+
+* Added support for "metadata" field for input files in CWL under development (pending inclusion in CWL standard).
 
 ## 0.8.3 (2022-05-16)
 
