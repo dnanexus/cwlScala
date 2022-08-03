@@ -1,6 +1,10 @@
 # Change log
 
-## in develop
+## in develop  
+
+...
+
+## 0.8.4 (2022-08-02)
 
 * For duplicated calls - prepends a process name to make the name unique, avoiding exception "two different processes with the same name"
 * Added support for "metadata" field for input files in CWL under development (pending inclusion in CWL standard).
