@@ -58,6 +58,8 @@ libraryDependencies ++= Seq(
 
 ## Building
 
+See `docs/DEVELOPING.md` for how to configure the required `GITHUB_TOKEN`.
+
 ```
 $ git clone --recurse-submodules https://github.com/dnanexus/cwlScala.git
 $ sbt publishLocal
