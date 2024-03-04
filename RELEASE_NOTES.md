@@ -1,6 +1,10 @@
 # Change log
 
-## 0.8.4 (2024-03-04)
+## in develop
+
+...
+
+## 0.8.5 (2024-03-04)
 
 * ANTLR4 version bump to 4.13.1
 
