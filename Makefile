@@ -1,5 +1,5 @@
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-ANTLR_VERSION=9
+ANTLR_VERSION=13.1
 
 all : download_antlr_jar antlr
 

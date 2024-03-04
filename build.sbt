@@ -54,7 +54,7 @@ lazy val dependencies = {
   val jacksonDatabindVersion = "2.13.2.2"
   val jacksonDataformatYamlVersion = "2.13.2"
   val rhinoVersion = "1.7.13"
-  val antlr4Version = "4.9.3"
+  val antlr4Version = "4.13.1"
   //val junitVersion = "4.13.2"
 
   val dxCommon = "com.dnanexus" % "dxcommon" % dxCommonVersion
