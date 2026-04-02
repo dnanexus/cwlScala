@@ -89,7 +89,7 @@ object CommandInputParameter {
         translateOptional(param.getLabel),
         translateDoc(param.getDoc),
         types,
-        translateOptional(param.getDefault).map(CwlValue(_, schemaDefs)),
+        translateOptionalObject(param.getDefault).map(CwlValue(_, schemaDefs)),
         translateOptional(param.getInputBinding).map {
           case binding: CommandLineBindingImpl => CommandInputBinding.parse(binding, schemaDefs)
           case other =>
